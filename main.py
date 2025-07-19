@@ -15,7 +15,7 @@ import threading
 # OPTIONS
 
 options = {
-    "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6", # deltarune #1
+    "playlistURL": "https://www.youtube.com/playlist?list=PLefKpFQ8Pvy5aCLAGHD8Zmzsdljos-t2l", # minecraft
     "outputFolder": os.path.join(os.getcwd(), "output"),
     "optionsFile": "options.peanut",
     "outputConversionExtension": ".mp3",
