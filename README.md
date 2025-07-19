@@ -2,6 +2,8 @@
 
 an attempt at a decent audio player that works off youtube
 
+currently very WIP, there is no gui yet (but it works from command line with some functionality)
+
 ## Installation
 
 you need [pip](https://pip.pypa.io/en/stable/) to install necessary packages
