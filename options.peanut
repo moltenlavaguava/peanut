@@ -1,0 +1,35 @@
+{
+    "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6",
+    "outputFolder": "C:\\Users\\lavam\\Projects\\peanut\\output",
+    "optionsFile": "options.peanut",
+    "outputConversionExtension": ".mp3",
+    "binariesFolder": "binaries",
+    "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
+    "allowPlayingWhileDownloading": true,
+    "overrideExistingPlaylistFile": true,
+    "pauseFirstAudio": false,
+    "hotkeys": {
+        "alt+p": "play",
+        "alt+n": "skip",
+        "alt+o": "previous",
+        "alt+l": "loop",
+        "alt+s": "shuffle",
+        "alt+m": "organize",
+        "alt+k": "kill"
+    },
+    "downloadOptions": {
+        "format": "bestaudio",
+        "outtmpl": "C:\\Users\\lavam\\Projects\\peanut\\output\\%(playlist_title)s\\music\\%(title).200s.%(ext)s",
+        "quiet": true,
+        "verbose": false,
+        "ignoreerrors": true,
+        "restrictfilenames": true,
+        "extractor_args": {
+            "youtube": [
+                "player_client=web",
+                "no_check_formats=1",
+                "skip=dash,configs"
+            ]
+        }
+    }
+}
