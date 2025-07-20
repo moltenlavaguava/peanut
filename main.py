@@ -404,20 +404,15 @@ async def managePlaylist(playlist:Playlist):
 async def mainThread():
     global coroutineTasks
     # download and play a playlist while it's downloading
-    playlist = Playlist(options["playlistURL"])
+    # playlist = Playlist(options["playlistURL"])
     # check to see if a file for it already exists
-    if checkPlaylistFileExist(playlist.getName()):
-        playlist = constructPlaylistFromName(playlist.getName())
-    # start the download
-    coroutineTasks["playlistDownloader"] = asyncio.create_task(downloadFromPlaylist(playlist))
-    # play it
-    coroutineTasks["playlistManager"] = asyncio.create_task(managePlaylist(playlist))
+    # if checkPlaylistFileExist(playlist.getName()):
+    #     playlist = constructPlaylistFromName(playlist.getName())
+    # # start the download
+    # coroutineTasks["playlistDownloader"] = asyncio.create_task(downloadFromPlaylist(playlist))
+    # # play it
+    # coroutineTasks["playlistManager"] = asyncio.create_task(managePlaylist(playlist))
     
-    # play a playlist
-    # asyncio.create_task(managePlaylist("DELTARUNE_Chapter_1_Soundtrack_Official"))
-    # while it's playing, download another
-    # asyncio.create_task(downloadFromPlaylist(Playlist(options["playlistURL"])))
-    # keep coroutine alive
     while True:
         # if request to stop process was made, stop it
         if stopProcess: break
