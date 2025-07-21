@@ -2,7 +2,7 @@
 
 an attempt at a decent audio player that works off youtube
 
-currently very WIP, there is no gui yet (but it works from command line with some functionality)
+currently very WIP, gui is in progress
 
 ## Installation
 
@@ -22,7 +22,7 @@ still working on that sooooooooooooooryyy
 
 ## Contributing
 
-yeah idk lol
+if you want to change the current requirements `pip freeze > requirements.txt`
 
 ## License
 

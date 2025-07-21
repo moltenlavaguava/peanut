@@ -11,6 +11,17 @@ import pygame.mixer
 import keyboard
 import threading
 
+from PySide6.QtCore import Qt
+from PySide6.QtCore import Slot
+from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget)
+
+import PySide6.QtAsyncio as QtAsyncio
+
+# gui importing
+import gui
+import gui.main
+import gui.main.gui_ui
+
 
 # OPTIONS
 
@@ -403,6 +414,7 @@ async def managePlaylist(playlist:Playlist):
 # main coroutine. still needs a lot of work.
 async def mainThread():
     global coroutineTasks
+    print("Main loop starting.")
     # download and play a playlist while it's downloading
     # playlist = Playlist(options["playlistURL"])
     # check to see if a file for it already exists
@@ -423,7 +435,7 @@ async def mainThread():
 saveOptions()
 loadOptions()
 
-# initalize pygame mixer.
+# initalize pygame mixer.   
 pygame.mixer.init()
 
 # begins hotkey thread.
@@ -434,7 +446,31 @@ keyboardThread.start()
 updateHotkeys(list(options["hotkeys"].keys()))
 
 # start main async loop.
-asyncio.run(mainThread())
+# custom version of asyncio to work with gui stuff
+
+
+# keep running: whether or not to end the asyncio loop once the final coroutine finishes (default = False)
+# quit_qapp: whether or not to shut down the QCoreApplication when asyncio finishes. (default = True)
+
+@Slot()
+def test():
+    print("hai")
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.ui = gui.main.gui_ui.Ui_MainWindow()
+        self.ui.setupUi(self)
+        
+        # hooking up ui buttons
+        self.ui.action_play.clicked.connect(test)
+
+
+app = QApplication([])
+window = MainWindow()
+window.show()
+
+QtAsyncio.run(mainThread(), keep_running=False, quit_qapp=True)
 
 keyboardThread.join()
 print("Keyboard thread finished.")
