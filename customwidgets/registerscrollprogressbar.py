@@ -1,26 +1,22 @@
 from scrollprogressbar import ScrollProgressBar
-
 from PySide6.QtDesigner import QPyDesignerCustomWidgetCollection
 
 
-TOOLTIP = "A cool wiggly widget (Python)"
+TOOLTIP = "Scroll bar that allows for customization of the scroll"
 DOM_XML = """
 <ui language='c++'>
-    <widget class='WigglyWidget' name='wigglyWidget'>
+    <widget class='ScrollProgressBar' name='Progress Scroll Bar'>
         <property name='geometry'>
             <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>400</width>
+                <width>100</width>
                 <height>200</height>
             </rect>
-        </property>
-        <property name='text'>
-            <string>Hello, world</string>
         </property>
     </widget>
 </ui>
 """
 
-QPyDesignerCustomWidgetCollection.registerCustomWidget(ScrollProgressBar, module="scrollProgressBar",
-                                                       tool_tip=TOOLTIP, xml=DOM_XML,group="Custom")
+if __name__ == "__main__":
+    QPyDesignerCustomWidgetCollection.registerCustomWidget(ScrollProgressBar, tool_tip=TOOLTIP, xml=DOM_XML, module="customwidgets.scrollprogressbar")

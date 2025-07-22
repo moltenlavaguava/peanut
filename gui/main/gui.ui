@@ -7,14 +7,17 @@
     <x>0</x>
     <y>0</y>
     <width>710</width>
-    <height>600</height>
+    <height>584</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>program</string>
   </property>
   <property name="styleSheet">
-   <string notr="true"/>
+   <string notr="true">QProgressBar {
+	border: 1px solid white;
+	height: 20px;
+}</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QCheckBox" name="decor_checkBox">
@@ -163,7 +166,7 @@
    <widget class="QProgressBar" name="info_progressBar">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>340</x>
       <y>450</y>
       <width>281</width>
       <height>51</height>
@@ -214,14 +217,27 @@
      <enum>QFrame::Shadow::Raised</enum>
     </property>
    </widget>
-   <widget class="ScrollProgressBar" name="widget" native="true">
+   <widget class="QDial" name="dial">
     <property name="geometry">
      <rect>
-      <x>540</x>
-      <y>70</y>
-      <width>120</width>
-      <height>80</height>
+      <x>280</x>
+      <y>30</y>
+      <width>151</width>
+      <height>151</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="ScrollProgressBar" name="Progress Scroll Bar">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>40</y>
+      <width>141</width>
+      <height>131</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
     </property>
    </widget>
   </widget>
@@ -230,8 +246,7 @@
   <customwidget>
    <class>ScrollProgressBar</class>
    <extends>QWidget</extends>
-   <header>customwidgets.scrollprogressbar.h</header>
-   <container>1</container>
+   <header>customwidgets.scrollprogressbar</header>
   </customwidget>
  </customwidgets>
  <resources/>

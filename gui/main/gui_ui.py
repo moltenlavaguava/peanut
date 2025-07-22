@@ -15,9 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QLabel,
-    QLineEdit, QMainWindow, QProgressBar, QPushButton,
-    QScrollBar, QSizePolicy, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QDial, QFrame,
+    QLabel, QLineEdit, QMainWindow, QProgressBar,
+    QPushButton, QScrollBar, QSizePolicy, QWidget)
 
 from customwidgets.scrollprogressbar import ScrollProgressBar
 
@@ -25,8 +25,11 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(710, 600)
-        MainWindow.setStyleSheet(u"")
+        MainWindow.resize(710, 584)
+        MainWindow.setStyleSheet(u"QProgressBar {\n"
+"	border: 1px solid white;\n"
+"	height: 20px;\n"
+"}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.decor_checkBox = QCheckBox(self.centralwidget)
@@ -64,7 +67,7 @@ class Ui_MainWindow(object):
         self.action_previous.setGeometry(QRect(630, 570, 75, 24))
         self.info_progressBar = QProgressBar(self.centralwidget)
         self.info_progressBar.setObjectName(u"info_progressBar")
-        self.info_progressBar.setGeometry(QRect(390, 450, 281, 51))
+        self.info_progressBar.setGeometry(QRect(340, 450, 281, 51))
         self.info_progressBar.setValue(55)
         self.info_progressBar.setTextVisible(False)
         self.info_progressBar.setOrientation(Qt.Orientation.Horizontal)
@@ -78,9 +81,13 @@ class Ui_MainWindow(object):
         self.frame.setGeometry(QRect(340, 210, 120, 80))
         self.frame.setFrameShape(QFrame.Shape.StyledPanel)
         self.frame.setFrameShadow(QFrame.Shadow.Raised)
-        self.widget = ScrollProgressBar(self.centralwidget)
-        self.widget.setObjectName(u"widget")
-        self.widget.setGeometry(QRect(540, 70, 120, 80))
+        self.dial = QDial(self.centralwidget)
+        self.dial.setObjectName(u"dial")
+        self.dial.setGeometry(QRect(280, 30, 151, 151))
+        self.Progress_Scroll_Bar = ScrollProgressBar(self.centralwidget)
+        self.Progress_Scroll_Bar.setObjectName(u"Progress_Scroll_Bar")
+        self.Progress_Scroll_Bar.setGeometry(QRect(520, 40, 141, 131))
+        self.Progress_Scroll_Bar.setStyleSheet(u"")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
