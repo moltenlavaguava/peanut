@@ -99,9 +99,47 @@ currentAllKeysHook = None
 # main gui window
 window = None
 
-# FUNCTIONS
+# functions
 
-# async functions
+######################################
+#
+# options
+#
+######################################
+
+# load options. if they don't exist, generate a file.
+def loadOptions():
+    global options
+    # attempt to load options
+    success = False
+    if os.path.isfile(options["optionsFile"]):
+        try:
+            with open(options["optionsFile"]) as f:
+                fileOptions = json.loads(f.read())
+                success = True
+        except Exception as error:
+            pd(f"An error occured while loading the options: {error}")
+    # if didn't work, load options
+    if success:
+        options = fileOptions
+        
+# Save options. If the file doesn't exist, make it.
+def saveOptions():
+    try:
+        # convert to json
+        txt = json.dumps(options, indent=4)
+    
+        with open(options["optionsFile"], "w" if os.path.isfile(options["optionsFile"]) else "x") as f:
+            f.write(txt)
+                
+    except Exception as error:
+        pd(f"An error occured while saving the options: Error: {type(error).__name__}, Message: {error}")
+    
+######################################
+#
+# downloading files
+#
+######################################
 
 # Manually convert audio file to specified format.
 async def convertAudioFileAsync(filePath: str, extension: str, entry:dict[str, str | int]):
@@ -140,34 +178,6 @@ def getPlaylistList(playlistURL: str) -> list[str]:
             pd(f"Error extracting playlist info: {e}")
             return []
 
-# load options. if they don't exist, generate a file.
-def loadOptions():
-    global options
-    # attempt to load options
-    success = False
-    if os.path.isfile(options["optionsFile"]):
-        try:
-            with open(options["optionsFile"]) as f:
-                fileOptions = json.loads(f.read())
-                success = True
-        except Exception as error:
-            pd(f"An error occured while loading the options: {error}")
-    # if didn't work, load options
-    if success:
-        options = fileOptions
-        
-# Save options. If the file doesn't exist, make it.
-def saveOptions():
-    try:
-        # convert to json
-        txt = json.dumps(options, indent=4)
-    
-        with open(options["optionsFile"], "w" if os.path.isfile(options["optionsFile"]) else "x") as f:
-            f.write(txt)
-                
-    except Exception as error:
-        pd(f"An error occured while saving the options: Error: {type(error).__name__}, Message: {error}")
-    
 # Manually convert audio file to specified format.
 def convertAudioFile(filePath:str, extension:str):
     # making new path with extension. extension must have dot
@@ -219,74 +229,11 @@ async def downloadFromPlaylist(playlist:Playlist):
 def savePlaylistFile(playlist:Playlist):
     playlist.dumpToFile(os.path.join(options["outputFolder"], playlist.getName(), "data.peanut"))
 
-# check to see if playlist already exists.
-def checkPlaylistDownloaded(playlist:Playlist):
-    location = location = os.path.join(options["outputFolder"], playlist.getName(), "data.peanut")
-    return os.path.isfile(location), location
-
-# listens for key presses.
-def onKeyAction(keyName):
-    if not listeningForHotkeys: return
-    operation = options["hotkeys"][keyName]
-    pd("Operation:", operation)
-    if operation == "play":
-        pauseAudio(not paused)
-    elif operation == "skip":
-        skipAudio(True)
-    elif operation == "previous":
-        skipAudio(False)
-    elif operation == "loop":
-        pass
-    elif operation == "shuffle":
-        shuffleCurrentPlaylist()
-    elif operation == "organize":
-        shuffleCurrentPlaylist(True)
-    elif operation == "kill":
-        killProcess(False)
-
-# safely stops downloading, stops playing playlist, and ends program
-def killProcess(force:bool):
-    global stopProcess
-    pd("Stopping downloads and managing..")
-    stopProcess = True
-    pd("Stopping keyboard thread..")
-    keyboardThreadStopEvent.set()
-
-# printDebug
-def pd(*args):
-    if debugMode:
-        print(*args)
-
-def onNewKeyAction(keyName):
-    global currentAllKeysHook
-    pd("new key pressed:", keyName)
-    # stop listening for new keys
-    keyboard.unhook(currentAllKeysHook)
-    
-def startNewKeyListener():
-    global currentAllKeysHook
-    # setup a listener for any key
-    currentAllKeysHook = keyboard.on_press(onNewKeyAction, suppress=True)
-
-# keep hotkey thread alive.
-def hotkeyListener():
-    pd("Keyboard listener started.")
-    while not keyboardThreadStopEvent.is_set():
-        time.sleep(0.05)
-    pd("Keyboard listener stopped.")
-
-# updates hotkeys.
-def updateHotkeys(keys:list[str]):
-    global activeHotkeys
-    # Unregister existing hotkeys
-    for hotkey in activeHotkeys:
-        keyboard.remove_hotkey(activeHotkeys[hotkey])
-
-    # Register new hotkeys
-    activeHotkeys = {}
-    for key in keys:
-        hotkeyRef = keyboard.add_hotkey(key, lambda k=key: onKeyAction(k), suppress=True)
-        activeHotkeys[key] = hotkeyRef
+######################################
+#
+# managing audio
+#
+######################################
 
 # (start) playing current audio. 
 def playAudio(audioLocation:str):
@@ -322,6 +269,116 @@ def unloadAudio():
     pygame.mixer.music.unload()
     loaded = False
 
+# changes the current track being played.
+def skipAudio(forward:bool):
+    global currentIndex
+    # change the index
+    if not forward: currentIndex -= 2
+    if currentIndex < -1: currentIndex = -1
+    # unload the previous track
+    if loaded: unloadAudio()
+
+######################################
+#
+# hotkeys
+#
+######################################
+
+# listens for key presses.
+def onKeyAction(keyName):
+    if not listeningForHotkeys: return
+    operation = options["hotkeys"][keyName]
+    pd("Operation:", operation)
+    if operation == "play":
+        pauseAudio(not paused)
+    elif operation == "skip":
+        skipAudio(True)
+    elif operation == "previous":
+        skipAudio(False)
+    elif operation == "loop":
+        pass
+    elif operation == "shuffle":
+        shuffleCurrentPlaylist()
+    elif operation == "organize":
+        shuffleCurrentPlaylist(True)
+    elif operation == "kill":
+        killProcess(False)
+
+# self explanatory
+def onNewKeyAction(keyName):
+    global currentAllKeysHook
+    pd("new key pressed:", keyName)
+    # stop listening for new keys
+    keyboard.unhook(currentAllKeysHook)
+  
+# for setting hotkeys  
+def startNewKeyListener():
+    global currentAllKeysHook
+    # setup a listener for any key
+    currentAllKeysHook = keyboard.on_press(onNewKeyAction, suppress=True)
+
+# keep hotkey thread alive.
+def hotkeyListener():
+    pd("Keyboard listener started.")
+    while not keyboardThreadStopEvent.is_set():
+        time.sleep(0.05)
+    pd("Keyboard listener stopped.")
+
+# updates hotkeys.
+def updateHotkeys(keys:list[str]):
+    global activeHotkeys
+    # Unregister existing hotkeys
+    for hotkey in activeHotkeys:
+        keyboard.remove_hotkey(activeHotkeys[hotkey])
+
+    # Register new hotkeys
+    activeHotkeys = {}
+    for key in keys:
+        hotkeyRef = keyboard.add_hotkey(key, lambda k=key: onKeyAction(k), suppress=True)
+        activeHotkeys[key] = hotkeyRef
+
+######################################
+#
+# utility
+#
+######################################
+
+# check to see if playlist already exists.
+def checkPlaylistDownloaded(playlist:Playlist):
+    location = location = os.path.join(options["outputFolder"], playlist.getName(), "data.peanut")
+    return os.path.isfile(location), location
+
+# safely stops downloading, stops playing playlist, and ends program
+def killProcess(force:bool):
+    global stopProcess
+    pd("Stopping downloads and managing..")
+    stopProcess = True
+    pd("Stopping keyboard thread..")
+    keyboardThreadStopEvent.set()
+
+# printDebug
+def pd(*args):
+    if debugMode:
+        print(*args)
+
+# checks to see if a playlist already has a file.
+def checkPlaylistFileExist(playlistName:str):
+    return os.path.isfile(os.path.join(options["outputFolder"], playlistName, "data.peanut"))
+
+# constructs the expected file name for a given playlist entry.
+def constructFileName(playlistEntry: dict[str, str | int]):
+    return str(playlistEntry["name"] + options["outputConversionExtension"])
+
+# gets a playlist object from its sanitized name.
+def constructPlaylistFromName(name:str):
+    return Playlist.fromFile(os.path.join(options["outputFolder"], name, "data.peanut"))
+
+######################################
+#
+# playlist management
+#
+######################################
+
 # shuffles the playlist.
 def shuffleCurrentPlaylist(organize:bool=False):
     global currentPlaylist, shuffleManagingPlaylistRequest, shuffleDownloadingPlaylistRequest, downloadingPlaylist
@@ -334,19 +391,6 @@ def shuffleCurrentPlaylist(organize:bool=False):
     # make requests to adapt.
     if downloadingPlaylist: shuffleDownloadingPlaylistRequest = True
     shuffleManagingPlaylistRequest = True
-
-# checks to see if a playlist already has a file.
-def checkPlaylistFileExist(playlistName:str):
-    return os.path.isfile(os.path.join(options["outputFolder"], playlistName, "data.peanut"))
-
-# changes the current track being played.
-def skipAudio(forward:bool):
-    global currentIndex
-    # change the index
-    if not forward: currentIndex -= 2
-    if currentIndex < -1: currentIndex = -1
-    # unload the previous track
-    if loaded: unloadAudio()
 
 # loads a playlist. does not start playing it.
 def loadPlaylist(name:str):
@@ -366,14 +410,6 @@ def unloadPlaylist():
 def organizePlaylist(playlist:Playlist, saveToFile:bool):
     playlist.getEntries().sort(key=lambda entry: entry["index"])
     if saveToFile: savePlaylistFile(playlist)
-
-# constructs the expected file name for a given playlist entry.
-def constructFileName(playlistEntry: dict[str, str | int]):
-    return str(playlistEntry["name"] + options["outputConversionExtension"])
-
-# gets a playlist object from its sanitized name.
-def constructPlaylistFromName(name:str):
-    return Playlist.fromFile(os.path.join(options["outputFolder"], name, "data.peanut"))
 
 # general function for managing (init / play) playlists.
 async def managePlaylist(playlist:Playlist):
@@ -545,8 +581,6 @@ class MainWindow(QMainWindow):
         pd("Loading playlist.")
         coroutineTasks["playlistManager"] = asyncio.create_task(managePlaylist(playlist))
         
-    
-
 app = QApplication([])
 window = MainWindow()
 window.show()
