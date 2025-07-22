@@ -15,14 +15,18 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QLabel, QLineEdit,
-    QMainWindow, QPushButton, QSizePolicy, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QLabel,
+    QLineEdit, QMainWindow, QProgressBar, QPushButton,
+    QScrollBar, QSizePolicy, QWidget)
+
+from customwidgets.scrollprogressbar import ScrollProgressBar
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(710, 600)
+        MainWindow.setStyleSheet(u"")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.decor_checkBox = QCheckBox(self.centralwidget)
@@ -55,6 +59,28 @@ class Ui_MainWindow(object):
         self.info_loadedPlaylist = QLabel(self.centralwidget)
         self.info_loadedPlaylist.setObjectName(u"info_loadedPlaylist")
         self.info_loadedPlaylist.setGeometry(QRect(60, 460, 591, 16))
+        self.action_previous = QPushButton(self.centralwidget)
+        self.action_previous.setObjectName(u"action_previous")
+        self.action_previous.setGeometry(QRect(630, 570, 75, 24))
+        self.info_progressBar = QProgressBar(self.centralwidget)
+        self.info_progressBar.setObjectName(u"info_progressBar")
+        self.info_progressBar.setGeometry(QRect(390, 450, 281, 51))
+        self.info_progressBar.setValue(55)
+        self.info_progressBar.setTextVisible(False)
+        self.info_progressBar.setOrientation(Qt.Orientation.Horizontal)
+        self.info_progressBar.setInvertedAppearance(False)
+        self.horizontalScrollBar = QScrollBar(self.centralwidget)
+        self.horizontalScrollBar.setObjectName(u"horizontalScrollBar")
+        self.horizontalScrollBar.setGeometry(QRect(460, 370, 160, 16))
+        self.horizontalScrollBar.setOrientation(Qt.Orientation.Horizontal)
+        self.frame = QFrame(self.centralwidget)
+        self.frame.setObjectName(u"frame")
+        self.frame.setGeometry(QRect(340, 210, 120, 80))
+        self.frame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.widget = ScrollProgressBar(self.centralwidget)
+        self.widget.setObjectName(u"widget")
+        self.widget.setGeometry(QRect(540, 70, 120, 80))
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -74,5 +100,7 @@ class Ui_MainWindow(object):
         self.input_playlistURL.setText("")
         self.info_nowPlaying.setText(QCoreApplication.translate("MainWindow", u"now playing:", None))
         self.info_loadedPlaylist.setText(QCoreApplication.translate("MainWindow", u"loaded playlist:", None))
+        self.action_previous.setText(QCoreApplication.translate("MainWindow", u"previous", None))
+        self.info_progressBar.setFormat(QCoreApplication.translate("MainWindow", u"%p%", None))
     # retranslateUi
 

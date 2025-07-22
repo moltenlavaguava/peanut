@@ -9,7 +9,7 @@ import subprocess
 import asyncio
 import pygame.mixer
 import keyboard
-import threading
+import threading    
 
 from PySide6.QtCore import Qt
 from PySide6.QtCore import Slot
@@ -518,6 +518,9 @@ class MainWindow(QMainWindow):
         self.ui.action_shuffle.clicked.connect(self.buttonShuffleActivated)
         self.ui.action_loop.clicked.connect(self.buttonLoopActivated)
         self.ui.action_loadFromURL.clicked.connect(self.buttonLoadFromURL)
+        self.ui.action_previous.clicked.connect(self.buttonPreviousActivated)
+        
+        # oooooooo
         
     # window handler functions
     
@@ -548,6 +551,14 @@ class MainWindow(QMainWindow):
             skipAudio(True)
         else:
             pd("Failed to skip audio due to no audio loaded.")     
+    
+    def buttonPreviousActivated(self):
+        pd("Button 'Previous' activated.")
+        if loaded:
+            pd("Going to previous audio via button.")
+            skipAudio(True)
+        else:
+            pd("Failed to skip (previous) audio due to no audio loaded.")     
     
     @Slot()
     def buttonShuffleActivated(self):
