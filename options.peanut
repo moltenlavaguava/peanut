@@ -7,7 +7,7 @@
     "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
     "allowPlayingWhileDownloading": true,
     "overrideExistingPlaylistFile": true,
-    "pauseFirstAudio": false,
+    "pauseFirstAudio": true,
     "hotkeys": {
         "alt+p": "play",
         "alt+n": "skip",

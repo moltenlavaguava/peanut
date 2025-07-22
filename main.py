@@ -22,6 +22,8 @@ import gui
 import gui.main
 import gui.main.gui_ui
 
+# super cool demo text to show u that u can upload files
+
 
 # OPTIONS
 
@@ -34,7 +36,7 @@ options = {
     "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
     "allowPlayingWhileDownloading": True,
     "overrideExistingPlaylistFile": True,
-    "pauseFirstAudio": False,
+    "pauseFirstAudio": True,
     "hotkeys": {
         "alt+p": "play",
         "alt+n": "skip",
@@ -65,6 +67,8 @@ options["downloadOptions"] = {
 # VARIABLES
 
 currentPlaylist: Playlist | None
+currentEntry = None
+
 paused = True
 loaded = False
 listeningForHotkeys = True
@@ -74,6 +78,7 @@ playlistLoaded = False
 downloadingPlaylist = False
 
 stopProcess = False
+debugMode = True
 
 keyboardThreadStopEvent = threading.Event()
 keyboardThread = None
@@ -91,16 +96,19 @@ shuffleManagingPlaylistRequest = False
 activeHotkeys = {}
 currentAllKeysHook = None
 
+# main gui window
+window = None
+
 # FUNCTIONS
 
 # async functions
 
 # Manually convert audio file to specified format.
 async def convertAudioFileAsync(filePath: str, extension: str, entry:dict[str, str | int]):
-    print(f"Converting {filePath}...")
+    pd(f"Converting {filePath}...")
     # Run blocking conversion in a separate thread without blocking event loop
     await asyncio.to_thread(convertAudioFile, filePath, extension)
-    print(f"Finished converting {filePath}")
+    pd(f"Finished converting {filePath}")
     # mark entry as finished
     entry["downloaded"] = True
 
@@ -129,7 +137,7 @@ def getPlaylistList(playlistURL: str) -> list[str]:
                         video_urls.append(entry['url'])
             return video_urls
         except Exception as e:
-            print(f"Error extracting playlist info: {e}")
+            pd(f"Error extracting playlist info: {e}")
             return []
 
 # load options. if they don't exist, generate a file.
@@ -143,7 +151,7 @@ def loadOptions():
                 fileOptions = json.loads(f.read())
                 success = True
         except Exception as error:
-            print(f"An error occured while loading the options: {error}")
+            pd(f"An error occured while loading the options: {error}")
     # if didn't work, load options
     if success:
         options = fileOptions
@@ -158,7 +166,7 @@ def saveOptions():
             f.write(txt)
                 
     except Exception as error:
-        print(f"An error occured while saving the options: Error: {type(error).__name__}, Message: {error}")
+        pd(f"An error occured while saving the options: Error: {type(error).__name__}, Message: {error}")
     
 # Manually convert audio file to specified format.
 def convertAudioFile(filePath:str, extension:str):
@@ -193,16 +201,16 @@ async def downloadFromPlaylist(playlist:Playlist):
                 tasks.append(task)
                 savePlaylistFile(playlist)
             if shuffleDownloadingPlaylistRequest:
-                print("Request made to recheck (shuffle) downloading playlist.")
+                pd("Request made to recheck (shuffle) downloading playlist.")
                 shuffleDownloadingPlaylistRequest = False
                 savePlaylistFile(playlist)
             else: break
     # wait for everything to finish
     await asyncio.gather(*tasks)
     if stopProcess:
-        print("Playlist downloader stopping.")
+        pd("Playlist downloader stopping.")
     else:
-        print("Done downloading playlist..")
+        pd("Done downloading playlist..")
         playlist.setDownloaded(True)
     # save the file
     savePlaylistFile(playlist)
@@ -220,9 +228,9 @@ def checkPlaylistDownloaded(playlist:Playlist):
 def onKeyAction(keyName):
     if not listeningForHotkeys: return
     operation = options["hotkeys"][keyName]
-    print("Operation:", operation)
+    pd("Operation:", operation)
     if operation == "play":
-        pauseAudio()
+        pauseAudio(not paused)
     elif operation == "skip":
         skipAudio(True)
     elif operation == "previous":
@@ -239,14 +247,19 @@ def onKeyAction(keyName):
 # safely stops downloading, stops playing playlist, and ends program
 def killProcess(force:bool):
     global stopProcess
-    print("Stopping downloads and managing..")
+    pd("Stopping downloads and managing..")
     stopProcess = True
-    print("Stopping keyboard thread..")
+    pd("Stopping keyboard thread..")
     keyboardThreadStopEvent.set()
+
+# printDebug
+def pd(*args):
+    if debugMode:
+        print(*args)
 
 def onNewKeyAction(keyName):
     global currentAllKeysHook
-    print("new key pressed:", keyName)
+    pd("new key pressed:", keyName)
     # stop listening for new keys
     keyboard.unhook(currentAllKeysHook)
     
@@ -257,10 +270,10 @@ def startNewKeyListener():
 
 # keep hotkey thread alive.
 def hotkeyListener():
-    print("Keyboard listener started.")
+    pd("Keyboard listener started.")
     while not keyboardThreadStopEvent.is_set():
         time.sleep(0.05)
-    print("Keyboard listener stopped.")
+    pd("Keyboard listener stopped.")
 
 # updates hotkeys.
 def updateHotkeys(keys:list[str]):
@@ -279,25 +292,29 @@ def updateHotkeys(keys:list[str]):
 def playAudio(audioLocation:str):
     global paused, loaded
     # make sure the audio actually exists
-    print("Location:", audioLocation)
+    pd("Location:", audioLocation)
     if not os.path.isfile(audioLocation): 
         raise FileNotFoundError(f"Audio not found with path {audioLocation}")
     pygame.mixer.music.load(audioLocation)
     pygame.mixer.music.play()
+    # idk if i want this here
+    window.ui.info_nowPlaying.setText("now playing: " + currentEntry["displayName"])
     paused = False
     loaded = True
     
 # pauses current audio.
-def pauseAudio():
+def pauseAudio(pause:bool):
     global paused
-    if paused:
-        print("Resumimg audio..")
+    if pause:
+        pd("Pausing audio..")
+        pygame.mixer.music.pause()
+        window.ui.info_nowPlaying.setText("now playing: " + currentEntry["displayName"] + " [paused]")
+        paused = True
+    else:
+        pd("Resumimg audio..")
+        window.ui.info_nowPlaying.setText("now playing: " + currentEntry["displayName"])
         pygame.mixer.music.unpause()
         paused = False
-    else:
-        print("Pausing audio..")
-        pygame.mixer.music.pause()
-        paused = True
 
 # unload the current audio.
 def unloadAudio():
@@ -361,10 +378,11 @@ def constructPlaylistFromName(name:str):
 # general function for managing (init / play) playlists.
 async def managePlaylist(playlist:Playlist):
     if (not playlist.getDownloaded()) and (not options["allowPlayingWhileDownloading"]): raise FileNotFoundError(f"Could not play playlist {playlist.getDisplayName()} because it was not finished downloading and downloading playlists are currently not allowed to be played.")
-    global currentPlaylistDirectory, currentIndex, paused, currentPlaylist, shuffleManagingPlaylistRequest
+    global currentPlaylistDirectory, currentIndex, paused, currentPlaylist, shuffleManagingPlaylistRequest, currentEntry
     # load playlist.
     loadPlaylist(playlist.getName())
     currentPlaylist = playlist
+    window.ui.info_loadedPlaylist.setText("loaded playlist: " + currentPlaylist.getDisplayName())
     # resets the current index.
     currentIndex = -1
     firstAudio = True
@@ -378,43 +396,48 @@ async def managePlaylist(playlist:Playlist):
         else:
             # serve up a track.
             currentEntry = currentPlaylist.getEntry(currentIndex)
-            print("Current entry:")
+            localEntry = currentEntry
+            pd("Current entry:")
             # play the track
             if not currentEntry["downloaded"]:
-                print(f"Track {currentEntry['displayName']} is not downloaded yet. waiting for download to finish..")
-                while not (currentEntry["downloaded"] or shuffleManagingPlaylistRequest or stopProcess): # edge case where a download is waiting to happen but another shuffle happened so it won't 
+                pd(f"Track {localEntry['displayName']} is not downloaded yet. waiting for download to finish..")
+                window.ui.info_nowPlaying.setText(currentEntry["displayName"] + " [downloading]")
+                while not (localEntry["downloaded"] or shuffleManagingPlaylistRequest or stopProcess): # edge case where a download is waiting to happen but another shuffle happened so it won't 
                     await asyncio.sleep(0.5)
             # only play if there's not a request to shuffle
             if not (shuffleManagingPlaylistRequest or stopProcess):
-                print("Playing", constructFileName(currentEntry) + "...")
-                playAudio(os.path.join(currentPlaylistDirectory, "music", constructFileName(currentEntry)))
-                if firstAudio and options["pauseFirstAudio"]: pauseAudio(); firstAudio = False; pygame.mixer.music.set_pos(0)
+                pd("Playing", constructFileName(localEntry) + "...")
+                playAudio(os.path.join(currentPlaylistDirectory, "music", constructFileName(localEntry)))
+                if firstAudio and options["pauseFirstAudio"]: pauseAudio(True); firstAudio = False; pygame.mixer.music.set_pos(0)
             
                 # wait for the track to finish, or something interesting to happen
                 while (pygame.mixer.music.get_busy() or paused) and (not (shuffleManagingPlaylistRequest or stopProcess)):
                     await asyncio.sleep(0.1)
-            print("Track ended.")
+            pd("Track ended.")
         # if a request was made to shuffle, do that
         if shuffleManagingPlaylistRequest:
-            print("Request made to recheck (shuffle) managing playlist.")
+            pd("Request made to recheck (shuffle) managing playlist.")
             shuffleManagingPlaylistRequest = False
             currentIndex = -1
             if loaded: unloadAudio()
         elif stopProcess:
-            print("Recieved request to stop manager.")
+            pd("Recieved request to stop manager.")
             unloadPlaylist()
     # once finished, unload the playlist and return
     if stopProcess:
-        print("Stopping playlist manager..")
+        pd("Stopping playlist manager..")
     else:
-        print("Playlist done.")
+        pd("Playlist done.")
         unloadPlaylist()
+    # unload text from gui
+    window.ui.info_loadedPlaylist.setText("loaded playlist:")
+    window.ui.info_nowPlaying.setText("now playing:")
     return
 
 # main coroutine. still needs a lot of work.
 async def mainThread():
     global coroutineTasks
-    print("Main loop starting.")
+    pd("Main loop starting.")
     # download and play a playlist while it's downloading
     # playlist = Playlist(options["playlistURL"])
     # check to see if a file for it already exists
@@ -429,7 +452,7 @@ async def mainThread():
         # if request to stop process was made, stop it
         if stopProcess: break
         await asyncio.sleep(1)
-    print("Main coroutine shutting down..")
+    pd("Main coroutine shutting down..")
 
 # saves + loads options
 saveOptions()
@@ -445,16 +468,6 @@ keyboardThread.start()
 # add hotkeys.
 updateHotkeys(list(options["hotkeys"].keys()))
 
-# start main async loop.
-# custom version of asyncio to work with gui stuff
-
-
-# keep running: whether or not to end the asyncio loop once the final coroutine finishes (default = False)
-# quit_qapp: whether or not to shut down the QCoreApplication when asyncio finishes. (default = True)
-
-@Slot()
-def test():
-    print("hai")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -463,14 +476,88 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
         
         # hooking up ui buttons
-        self.ui.action_play.clicked.connect(test)
-
+        self.ui.action_play.clicked.connect(self.buttonPlayActivated)
+        self.ui.action_pause.clicked.connect(self.buttonPauseActivated)
+        self.ui.action_skip.clicked.connect(self.buttonSkipActivated)
+        self.ui.action_shuffle.clicked.connect(self.buttonShuffleActivated)
+        self.ui.action_loop.clicked.connect(self.buttonLoopActivated)
+        self.ui.action_loadFromURL.clicked.connect(self.buttonLoadFromURL)
+        
+    # window handler functions
+    
+    @Slot()
+    def buttonPlayActivated(self):
+        pd("Button 'Play' activated.")      
+        # attempt to play audio.
+        if loaded:
+            pd("Playing audio via button.")
+            pauseAudio(False)
+        else:
+            pd("Failed to play audio due to no audio loaded.")
+    
+    @Slot()
+    def buttonPauseActivated(self):
+        pd("Button 'Pause' activated.")
+        if loaded:
+            pd("Pausing audio via button.")
+            pauseAudio(True)
+        else:
+            pd("Failed to pause audio due to no audio loaded.")
+    
+    @Slot()
+    def buttonSkipActivated(self):
+        pd("Button 'Skip' activated.")
+        if loaded:
+            pd("Skipping audio via button.")
+            skipAudio(True)
+        else:
+            pd("Failed to skip audio due to no audio loaded.")     
+    
+    @Slot()
+    def buttonShuffleActivated(self):
+        pd("Button 'Shuffle' activated.")
+        if loaded:
+            pd("Shuffling audio via button.")
+            shuffleCurrentPlaylist()
+        else:
+            pd("Failed to shuffle audio due to no audio loaded.")
+    
+    @Slot()
+    def buttonLoopActivated(self):
+        pd("Button 'Loop' activated.")
+    
+    @Slot()
+    def buttonLoadFromURL(self):
+        pd("Button 'Load from URL' activated.")
+        # retrieve url
+        txt = self.ui.input_playlistURL.text()
+        # download and play a playlist while it's downloading
+        pd("Loading playlist.")
+        playlist = Playlist(txt)
+        # check to see if a file for it already exists
+        if checkPlaylistFileExist(playlist.getName()):
+            pd("Playlist already exists, loading from file.")
+            playlist = constructPlaylistFromName(playlist.getName())
+        # start the download
+        pd("Requesting download for playlist.")
+        coroutineTasks["playlistDownloader"] = asyncio.create_task(downloadFromPlaylist(playlist))
+        # load it in
+        pd("Loading playlist.")
+        coroutineTasks["playlistManager"] = asyncio.create_task(managePlaylist(playlist))
+        
+    
 
 app = QApplication([])
 window = MainWindow()
 window.show()
 
+# start main async loop.
+# custom version of asyncio to work with gui stuff
+
+# keep running: whether or not to end the asyncio loop once the final coroutine finishes (default = False)
+# quit_qapp: whether or not to shut down the QCoreApplication when asyncio finishes. (default = True)
+
 QtAsyncio.run(mainThread(), keep_running=False, quit_qapp=True)
 
 keyboardThread.join()
-print("Keyboard thread finished.")
+pd("Keyboard thread finished.")
