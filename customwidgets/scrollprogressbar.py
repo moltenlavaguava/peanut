@@ -1,21 +1,32 @@
-# my first attempt at a custom widget
+from PySide6.QtWidgets import QApplication, QFrame, QSizePolicy, QVBoxLayout
+from PySide6.QtCore import Qt, QSize
+import sys
 
-from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtCore import Qt
-
-class ScrollProgressBar(QtWidgets.QWidget):
-    # custom pyside widget. meant to work like a progress bar but with the ability to drag the progress bar around.
+class ScrollProgressBar(QFrame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        layout = QtWidgets.QVBoxLayout()
+        # Make this outer frame styled
+        self.setObjectName("coreFrame")
+        self.setStyleSheet("""
+            #progressFrame {
+                background-color: red;
+            }
+        """)
 
-        self._bar = QtWidgets.QProgressBar()
-        self._bar.setValue(69)
-        self._bar.setTextVisible(False)
-        layout.addWidget(self._bar)
-        
-        self.setLayout(layout)
-        
+        # Inner frame (progress bar)
+        self._progressFrame = QFrame(self)
+        self._progressFrame.setObjectName("progressFrame")
+        self._progressFrame.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred))
+        self._progressFrame.setMinimumSize(QSize(100, 20))
+        self._progressFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self._progressFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self._progressFrame.setAttribute(Qt.WA_StyledBackground, True)
+
+        # layout creation
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.addWidget(self._progressFrame)
+
     def mousePressEvent(self, event):
         print("Mouse press event!")
