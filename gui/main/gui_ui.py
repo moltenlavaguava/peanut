@@ -15,9 +15,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QDial, QFrame,
-    QLabel, QLineEdit, QMainWindow, QProgressBar,
-    QPushButton, QScrollBar, QSizePolicy, QWidget)
+from PySide6.QtWidgets import (QApplication, QLabel, QLineEdit, QMainWindow,
+    QPushButton, QSizePolicy, QWidget)
 
 from customwidgets.scrollprogressbar import ScrollProgressBar
 
@@ -26,15 +25,15 @@ class Ui_MainWindow(object):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(710, 584)
-        MainWindow.setStyleSheet(u"QProgressBar {\n"
+        MainWindow.setStyleSheet(u"ScrollProgressBar > #progressFrame {\n"
+"	background-color: red;\n"
+"}\n"
+"\n"
+"ScrollProgressBar {\n"
 "	border: 1px solid white;\n"
-"	height: 20px;\n"
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.decor_checkBox = QCheckBox(self.centralwidget)
-        self.decor_checkBox.setObjectName(u"decor_checkBox")
-        self.decor_checkBox.setGeometry(QRect(490, 210, 76, 20))
         self.action_play = QPushButton(self.centralwidget)
         self.action_play.setObjectName(u"action_play")
         self.action_play.setGeometry(QRect(90, 110, 75, 24))
@@ -49,7 +48,7 @@ class Ui_MainWindow(object):
         self.action_shuffle.setGeometry(QRect(50, 280, 75, 24))
         self.action_loop = QPushButton(self.centralwidget)
         self.action_loop.setObjectName(u"action_loop")
-        self.action_loop.setGeometry(QRect(160, 220, 75, 24))
+        self.action_loop.setGeometry(QRect(220, 80, 75, 24))
         self.action_loadFromURL = QPushButton(self.centralwidget)
         self.action_loadFromURL.setObjectName(u"action_loadFromURL")
         self.action_loadFromURL.setGeometry(QRect(30, 370, 101, 24))
@@ -64,30 +63,13 @@ class Ui_MainWindow(object):
         self.info_loadedPlaylist.setGeometry(QRect(60, 460, 591, 16))
         self.action_previous = QPushButton(self.centralwidget)
         self.action_previous.setObjectName(u"action_previous")
-        self.action_previous.setGeometry(QRect(630, 570, 75, 24))
-        self.info_progressBar = QProgressBar(self.centralwidget)
+        self.action_previous.setGeometry(QRect(220, 120, 75, 24))
+        self.info_progressBar = ScrollProgressBar(self.centralwidget)
         self.info_progressBar.setObjectName(u"info_progressBar")
-        self.info_progressBar.setGeometry(QRect(340, 450, 281, 51))
-        self.info_progressBar.setValue(55)
-        self.info_progressBar.setTextVisible(False)
-        self.info_progressBar.setOrientation(Qt.Orientation.Horizontal)
-        self.info_progressBar.setInvertedAppearance(False)
-        self.horizontalScrollBar = QScrollBar(self.centralwidget)
-        self.horizontalScrollBar.setObjectName(u"horizontalScrollBar")
-        self.horizontalScrollBar.setGeometry(QRect(460, 370, 160, 16))
-        self.horizontalScrollBar.setOrientation(Qt.Orientation.Horizontal)
-        self.frame = QFrame(self.centralwidget)
-        self.frame.setObjectName(u"frame")
-        self.frame.setGeometry(QRect(340, 210, 120, 80))
-        self.frame.setFrameShape(QFrame.Shape.StyledPanel)
-        self.frame.setFrameShadow(QFrame.Shadow.Raised)
-        self.dial = QDial(self.centralwidget)
-        self.dial.setObjectName(u"dial")
-        self.dial.setGeometry(QRect(280, 30, 151, 151))
-        self.Progress_Scroll_Bar = ScrollProgressBar(self.centralwidget)
-        self.Progress_Scroll_Bar.setObjectName(u"Progress_Scroll_Bar")
-        self.Progress_Scroll_Bar.setGeometry(QRect(520, 40, 141, 131))
-        self.Progress_Scroll_Bar.setStyleSheet(u"")
+        self.info_progressBar.setGeometry(QRect(360, 90, 281, 16))
+        self.info_progressBar.setStyleSheet(u"ScrollProgressBar > #progressFrame {\n"
+"	corner-radius: 8px\n"
+"}")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -97,7 +79,6 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"program", None))
-        self.decor_checkBox.setText(QCoreApplication.translate("MainWindow", u"check", None))
         self.action_play.setText(QCoreApplication.translate("MainWindow", u"play", None))
         self.action_pause.setText(QCoreApplication.translate("MainWindow", u"pause", None))
         self.action_skip.setText(QCoreApplication.translate("MainWindow", u"skip", None))
@@ -108,6 +89,5 @@ class Ui_MainWindow(object):
         self.info_nowPlaying.setText(QCoreApplication.translate("MainWindow", u"now playing:", None))
         self.info_loadedPlaylist.setText(QCoreApplication.translate("MainWindow", u"loaded playlist:", None))
         self.action_previous.setText(QCoreApplication.translate("MainWindow", u"previous", None))
-        self.info_progressBar.setFormat(QCoreApplication.translate("MainWindow", u"%p%", None))
     # retranslateUi
 

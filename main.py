@@ -490,6 +490,12 @@ async def mainThread():
         await asyncio.sleep(1)
     pd("Main coroutine shutting down..")
 
+######################################
+#
+# gui management
+#
+######################################
+
 # saves + loads options
 saveOptions()
 loadOptions()
@@ -523,7 +529,6 @@ class MainWindow(QMainWindow):
         # oooooooo
         
     # window handler functions
-    
     @Slot()
     def buttonPlayActivated(self):
         pd("Button 'Play' activated.")      
@@ -552,11 +557,12 @@ class MainWindow(QMainWindow):
         else:
             pd("Failed to skip audio due to no audio loaded.")     
     
+    @Slot()
     def buttonPreviousActivated(self):
         pd("Button 'Previous' activated.")
         if loaded:
             pd("Going to previous audio via button.")
-            skipAudio(True)
+            skipAudio(False)
         else:
             pd("Failed to skip (previous) audio due to no audio loaded.")     
     

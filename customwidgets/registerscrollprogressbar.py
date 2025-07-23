@@ -10,8 +10,8 @@ DOM_XML = """
             <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>100</width>
-                <height>200</height>
+                <width>50</width>
+                <height>10</height>
             </rect>
         </property>
     </widget>
@@ -19,4 +19,4 @@ DOM_XML = """
 """
 
 if __name__ == "__main__":
-    QPyDesignerCustomWidgetCollection.registerCustomWidget(ScrollProgressBar, tool_tip=TOOLTIP, xml=DOM_XML, module="customwidgets.scrollprogressbar")
+    QPyDesignerCustomWidgetCollection.registerCustomWidget(ScrollProgressBar, tool_tip=TOOLTIP, xml=DOM_XML, module="customwidgets.scrollprogressbar", container=False)
