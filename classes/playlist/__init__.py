@@ -46,7 +46,7 @@ class Playlist:
                     self._length = len(self._entries)
                     self._downloaded = False
                 except Exception as e:
-                    print(f"Error extracting playlist info: {e}")
+                    print(f"[Playlist] Error extracting playlist info: {e}")
     
     @classmethod
     def fromFile(cls, fileLocation:str):
@@ -64,7 +64,7 @@ class Playlist:
                 cls._downloaded = data["downloaded"]
                 return instance
             except KeyError:
-                print("One or more elements is missing from the file. returning nothing")
+                print("[Playlist] One or more elements is missing from the file. returning nothing")
                 return None
             
     def addEntry(self, entry:dict[str, str]):
@@ -91,7 +91,7 @@ class Playlist:
     def dumpToFile(self, fileLocation:str):
         # verify file exists
         if not os.path.isfile(fileLocation):
-            print("File not found when dumping to file. Creating file.")
+            print("[Playlist] File not found when dumping to file. Creating file.")
             directory = os.path.dirname(fileLocation)
             os.makedirs(directory, exist_ok=True)
             open(fileLocation, "x").close()
@@ -111,7 +111,7 @@ class Playlist:
         self._entries = entries        
     
     def setDownloaded(self, downloaded:bool):
-        print("downloaded marked as yes")
+        print("[Playlist] Downloaded marked as true")
         self._downloaded = downloaded
         
     def getDownloaded(self):

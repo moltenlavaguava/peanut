@@ -15,8 +15,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QLabel, QLineEdit, QMainWindow,
-    QPushButton, QSizePolicy, QWidget)
+from PySide6.QtWidgets import (QApplication, QDial, QLabel, QLineEdit,
+    QMainWindow, QPushButton, QSizePolicy, QWidget)
 
 from customwidgets.scrollprogressbar import ScrollProgressBar
 
@@ -67,9 +67,10 @@ class Ui_MainWindow(object):
         self.info_progressBar = ScrollProgressBar(self.centralwidget)
         self.info_progressBar.setObjectName(u"info_progressBar")
         self.info_progressBar.setGeometry(QRect(360, 90, 281, 16))
-        self.info_progressBar.setStyleSheet(u"ScrollProgressBar > #progressFrame {\n"
-"	corner-radius: 8px\n"
-"}")
+        self.info_progressBar.setStyleSheet(u"")
+        self.dial = QDial(self.centralwidget)
+        self.dial.setObjectName(u"dial")
+        self.dial.setGeometry(QRect(140, 160, 171, 191))
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)

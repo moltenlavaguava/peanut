@@ -163,9 +163,17 @@ ScrollProgressBar {
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">ScrollProgressBar &gt; #progressFrame {
-	corner-radius: 8px
-}</string>
+     <string notr="true"/>
+    </property>
+   </widget>
+   <widget class="QDial" name="dial">
+    <property name="geometry">
+     <rect>
+      <x>140</x>
+      <y>160</y>
+      <width>171</width>
+      <height>191</height>
+     </rect>
     </property>
    </widget>
   </widget>

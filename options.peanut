@@ -1,8 +1,8 @@
 {
-    "playlistURL": "https://www.youtube.com/playlist?list=PLefKpFQ8Pvy5aCLAGHD8Zmzsdljos-t2l",
+    "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6",
     "outputFolder": "C:\\Users\\lavam\\Projects\\peanut\\output",
     "optionsFile": "options.peanut",
-    "outputConversionExtension": ".mp3",
+    "outputConversionExtension": ".ogg",
     "binariesFolder": "binaries",
     "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
     "allowPlayingWhileDownloading": true,

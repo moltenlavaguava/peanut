@@ -5,7 +5,8 @@ import sys
 class ScrollProgressBar(QFrame):
     
     # fires when the progress is manually changed by the user (i.e. click and drag)
-    manualProgressChange = Signal(float)
+    manualProgressChangeStart = Signal(float)
+    manualProgressChangeEnd = Signal(float)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -16,8 +17,6 @@ class ScrollProgressBar(QFrame):
         # clean up the outer frame
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setFrameShadow(QFrame.Shadow.Plain)
-        
-        print(self.metaObject().className())
 
         # set default size
         self.resize(QSize(50, 10))
@@ -71,12 +70,14 @@ class ScrollProgressBar(QFrame):
         pos = event.pos().x() # get x coordinate of location (is local to the widget)
         newProgress = self._calculateProgress(pos, self.contentsRect().width())
         # make sure that new progress is no greater than one or less than zero
-        self.manualProgressChange.emit(newProgress)
+        self.manualProgressChangeStart.emit(newProgress)
         self.setProgress(newProgress)
-        
-    # cleans up mouse button variable (not strictly required)
+    
+    # used to update the audio when the mouse is released + cleans up mouse button variable
     def mouseReleaseEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton: return
         self._currentMouseButton = None
+        self.manualProgressChangeEnd.emit(self.getProgress())
     
     # only fires when the mouse is held down
     def mouseMoveEvent(self, event):
@@ -85,7 +86,6 @@ class ScrollProgressBar(QFrame):
         pos = event.pos().x() # get x coordinate of location (is local to the widget)
         newProgress = self._calculateProgress(pos, self.contentsRect().width())
         # make sure that new progress is no greater than one or less than zero
-        self.manualProgressChange.emit(newProgress)
         self.setProgress(newProgress)
     
     def paintEvent(self, event):
