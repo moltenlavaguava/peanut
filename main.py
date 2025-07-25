@@ -1,7 +1,7 @@
 import os
 import yt_dlp
 import time
-from classes.playlist import Playlist
+from classes.playlist.playlist import Playlist
 import json
 from yt_dlp import YoutubeDL
 from pathlib import Path
