@@ -25,7 +25,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(710, 584)
+        MainWindow.resize(703, 565)
         MainWindow.setStyleSheet(u"ScrollProgressBar #backgroundFrame {\n"
 "	background-color: gray;\n"
 "}\n"
