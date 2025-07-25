@@ -14,12 +14,20 @@
    <string>program</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">ScrollProgressBar &gt; #progressFrame {
+   <string notr="true">ScrollProgressBar #backgroundFrame {
+	background-color: gray;
+}
+
+ScrollProgressBar #progressFrame {
 	background-color: red;
 }
 
-ScrollProgressBar {
-	border: 1px solid white;
+ProgressCircleBar &gt; #knobFrame {
+	background-color: red;
+}
+
+ScrollProgressBar #progressFrame {
+	background-color: red;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -176,13 +184,31 @@ ScrollProgressBar {
      </rect>
     </property>
    </widget>
+   <widget class="ProgressCircleBar" name="info_progressBar1">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>120</y>
+      <width>111</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
+    </property>
+   </widget>
   </widget>
  </widget>
  <customwidgets>
   <customwidget>
+   <class>ProgressCircleBar</class>
+   <extends>ScrollProgressBar</extends>
+   <header>customwidgets.scrollprogressbar.progresscirclebar</header>
+  </customwidget>
+  <customwidget>
    <class>ScrollProgressBar</class>
    <extends>QFrame</extends>
-   <header>customwidgets.scrollprogressbar</header>
+   <header>customwidgets.scrollprogressbar.scrollprogressbar</header>
   </customwidget>
  </customwidgets>
  <resources/>

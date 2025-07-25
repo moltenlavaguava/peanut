@@ -12,7 +12,7 @@ import asyncio
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "any value will be acceptable lol"
 import pygame.mixer
 import keyboard
-import threading    
+import threading
 import mutagen
 
 from PySide6.QtCore import Qt

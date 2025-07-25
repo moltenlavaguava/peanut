@@ -18,19 +18,28 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QDial, QLabel, QLineEdit,
     QMainWindow, QPushButton, QSizePolicy, QWidget)
 
-from customwidgets.scrollprogressbar import ScrollProgressBar
+from customwidgets.scrollprogressbar.progresscirclebar import ProgressCircleBar
+from customwidgets.scrollprogressbar.scrollprogressbar import ScrollProgressBar
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(710, 584)
-        MainWindow.setStyleSheet(u"ScrollProgressBar > #progressFrame {\n"
+        MainWindow.setStyleSheet(u"ScrollProgressBar #backgroundFrame {\n"
+"	background-color: gray;\n"
+"}\n"
+"\n"
+"ScrollProgressBar #progressFrame {\n"
 "	background-color: red;\n"
 "}\n"
 "\n"
-"ScrollProgressBar {\n"
-"	border: 1px solid white;\n"
+"ProgressCircleBar > #knobFrame {\n"
+"	background-color: red;\n"
+"}\n"
+"\n"
+"ScrollProgressBar #progressFrame {\n"
+"	background-color: red;\n"
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -71,6 +80,10 @@ class Ui_MainWindow(object):
         self.dial = QDial(self.centralwidget)
         self.dial.setObjectName(u"dial")
         self.dial.setGeometry(QRect(140, 160, 171, 191))
+        self.info_progressBar1 = ProgressCircleBar(self.centralwidget)
+        self.info_progressBar1.setObjectName(u"info_progressBar1")
+        self.info_progressBar1.setGeometry(QRect(350, 120, 111, 16))
+        self.info_progressBar1.setStyleSheet(u"")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)

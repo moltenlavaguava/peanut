@@ -11,8 +11,20 @@ class ScrollProgressBar(QFrame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Make this outer frame styled
+        # first layout creation
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+
+        # give outer frame a name
         self.setObjectName("coreFrame")
+
+        # background frame creation
+        self._backgroundFrame = QFrame(self)
+        self._backgroundFrame.setObjectName("backgroundFrame")
+        self._backgroundFrame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._backgroundFrame.setFrameShape(QFrame.Shape.NoFrame)
+        self._backgroundFrame.setFrameShadow(QFrame.Shadow.Plain)
+        self._layout.addWidget(self._backgroundFrame)
 
         # clean up the outer frame
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -24,18 +36,22 @@ class ScrollProgressBar(QFrame):
         # Inner frame (progress bar)
         self._progressFrame = QFrame(self)
         self._progressFrame.setObjectName("progressFrame")
-        self._progressFrame.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred))
+        self._progressFrame.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding))
         self._progressFrame.setMinimumSize(QSize(1, 1))
         self._progressFrame.setFrameShape(QFrame.Shape.NoFrame)
         self._progressFrame.setFrameShadow(QFrame.Shadow.Plain)
-        self._progressFrame.setAttribute(Qt.WA_StyledBackground, True)
-        # layout creation
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.addWidget(self._progressFrame)
+        
+        # update progress bar to be inside the background frame
+        self._innerLayout = QVBoxLayout(self._backgroundFrame)
+        self._innerLayout.setContentsMargins(0, 0, 0, 0)
+        self._innerLayout.addWidget(self._progressFrame)
+        
         # variables
         self._progress = 0.69
         self._currentMouseButton = None
+
+        # disallow the progress frame to recieve clicks. fixes a very obscure bug.
+        self._progressFrame.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     # methods
     
@@ -51,12 +67,14 @@ class ScrollProgressBar(QFrame):
     # renders new progress on the bar.
     def redrawProgress(self, progress:float):
         # get current width of the parent frame
-        self._progressFrame.setMinimumSize(QSize(self.contentsRect().width() * progress, 1))
+        self._progressFrame.setVisible(progress > 0)
+        self._progressFrame.setMaximumWidth(self.contentsRect().width() * progress)
 
     # calculates progress float from partial position (mouse) and total position (frame)
-    def _calculateProgress(self, pp:int, tp:int):
-        if tp == 0: return 0
-        value = pp / tp
+    def _calculateProgress(self, mousePoint:int):
+        totalWidth = self.contentsRect().width()
+        if totalWidth == 0: return 0
+        value = mousePoint / totalWidth
         if value > 1: return 1
         if value < 0: return 0
         return value
@@ -68,7 +86,7 @@ class ScrollProgressBar(QFrame):
         self._currentMouseButton = event.button()
         if self._currentMouseButton != Qt.MouseButton.LeftButton: return # if it wasn't a left click, don't do anything 
         pos = event.pos().x() # get x coordinate of location (is local to the widget)
-        newProgress = self._calculateProgress(pos, self.contentsRect().width())
+        newProgress = self._calculateProgress(pos)
         # make sure that new progress is no greater than one or less than zero
         self.manualProgressChangeStart.emit(newProgress)
         self.setProgress(newProgress)
@@ -84,10 +102,11 @@ class ScrollProgressBar(QFrame):
         # update progress
         if self._currentMouseButton != Qt.MouseButton.LeftButton: return # if it wasn't a left click, don't do anything 
         pos = event.pos().x() # get x coordinate of location (is local to the widget)
-        newProgress = self._calculateProgress(pos, self.contentsRect().width())
+        newProgress = self._calculateProgress(pos)
         # make sure that new progress is no greater than one or less than zero
         self.setProgress(newProgress)
     
     def paintEvent(self, event):
         # if the widget was resized, then redraw the progress bar
         self.redrawProgress(self.getProgress())
+        
