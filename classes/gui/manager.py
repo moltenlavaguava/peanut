@@ -5,14 +5,19 @@ from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QPushButton, Q
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
 from .handler_mainwindow import Window
 
+import logging
+
 class GuiManager():
     
     def __init__(self, mainWindow:Ui_MainWindow):
-        print("Starting gui manager class.")
+        
+        self.logger = logging.getLogger(__name__)
+        
+        self.logger.info("Starting gui manager class.")
         self._mainWindow = mainWindow
         
     def start(self):
-        print("Starting gui manager.")
+        self.logger.info("Starting gui manager.")
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window

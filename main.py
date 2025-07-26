@@ -8,6 +8,8 @@ from pathlib import Path
 import subprocess
 import asyncio
 
+import logging
+
 # disable intro message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "any value will be acceptable lol"
 import pygame.mixer
@@ -711,7 +713,12 @@ import PySide6.QtAsyncio as QtAsyncio
 # print("[Shutdown] Keyboard thread finished.")
 
 if __name__ == "__main__":
-    print("Hello world!")
+    
+    # get logger
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.DEBUG, datefmt="%Y-%m-%d %H:%M:%S", format="[%(levelname)s] %(message)s (%(name)s) - %(asctime)s.%(msecs)03d")
+    
+    logger.info("Starting main.py")
     
     # initalize dependency injector
     container = Container()

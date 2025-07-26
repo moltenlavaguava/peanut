@@ -4,16 +4,18 @@ from classes.thread.manager import ThreadManager
 
 import time
 
+import logging
+
 # manages keyboard 
 class HotkeyManager():
     
     def __init__(self, threadManager:ThreadManager):
-        print("Starting keyboard manager.")
+        
+        self.logger = logging.getLogger(__name__)
+        
+        self.logger.info("Starting keyboard manager.")
         self.threadManager = threadManager
-    
-    # main function to keep the hotkey listener alive.
-    def _hotkeyListener(self):
-        print("[Keybinds] Keyboard listener started.")
-        while not True:
-            time.sleep(0.05)
-        print("[Shutdown] Keyboard listener stopped.")
+        
+    # starts up the manager.
+    def start(self):
+        self.logger.info("Starting up hotkey manager.")

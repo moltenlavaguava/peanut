@@ -8,6 +8,8 @@ from classes.hotkey.manager import HotkeyManager
 
 import PySide6.QtAsyncio as QtAsyncio
 
+import logging
+
 # main manager class
 
 class Manager():
@@ -16,13 +18,15 @@ class Manager():
         self.guiManager = guiManager
         self.threadManager = threadManager
         self.hotkeyManager = hotkeyManager
+        self.logger = logging.getLogger(__name__)
         
     def startProgram(self):
-        print("Starting program.")
+        logging.info("Starting program.")
         # startup the gui manager
         self.guiManager.start()
         
-        # start the keyboard thread
+        # start the hotkey manager
+        self.hotkeyManager.start()
         
         # startup the main loop
         self.threadManager.startMainLoop()
