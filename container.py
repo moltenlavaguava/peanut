@@ -8,6 +8,8 @@ from classes.generatedui import mainwindow_ui
 
 from classes.thread.manager import ThreadManager
 
+from classes.hotkey.manager import HotkeyManager
+
 # Notes:
 # Singleton: one shared instance of the dependency
 # Factory: new instance is created every time it is requested
@@ -17,7 +19,9 @@ class Container(containers.DeclarativeContainer):
     
     threadManager = providers.Singleton(ThreadManager)
     
+    hotkeyManager = providers.Singleton(HotkeyManager, threadManager=threadManager)
+    
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
     
     guiManager = providers.Singleton(GuiManager, mainWindow=mainWindow)
-    manager = providers.Singleton(Manager, guiManager=guiManager, threadManager=threadManager)
+    manager = providers.Singleton(Manager, guiManager=guiManager, threadManager=threadManager, hotkeyManager=hotkeyManager)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import PySide6.QtAsyncio as QtAsyncio
 
 # manages threads and async utilities
