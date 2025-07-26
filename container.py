@@ -10,6 +10,8 @@ from classes.thread.manager import ThreadManager
 
 from classes.hotkey.manager import HotkeyManager
 
+from classes.config.manager import ConfigManager
+
 # Notes:
 # Singleton: one shared instance of the dependency
 # Factory: new instance is created every time it is requested
@@ -19,9 +21,11 @@ class Container(containers.DeclarativeContainer):
     
     threadManager = providers.Singleton(ThreadManager)
     
-    hotkeyManager = providers.Singleton(HotkeyManager, threadManager=threadManager)
+    configManager = providers.Singleton(ConfigManager)
+    
+    hotkeyManager = providers.Singleton(HotkeyManager, threadManager=threadManager, configManager=configManager)
     
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
     
     guiManager = providers.Singleton(GuiManager, mainWindow=mainWindow)
-    manager = providers.Singleton(Manager, guiManager=guiManager, threadManager=threadManager, hotkeyManager=hotkeyManager)
+    manager = providers.Singleton(Manager, guiManager=guiManager, threadManager=threadManager, hotkeyManager=hotkeyManager, configManager=configManager)

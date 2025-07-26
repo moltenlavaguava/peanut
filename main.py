@@ -1,4 +1,3 @@
-import os
 import yt_dlp
 import time
 from classes.playlist.playlist import Playlist
@@ -8,16 +7,9 @@ from pathlib import Path
 import subprocess
 import asyncio
 
-import logging
-
-# disable intro message
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "any value will be acceptable lol"
-import pygame.mixer
 import keyboard
 import threading
 import mutagen
-
-from container import Container
 
 from PySide6.QtCore import Qt
 from PySide6.QtCore import Slot
@@ -26,46 +18,6 @@ from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QPushButton, Q
 import PySide6.QtAsyncio as QtAsyncio
 
 # super cool demo text to show u that u can upload files
-
-
-# OPTIONS
-
-# options = {
-#     "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6",
-#     "outputFolder": os.path.join(os.getcwd(), "output"),
-#     "optionsFile": "options.peanut",
-#     "outputConversionExtension": ".ogg",
-#     "binariesFolder": "binaries",
-#     "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
-#     "allowPlayingWhileDownloading": True,
-#     "overrideExistingPlaylistFile": True,
-#     "pauseFirstAudio": True,
-#     "hotkeys": {
-#         "alt+p": "play",
-#         "alt+n": "skip",
-#         "alt+o": "previous",
-#         "alt+l": "loop",
-#         "alt+s": "shuffle",
-#         "alt+m": "organize",
-#         "alt+k": "kill"
-#     }
-# }
-
-# options["downloadOptions"] = {
-#     "format": "bestaudio",
-#     "outtmpl": os.path.join(options["outputFolder"], "%(playlist_title)s\music\%(title).200s.%(ext)s"),
-#     'quiet': True,
-#     "verbose": False,
-#     'ignoreerrors': True,
-#     "restrictfilenames": True,
-#     'extractor_args': {
-#         'youtube': [
-#             'player_client=web',       # force using web client
-#             'no_check_formats=1',      # don't re-check all formats
-#             'skip=dash,configs'        # skip DASH manifests + config JSONs
-#         ]
-#     },
-# }
 
 # # variables (yes this is horrible practice sorry)
 
@@ -712,17 +664,66 @@ import PySide6.QtAsyncio as QtAsyncio
 # keyboardThread.join()
 # print("[Shutdown] Keyboard thread finished.")
 
+import logging
+import os
+from container import Container
+
+# disable pygame intro message
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "any value will be acceptable lol"
+
+
+# OPTIONS
+
+options = {
+    "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6",
+    "outputFolder": os.path.join(os.getcwd(), "output"),
+    "outputConversionExtension": ".ogg",
+    "binariesFolder": "binaries",
+    "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
+    "allowPlayingWhileDownloading": True,
+    "overrideExistingPlaylistFile": True,
+    "pauseFirstAudio": True,
+    "hotkeys": {
+        "play": "alt+p",
+        "skip": "alt+n",
+        "previous": "alt+o",
+        "loop": "alt+l",
+        "shuffle": "alt+s",
+        "organize": "alt+m",
+        "kill": "alt+k",
+    }
+}
+
+options["downloadOptions"] = {
+    "format": "bestaudio",
+    "outtmpl": os.path.join(options["outputFolder"], "%(playlist_title)s\music\%(title).200s.%(ext)s"),
+    'quiet': True,
+    "verbose": False,
+    'ignoreerrors': True,
+    "restrictfilenames": True,
+    'extractor_args': {
+        'youtube': [
+            'player_client=web',       # force using web client
+            'no_check_formats=1',      # don't re-check all formats
+            'skip=dash,configs'        # skip DASH manifests + config JSONs
+        ]
+    },
+}
+
 if __name__ == "__main__":
     
     # get logger
     logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.DEBUG, datefmt="%Y-%m-%d %H:%M:%S", format="[%(levelname)s] %(message)s (%(name)s) - %(asctime)s.%(msecs)03d")
+    logging.basicConfig(level=logging.DEBUG, datefmt="%Y-%m-%d %H:%M:%S", format="[%(levelname)s] %(message)s (%(name)s:%(lineno)d) - %(asctime)s.%(msecs)03d")
     
     logger.info("Starting main.py")
     
     # initalize dependency injector
     container = Container()
+    manager = container.manager()
+    
+    # temporary solution to inserting options
+    manager.injectOptions(options)
     
     # startup
-    manager = container.manager()
     manager.startProgram()
