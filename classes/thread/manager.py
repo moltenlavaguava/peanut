@@ -18,8 +18,9 @@ class ThreadManager():
         self._threads: dict[str, threading.Thread] = {}
         self._threadEvents: dict[str, threading.Event] = {}
         
-        # asnycio task management
+        # asnycio management
         self._tasks = {}
+        self._asyncioEvents = {}
     
     # checks to see if the current thread is the main one.
     def isThreadMainThread(self):
@@ -80,6 +81,33 @@ class ThreadManager():
         else:
             self.logger.warning(f"Task with name {name} not found in the task list.")
             return
+    
+    def getAsyncioEvents(self):
+        return self._asyncioEvents
+    
+    def resetAsyncioEvent(self, name:str):
+        events = self.getAsyncioEvents()
+        if name in events:
+            events[name].clear()
+        else:
+            self.logger.warning(f"Failed to reset asyncio event '{name}': event does not exist")
+    
+    def setAsyncioEvent(self, name:str):
+        events = self.getAsyncioEvents()
+        if name in events:
+            events[name].set()
+        else:
+            self.logger.warning(f"Failed to set asyncio event with name '{name}': event does not exist")
+    
+    # creates an asyncio event with the given name.
+    def createAsyncioEvent(self, name:str):
+        events = self.getAsyncioEvents()
+        # make sure it doesn't already exist
+        if name in events:
+            self.logger.warning(f"Failed to create asyncio event with name '{name}': event already exists")
+            return
+        events[name] = asyncio.Event()
+    
     
     # creates an asyncio task with the given name.
     def createTask(self, asyncFunction:asyncio._CoroutineLike, name:str):

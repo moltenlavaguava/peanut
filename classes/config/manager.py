@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+from classes.hotkey.hotkeyoptions import HotkeyOptions
+
 class ConfigManager():
     def __init__(self):
         # init logger
@@ -10,7 +12,7 @@ class ConfigManager():
         self.logger.info("Starting config manager.")
         
         # hotkey options
-        self._hotkeyOptions = {}
+        self._hotkeyOptions: dict[HotkeyOptions, str] = {}
         
         # "other" options
         self._otherOptions = {}
@@ -18,7 +20,7 @@ class ConfigManager():
     def getHotkeyOptions(self):
         return self._hotkeyOptions
     
-    def setHotkeyOptions(self, options: dict[str, str]):
+    def setHotkeyOptions(self, options: dict[HotkeyOptions, str]):
         self._hotkeyOptions = options
         
     def getOtherOptions(self):

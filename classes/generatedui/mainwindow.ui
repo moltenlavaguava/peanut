@@ -34,27 +34,14 @@ ScrollProgressBar #progressFrame {
    <widget class="QPushButton" name="action_play">
     <property name="geometry">
      <rect>
-      <x>90</x>
-      <y>110</y>
+      <x>70</x>
+      <y>150</y>
       <width>75</width>
       <height>24</height>
      </rect>
     </property>
     <property name="text">
      <string>play</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="action_pause">
-    <property name="geometry">
-     <rect>
-      <x>30</x>
-      <y>180</y>
-      <width>75</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>pause</string>
     </property>
    </widget>
    <widget class="QPushButton" name="action_skip">

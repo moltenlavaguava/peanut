@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from classes.thread.manager import ThreadManager
-
 from classes.config.manager import ConfigManager
+from classes.event.manager import EventManager
+
+from .hotkeyoptions import HotkeyOptions
 
 import time
 
@@ -13,25 +15,49 @@ import logging
 # manages keyboard 
 class HotkeyManager():
     
-    def __init__(self, threadManager:ThreadManager, configManager:ConfigManager):
+    def __init__(self, threadManager:ThreadManager, configManager:ConfigManager, eventManager:EventManager):
         
         self.logger = logging.getLogger(__name__)
         
         self.logger.info("Starting keyboard manager.")
         self.threadManager = threadManager
         self.configManager = configManager
+        self.eventManager = eventManager
         
-        # keep track of the current hotkeys
-        self._activeHotkeys: dict[str, any] = {}
+        # keep track of the current hotkeys (references)
+        self._activeHotkeys: dict[HotkeyOptions, any] = {}
         
         # whether or not to process regular hotkeys (used when adding new ones)
         self._processHotkeys = True
     
     # runs whenever a hotkey is pressed.
     def _onKeyAction(self, key:keyboard._Key):
-        print(f"Key pressed: {key}")
         # if keys are not being processed, then stop
+        actions = self.configManager.getHotkeyOptions()
         if not self.getProcessHotkeys(): return
+        # find the associated action
+        action = None
+        try:
+            action = list(actions.keys())[list(actions.values()).index(key)]
+        except ValueError as e:
+            self.logger.warning(f"Key combo '{key}' not found in the active hotkey list")
+            return
+        # call the specific event
+        match action:
+            case HotkeyOptions.PLAY:
+                self.eventManager.triggerEvent("ACTION_PLAY")
+            case HotkeyOptions.SKIP:
+                self.eventManager.triggerEvent("ACTION_SKIP")
+            case HotkeyOptions.PREVIOUS:
+                self.eventManager.triggerEvent("ACTION_PREVIOUS")
+            case HotkeyOptions.LOOP:
+                self.eventManager.triggerEvent("ACTION_LOOP")
+            case HotkeyOptions.SHUFFLE:
+                self.eventManager.triggerEvent("ACTION_SHUFFLE")
+            case HotkeyOptions.ORGANIZE:
+                self.eventManager.triggerEvent("ACTION_ORGANIZE")
+            case HotkeyOptions.KILL:
+                self.eventManager.triggerEvent("ACTION_KILL")
         
     # gets the _processHotkeys bool.
     def getProcessHotkeys(self):

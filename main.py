@@ -668,6 +668,8 @@ import logging
 import os
 from container import Container
 
+from classes.hotkey.hotkeyoptions import HotkeyOptions
+
 # disable pygame intro message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "any value will be acceptable lol"
 
@@ -684,13 +686,13 @@ options = {
     "overrideExistingPlaylistFile": True,
     "pauseFirstAudio": True,
     "hotkeys": {
-        "play": "alt+p",
-        "skip": "alt+n",
-        "previous": "alt+o",
-        "loop": "alt+l",
-        "shuffle": "alt+s",
-        "organize": "alt+m",
-        "kill": "alt+k",
+        HotkeyOptions.PLAY: "alt+p",
+        HotkeyOptions.SKIP: "alt+n",
+        HotkeyOptions.PREVIOUS: "alt+o",
+        HotkeyOptions.LOOP: "alt+l",
+        HotkeyOptions.SHUFFLE: "alt+s",
+        HotkeyOptions.ORGANIZE: "alt+m",
+        HotkeyOptions.KILL: "alt+k",
     }
 }
 
