@@ -25,6 +25,7 @@ class ThreadService():
         
         # process management
         self._processes: dict[str, multiprocessing.Process] = {}
+        self._queues: dict[str, multiprocessing.Queue] = {}
         
         # main loop. manually maintained
         self._mainLoopAlive: bool = False
@@ -166,6 +167,26 @@ class ThreadService():
             return task
     
     # PROCESSES
+    
+    def getProcessQueues(self):
+        return self._queues
+    
+    def getProcessQueue(self, name:str):
+        queues = self.getProcessQueues()
+        if name in queues:
+            return queues[name]
+        else:
+            self.logger.warning(f"Failed to get queue '{name}': queue does not exist")
+            return
+            
+    def createProcessQueue(self, name:str):
+        queues = self.getProcessQueues()
+        if name in queues:
+            self.logger.warning(f"Failed to create queue '{name}': queue already exists")
+            return
+        queue = multiprocessing.Queue(maxsize= -1)
+        queues[name] = queue
+        return queue
     
     # returns all processes (excluding the current process)
     def getProcesses(self):

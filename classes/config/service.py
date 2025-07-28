@@ -13,10 +13,17 @@ class ConfigService():
         
         # hotkey options
         self._hotkeyOptions: dict[HotkeyOptions, str] = {}
+        self._loggerOptions: dict[str, str] = {}
         
         # "other" options
         self._otherOptions = {}
-        
+    
+    def getLoggerOptions(self):
+        return self._loggerOptions
+    
+    def setLoggerOptions(self, options):
+        self._loggerOptions = options
+    
     def getHotkeyOptions(self):
         return self._hotkeyOptions
     

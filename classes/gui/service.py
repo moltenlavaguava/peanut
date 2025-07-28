@@ -15,8 +15,6 @@ class GuiService():
         
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info("Starting gui service class.")
-        
         self._mainWindow = mainWindow
         self.eventService = eventService
         

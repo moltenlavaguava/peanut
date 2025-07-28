@@ -667,6 +667,7 @@ import PySide6.QtAsyncio as QtAsyncio
 import logging
 import os
 from container import Container
+import multiprocessing
 
 from classes.hotkey.hotkeyoptions import HotkeyOptions
 
@@ -712,20 +713,29 @@ options["downloadOptions"] = {
     },
 }
 
+options["logger"] = {
+    "level": logging.DEBUG,
+    "datefmt": "%Y-%m-%d %H:%M:%S",
+    "format": "[%(levelname)s] %(message)s (%(name)s:%(lineno)d) - %(asctime)s.%(msecs)03d",
+}
+
 if __name__ == "__main__":
+    
+    # for pyinstaller
+    multiprocessing.freeze_support() 
     
     # get logger
     logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.DEBUG, datefmt="%Y-%m-%d %H:%M:%S", format="[%(levelname)s] %(message)s (%(name)s:%(lineno)d) - %(asctime)s.%(msecs)03d")
+    logging.basicConfig(**options["logger"])
     
     logger.info("Starting main.py")
     
     # initalize dependency injector
     container = Container()
-    service = container.service()
+    managerService = container.managerService()
     
     # temporary solution to inserting options
-    service.injectOptions(options)
+    managerService.injectOptions(options)
     
     # startup
-    service.startProgram()
+    managerService.startProgram()

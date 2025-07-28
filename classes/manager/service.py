@@ -7,6 +7,7 @@ from classes.config.service import ConfigService
 from classes.event.service import EventService
 from classes.playlist.service import PlaylistService
 from classes.playlist.playlist import Playlist
+from classes.log.service import LoggingService
 
 import PySide6.QtAsyncio as QtAsyncio
 
@@ -14,15 +15,16 @@ import logging
 
 # main service class
 
-class Service():
+class ManagerService():
     
-    def __init__(self, guiService:GuiService, threadService:ThreadService, hotkeyService:HotkeyService, configService:ConfigService, eventService:EventService, playlistService:PlaylistService):
+    def __init__(self, guiService:GuiService, threadService:ThreadService, hotkeyService:HotkeyService, configService:ConfigService, eventService:EventService, playlistService:PlaylistService, loggingService:LoggingService):
         self.guiService = guiService
         self.threadService = threadService
         self.hotkeyService = hotkeyService
         self.configService = configService
         self.eventService = eventService
         self.playlistService = playlistService
+        self.loggingService = loggingService
         self.logger = logging.getLogger(__name__)
         
         # temporary
@@ -74,6 +76,8 @@ class Service():
         # load the config
         self.configService.setHotkeyOptions(self.options["hotkeys"])
         del self.options["hotkeys"]
+        self.configService.setLoggerOptions(self.options["logger"])
+        del self.options["logger"]
         self.configService.setOtherOptions(self.options)
         
         # register events
@@ -100,11 +104,17 @@ class Service():
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
         
+        # start the logging service
+        self.loggingService.start()
+        
         # startup the gui service
         self.guiService.start()
         
         # start the hotkey service
         self.hotkeyService.start()
+        
+        # start the playlist service.
+        self.playlistService.start()
         
         # startup the main loop
         self.threadService.startMainLoop()

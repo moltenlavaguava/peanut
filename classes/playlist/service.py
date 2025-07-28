@@ -6,14 +6,31 @@ from .downloader import PlaylistDownloader
 from classes.event.service import EventService
 from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
+from classes.log.service import LoggingService
+
+import multiprocessing
 
 import logging
 import os
+import time
+
+# run in different process. handles downloading logic.
+def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, loggingLevel:logging._Level):
+    logger = logging.getLogger(f"{multiprocessing.current_process().name}/{__name__}")
+    logger.setLevel(logging.INFO)
+    queueHandler = logging.handlers.QueueHandler(loggingQueue)
+    logger.addHandler(queueHandler)
+    
+    logger.info("Playlist downloader process setup.") # yes, it actually works
+    
+    # listen for a download request
+    while True:
+        requestType, otherValue = downloadQueue.get()
 
 # playlist service class
 class PlaylistService():
     
-    def __init__(self, eventService:EventService, configService:ConfigService, threadService:ThreadService):
+    def __init__(self, eventService:EventService, configService:ConfigService, threadService:ThreadService, loggingService:LoggingService):
         # setup logger
         self.logger = logging.getLogger(__name__)
         self.logger.info("Starting playlist service.")
@@ -22,15 +39,20 @@ class PlaylistService():
         self.eventService = eventService
         self.configService = configService
         self.threadService = threadService
+        self.loggingService = loggingService
         
         # setup downloader
         self.downloader = PlaylistDownloader(threadService=threadService, eventService=eventService)
         
         # keep track of all the current playlists
         self._playlists: dict[str, Playlist] = {}
-        
+    
+    # start the service.
+    def start(self):
+        # create the downloader queue
+        downloaderQueue = self.threadService.createProcessQueue("Download Queue")
         # create the playlist downloader process
-        self._downloaderProcess = self.threadService.createProcess(self._playlistDownloader, "Playlist Downloader", start=True)
+        self._downloaderProcess = self.threadService.createProcess(_downloaderProcessManager, "Playlist Downloader", start=True, loggingQueue=self.loggingService.getLoggingQueue(), loggingLevel=self.configService.getLoggerOptions()["level"])
     
     def addPlaylist(self, playlist:Playlist):
         name = playlist.getName()
