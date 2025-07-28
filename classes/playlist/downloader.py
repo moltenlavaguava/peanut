@@ -14,13 +14,10 @@ from yt_dlp import utils as yt_dlp_utils
 from .playlist import Playlist
 from .track import PlaylistTrack
 
-from classes.event.service import EventService
-from classes.thread.service import ThreadService
-
 # downloader class for playlists
 class PlaylistDownloader():
     
-    def __init__(self, eventService:EventService, threadService:ThreadService):
+    def __init__(self, logger):
         # initalize download options
        self.downloadOptions = {
         'extract_flat': True,  # Extract only basic information to make it faster
@@ -29,11 +26,8 @@ class PlaylistDownloader():
         'flat_playlist': True, # Extract only video IDs and titles from the playlist
         }
        # get logger
-       self.logger = logging.getLogger(__name__)
+       self.logger = logger
        
-       # dependencies 
-       self.eventService = eventService
-       self.threadService = threadService
     
     # sanitize names using yt-dlp's method
     def _sanitizeFilename(self, txt:str):

@@ -66,9 +66,10 @@ class ManagerService():
     
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
+        self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
         # download the playlist
-        self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
-        self.playlistService.downloadPlaylist(playlist.getName())
+        # self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
+        # self.playlistService.downloadPlaylist(playlist.getName())
     
     def startProgram(self):
         logging.info("Starting program.")

@@ -716,13 +716,13 @@ options["downloadOptions"] = {
 options["logger"] = {
     "level": logging.DEBUG,
     "datefmt": "%Y-%m-%d %H:%M:%S",
-    "format": "[%(levelname)s] %(message)s (%(name)s:%(lineno)d) - %(asctime)s.%(msecs)03d",
+    "format": "[%(levelname)s] %(message)s (%(name)s; %(pathname)s:%(lineno)d) - %(asctime)s.%(msecs)03d",
 }
 
 if __name__ == "__main__":
     
     # for pyinstaller
-    multiprocessing.freeze_support() 
+    # multiprocessing.freeze_support() 
     
     # get logger
     logger = logging.getLogger(__name__)
