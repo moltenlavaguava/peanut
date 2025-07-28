@@ -4,7 +4,7 @@ from typing import Callable
 
 import logging
 
-class EventManager():
+class EventService():
     def __init__(self):
         # setup logger
         self.logger = logging.getLogger(__name__)

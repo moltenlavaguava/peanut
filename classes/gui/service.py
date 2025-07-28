@@ -3,29 +3,29 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget)
 
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
-from classes.event.manager import EventManager
+from classes.event.service import EventService
 
 from .handler_mainwindow import Window
 
 import logging
 
-class GuiManager():
+class GuiService():
     
-    def __init__(self, mainWindow:Ui_MainWindow, eventManager:EventManager):
+    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService):
         
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info("Starting gui manager class.")
+        self.logger.info("Starting gui service class.")
         
         self._mainWindow = mainWindow
-        self.eventManager = eventManager
+        self.eventService = eventService
         
     def start(self):
-        self.logger.info("Starting gui manager.")
+        self.logger.info("Starting gui service.")
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
-        self._window = Window(self._mainWindow, self.eventManager)
+        self._window = Window(self._mainWindow, self.eventService)
         self._window.show()
         
         

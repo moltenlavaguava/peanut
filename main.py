@@ -431,11 +431,11 @@ import PySide6.QtAsyncio as QtAsyncio
 #             currentIndex = -1
 #             if loaded: unloadAudio()
 #         elif stopProcessEvent.is_set():
-#             print("[Shutdown] Recieved request to stop manager.")
+#             print("[Shutdown] Recieved request to stop service.")
 #             unloadPlaylist()
 #     # once finished, unload the playlist and return
 #     if stopProcessEvent.is_set():
-#         print("[Shutdown] Stopping playlist manager..")
+#         print("[Shutdown] Stopping playlist service..")
 #     else:
 #         print("[Playlist] Playlist done.")
 #         unloadPlaylist()
@@ -624,7 +624,7 @@ import PySide6.QtAsyncio as QtAsyncio
     #     asyncio.create_task(downloadFromPlaylist(playlist), name="PlaylistDownloader")
     #     # load it in
     #     print("[Playlist] Loading playlist.")
-    #     asyncio.create_task(managePlaylist(playlist), name="PlaylistManager")
+    #     asyncio.create_task(managePlaylist(playlist), name="PlaylistService")
     
     # # catch when the window closes
     # def closeEvent(self, event):
@@ -722,10 +722,10 @@ if __name__ == "__main__":
     
     # initalize dependency injector
     container = Container()
-    manager = container.manager()
+    service = container.service()
     
     # temporary solution to inserting options
-    manager.injectOptions(options)
+    service.injectOptions(options)
     
     # startup
-    manager.startProgram()
+    service.startProgram()

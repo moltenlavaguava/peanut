@@ -37,7 +37,7 @@
  * This struct is allocated as AVHWDeviceContext.hwctx
  */
 typedef struct AVDXVA2DeviceContext {
-    IDirect3DDeviceManager9 *devmgr;
+    IDirect3DDeviceService9 *devmgr;
 } AVDXVA2DeviceContext;
 
 /**

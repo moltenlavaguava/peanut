@@ -4,12 +4,12 @@ import logging
 
 from classes.hotkey.hotkeyoptions import HotkeyOptions
 
-class ConfigManager():
+class ConfigService():
     def __init__(self):
         # init logger
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info("Starting config manager.")
+        self.logger.info("Starting config service.")
         
         # hotkey options
         self._hotkeyOptions: dict[HotkeyOptions, str] = {}

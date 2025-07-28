@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from classes.thread.manager import ThreadManager
-from classes.config.manager import ConfigManager
-from classes.event.manager import EventManager
+from classes.thread.service import ThreadService
+from classes.config.service import ConfigService
+from classes.event.service import EventService
 
 from .hotkeyoptions import HotkeyOptions
 
@@ -13,16 +13,16 @@ import keyboard
 import logging
 
 # manages keyboard 
-class HotkeyManager():
+class HotkeyService():
     
-    def __init__(self, threadManager:ThreadManager, configManager:ConfigManager, eventManager:EventManager):
+    def __init__(self, threadService:ThreadService, configService:ConfigService, eventService:EventService):
         
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info("Starting keyboard manager.")
-        self.threadManager = threadManager
-        self.configManager = configManager
-        self.eventManager = eventManager
+        self.logger.info("Starting keyboard service.")
+        self.threadService = threadService
+        self.configService = configService
+        self.eventService = eventService
         
         # keep track of the current hotkeys (references)
         self._activeHotkeys: dict[HotkeyOptions, any] = {}
@@ -33,7 +33,7 @@ class HotkeyManager():
     # runs whenever a hotkey is pressed.
     def _onKeyAction(self, key:keyboard._Key):
         # if keys are not being processed, then stop
-        actions = self.configManager.getHotkeyOptions()
+        actions = self.configService.getHotkeyOptions()
         if not self.getProcessHotkeys(): return
         # find the associated action
         action = None
@@ -45,19 +45,19 @@ class HotkeyManager():
         # call the specific event
         match action:
             case HotkeyOptions.PLAY:
-                self.eventManager.triggerEvent("ACTION_PLAY")
+                self.eventService.triggerEvent("ACTION_PLAY")
             case HotkeyOptions.SKIP:
-                self.eventManager.triggerEvent("ACTION_SKIP")
+                self.eventService.triggerEvent("ACTION_SKIP")
             case HotkeyOptions.PREVIOUS:
-                self.eventManager.triggerEvent("ACTION_PREVIOUS")
+                self.eventService.triggerEvent("ACTION_PREVIOUS")
             case HotkeyOptions.LOOP:
-                self.eventManager.triggerEvent("ACTION_LOOP")
+                self.eventService.triggerEvent("ACTION_LOOP")
             case HotkeyOptions.SHUFFLE:
-                self.eventManager.triggerEvent("ACTION_SHUFFLE")
+                self.eventService.triggerEvent("ACTION_SHUFFLE")
             case HotkeyOptions.ORGANIZE:
-                self.eventManager.triggerEvent("ACTION_ORGANIZE")
+                self.eventService.triggerEvent("ACTION_ORGANIZE")
             case HotkeyOptions.KILL:
-                self.eventManager.triggerEvent("ACTION_KILL")
+                self.eventService.triggerEvent("ACTION_KILL")
         
     # gets the _processHotkeys bool.
     def getProcessHotkeys(self):
@@ -101,10 +101,10 @@ class HotkeyManager():
         keyboard.remove_hotkey(hotkeyList)
         del hotkeyList[key] # remove it from the list
     
-    # starts up the manager.
+    # starts up the service.
     def start(self):
-        self.logger.info("Starting up hotkey manager.")
+        self.logger.info("Starting up hotkey service.")
         
         # load the default? hotkeys from config
-        self.setHotkeys(self.configManager.getHotkeyOptions().values())
+        self.setHotkeys(self.configService.getHotkeyOptions().values())
         

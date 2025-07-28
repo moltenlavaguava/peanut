@@ -1,13 +1,13 @@
 from dependency_injector import containers, providers
 
-from classes.manager.manager import Manager
-from classes.gui.manager import GuiManager
+from classes.service.service import Service
+from classes.gui.service import GuiService
 from classes.generatedui import mainwindow_ui
-from classes.thread.manager import ThreadManager
-from classes.hotkey.manager import HotkeyManager
-from classes.config.manager import ConfigManager
-from classes.event.manager import EventManager
-from classes.playlist.manager import PlaylistManager
+from classes.thread.service import ThreadService
+from classes.hotkey.service import HotkeyService
+from classes.config.service import ConfigService
+from classes.event.service import EventService
+from classes.playlist.service import PlaylistService
 
 # Notes:
 # Singleton: one shared instance of the dependency
@@ -16,21 +16,21 @@ from classes.playlist.manager import PlaylistManager
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(packages=["classes"])
     
-    eventManager = providers.Singleton(EventManager)
-    threadManager = providers.Singleton(ThreadManager)
+    eventService = providers.Singleton(EventService)
+    threadService = providers.Singleton(ThreadService)
     
-    configManager = providers.Singleton(ConfigManager)
-    playlistManager = providers.Singleton(PlaylistManager, eventManager=eventManager, configManager=configManager, threadManager=threadManager)
-    hotkeyManager = providers.Singleton(HotkeyManager, threadManager=threadManager, configManager=configManager, eventManager=eventManager)
+    configService = providers.Singleton(ConfigService)
+    playlistService = providers.Singleton(PlaylistService, eventService=eventService, configService=configService, threadService=threadService)
+    hotkeyService = providers.Singleton(HotkeyService, threadService=threadService, configService=configService, eventService=eventService)
     
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
     
-    guiManager = providers.Singleton(GuiManager, mainWindow=mainWindow, eventManager=eventManager)
-    manager = providers.Singleton(Manager, 
-                                  guiManager=guiManager, 
-                                  threadManager=threadManager, 
-                                  hotkeyManager=hotkeyManager, 
-                                  configManager=configManager, 
-                                  eventManager=eventManager, 
-                                  playlistManager=playlistManager,
+    guiService = providers.Singleton(GuiService, mainWindow=mainWindow, eventService=eventService)
+    service = providers.Singleton(Service, 
+                                  guiService=guiService, 
+                                  threadService=threadService, 
+                                  hotkeyService=hotkeyService, 
+                                  configService=configService, 
+                                  eventService=eventService, 
+                                  playlistService=playlistService,
                                   )

@@ -31,6 +31,9 @@ class PlaylistTrack():
     def getIndex(self):
         return self._index
     
+    def setLength(self, length:float):
+        self._length = length
+    
     def getLength(self):
         return self._length
     
