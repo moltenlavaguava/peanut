@@ -25,5 +25,3 @@ class GuiService():
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService)
         self._window.show()
-        
-        

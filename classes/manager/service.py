@@ -54,6 +54,9 @@ class ManagerService():
         
     def _actionKill(self):
         self.logger.info("Kill action recieved.")
+        
+        # for testing: stop playlist downloading.
+        self.playlistService.closeDownloaderProcess()
     
     def _actionPrevious(self):
         self.logger.info("Previous action recieved.")
@@ -68,8 +71,8 @@ class ManagerService():
     def _playlistInitalizationFinish(self, playlist:Playlist):
         self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
         # download the playlist
-        # self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
-        # self.playlistService.downloadPlaylist(playlist.getName())
+        self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
+        self.playlistService.downloadPlaylist(playlist.getName())
     
     def startProgram(self):
         logging.info("Starting program.")

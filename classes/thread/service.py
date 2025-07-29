@@ -5,6 +5,7 @@ import asyncio
 import threading
 import logging
 import multiprocessing
+from multiprocessing.synchronize import Event
 
 # manages threads and async utilities
 class ThreadService():
@@ -26,6 +27,7 @@ class ThreadService():
         # process management
         self._processes: dict[str, multiprocessing.Process] = {}
         self._queues: dict[str, multiprocessing.Queue] = {}
+        self._processEvents: dict[str, Event] = {}
         
         # main loop. manually maintained
         self._mainLoopAlive: bool = False
@@ -167,6 +169,25 @@ class ThreadService():
             return task
     
     # PROCESSES
+    
+    def getProcessEvents(self):
+        return self._processEvents
+    
+    def createProcessEvent(self, name:str):
+        events = self.getProcessEvents()
+        if name in events:
+            self.logger.warning(f"Failed to create process event '{name}': event already exists")
+            return
+        event = multiprocessing.Event()
+        events[name] = event
+        return event
+    
+    def getProcessEvent(self, name:str):
+        events = self.getProcessEvents()
+        if name in events:
+            return events[name]
+        else:
+            self.logger.warning(f"Failed to get process event '{name}': event does not exist")
     
     def getProcessQueues(self):
         return self._queues

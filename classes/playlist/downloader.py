@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import subprocess
 import mutagen
+from multiprocessing.synchronize import Event
 
 # import yt-dlp's sanitation
 from yt_dlp import utils as yt_dlp_utils
@@ -56,7 +57,6 @@ class PlaylistDownloader():
         newPath = str(Path(filePath).with_suffix(extension))
         # convert
         self._convertAudioFile(filePath, newPath, ffmpegPath)
-        # self._convertAudioFile(filePath, newPath, ffmpegPath)
         # get the length of the audio
         length = self._getAudioFileLength(newPath)
         track.setLength(length)
@@ -65,26 +65,21 @@ class PlaylistDownloader():
         track.setDownloaded(True)
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
-    def downloadPlaylist(self, playlist:Playlist, downloadOptions, stopDownloadEvent, outputExtension:str, ffmpegPath:str):
+    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event):
         tracks = playlist.getTracks()
         # replace playlist name with actual name
         downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", playlist.getName())
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
             for track in tracks:
-                if stopDownloadEvent.is_set():
-                    self.logger.info(f"Request received to stop playlist download for '{playlist.getName()}'.")
+                if stopEvent.is_set():
                     break
                 if track.getDownloaded():
                     continue
-                self.logger.info(f"Downloading {track.getDisplayName()}")
                 info = self._downloadVideo(ydl, track.getVideoURL())
-                self.logger.info(f"Done downloading {track.getVideoURL()}")
                 path = ydl.prepare_filename(info)
                 # convert file to specified format (async) and get the length of the file
                 self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
-            if stopDownloadEvent.is_set():
-                self.logger.info("Playlist downloader stopping.")
-            else:
+            if not stopEvent.is_set():
                 self.logger.info("Done downloading playlist.")
                 playlist.setDownloaded(True)
     
