@@ -22,7 +22,20 @@ class GuiService():
         # connect() connections
         self._connections: dict[str, QMetaObject.Connection] = {}
     
+    # GUI HANDLING
+    def setPlaylistURLBoxText(self, text:str):
+        # retrieve the box
+        textBox = self.getMainWindow().ui.input_playlistURL
+        textBox.setText(text)
+    
+    def setCurrentPlaylistBoxText(self, text:str):
+        box = self.getMainWindow().ui.info_loadedPlaylist
+        box.setText(text)
+    
     # INTERIOR MANAGEMENT
+    
+    def getMainWindow(self):
+        return self._window
     
     def getConnections(self):
         return self._connections
@@ -56,6 +69,10 @@ class GuiService():
         # close the application
         self._QApplication.quit()
     
+    def _eventCurrentPlaylistChange(self, newPlaylist:Playlist|None):
+        newName = f"loaded playlist: {newPlaylist.getDisplayName() if newPlaylist else ''}"
+        self.setCurrentPlaylistBoxText(newName)
+    
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
         # get data
@@ -72,7 +89,7 @@ class GuiService():
         @Slot()
         def onButtonPress():
             # trigger the request
-            self.eventService.triggerEvent("PLAYLIST_SELECT_REQUEST", name)
+            self.eventService.triggerEvent("PLAYLIST_SELECT_REQUEST", playlist)
         connection = button.clicked.connect(onButtonPress)
         # add the conection
         self.addConnection(f"Playlist Select Request Connection: {name}", connection)
@@ -82,6 +99,7 @@ class GuiService():
         # setup event listeners
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._eventPlaylistInitialized)
+        self.eventService.subscribeToEvent("PLAYLIST_CURRENT_CHANGE", self._eventCurrentPlaylistChange)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window

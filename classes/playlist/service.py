@@ -69,6 +69,12 @@ class PlaylistService():
         
         # keep track of downloading state
         self._isDownloading = False
+        
+        # current playlist
+        self._currentPlaylist: Playlist | None = None
+        
+        # keep track of the name of a playlist and its url (to avoid downloading the same thing twice)
+        self._playlistURLDict: dict[str, str] = {}
     
     # start the service.
     def start(self):
@@ -87,11 +93,9 @@ class PlaylistService():
         
         # listen for the program close event
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
-
-    # stops any relevant playlist functions.
-    def _eventCloseProgram(self):
-        self.closeDownloaderProcess()
-
+        
+    # LISTENERS
+    
     # listens for responses from the playlist downloader process.
     def _playlistDownloadListener(self):
         # get the response queue
@@ -103,12 +107,15 @@ class PlaylistService():
                 break
             match response["action"]:
                 case "INITIALIZE":
-                    playlist = response["playlist"]
+                    playlist: Playlist = response["playlist"]
+                    name = playlist.getName()
                     self.addPlaylist(playlist)
                     # trigger the event
                     self.eventService.triggerEvent("PLAYLIST_INITALIZATION_FINISH", playlist)
+                    # save the playlist in the url tracker
+                    self.addPlaylistURLDictEntry(playlist.getPlaylistURL(), name)
                     # save the file
-                    self.savePlaylistFile(playlist.getName())
+                    self.savePlaylistFile(name)
                 case "DOWNLOAD":
                     playlist = response["playlist"]
                     self.logger.info("Playlist downloader stopped.")
@@ -117,6 +124,30 @@ class PlaylistService():
         self.logger.info("Closing Playlist Download Listener.")
             
      # for playlist downloader
+    
+    # EVENTS
+    
+    # stops any relevant playlist functions.
+    def _eventCloseProgram(self):
+        self.closeDownloaderProcess()
+    
+    # FILE HANDLING
+    def savePlaylistFile(self, name:str):
+        outputDirectory = self.configService.getOtherOptions()["outputFolder"]
+        self.getPlaylist(name).dumpToFile(os.path.join(outputDirectory, name, "data.peanut"))
+    
+    # MANAGEMENT
+    
+    # sends a request to close the playlist downloader process.
+    def closeDownloaderProcess(self):
+        isDownloading = self.getIsDownloading()
+        if isDownloading:
+            self.stopDownloadingPlaylist() # stop downloading first
+        self._downloadQueue.put(None) # singal stop
+    
+    # signals to stop downloading the current playlist.
+    def stopDownloadingPlaylist(self):
+        self._stopEvent.set()
     
     def getIsDownloading(self):
         return self._isDownloading
@@ -157,23 +188,14 @@ class PlaylistService():
     def getDownloaderProcess(self):
         return self._downloaderProcess
     
-    # FILE HANDLING
-    def savePlaylistFile(self, name:str):
-        outputDirectory = self.configService.getOtherOptions()["outputFolder"]
-        self.getPlaylist(name).dumpToFile(os.path.join(outputDirectory, name, "data.peanut"))
+    def getCurrentPlaylist(self):
+        return self._currentPlaylist
     
-    # SEPARATE PROCESS COMMUNICATON
-    
-    # sends a request to close the playlist downloader process.
-    def closeDownloaderProcess(self):
-        isDownloading = self.getIsDownloading()
-        if isDownloading:
-            self.stopDownloadingPlaylist() # stop downloading first
-        self._downloadQueue.put(None) # singal stop
-    
-    # signals to stop downloading the current playlist.
-    def stopDownloadingPlaylist(self):
-        self._stopEvent.set()
+    def setCurrentPlaylist(self, playlist:Playlist|None):
+        # trigger the change event
+        if not self.getCurrentPlaylist() is playlist: 
+            self.eventService.triggerEvent("PLAYLIST_CURRENT_CHANGE", playlist)
+        self._currentPlaylist = playlist
     
     # starts downloading a given playlist from its name. blocks the current thread/coroutine until it finishes.
     def downloadPlaylist(self, name:str):
@@ -203,3 +225,28 @@ class PlaylistService():
         # send into process to ..process
         self.setIsDownloading (False)
         self._downloadQueue.put({"action": "INITIALIZE", "playlist": playlist})
+    
+    def getPlaylistURLDict(self):
+        return self._playlistURLDict
+    
+    def removePlaylistURLDictEntry(self, url:str):
+        urldict = self.getPlaylistURLDict()
+        if url in urldict:
+            del urldict[url]
+        else:
+            self.logger.warning(f"Failed to remove url '{url}' from the playlist url dict: entry does not exist")
+    
+    def addPlaylistURLDictEntry(self, url:str, name:str):
+        urldict = self.getPlaylistURLDict()
+        if url in urldict:
+            self.logger.warning(f"Failed to add url '{url}' to the playlist url dict: entry already exists")
+            return
+        urldict[url] = name
+    
+    # checks to see if a playlist url already has an associated entry. if so, it returns the playlist name.
+    def getPlaylistNameFromURL(self, url:str):
+        urldict = self.getPlaylistURLDict()
+        if url in urldict:
+            return urldict[url]
+        return None
+    

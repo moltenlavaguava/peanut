@@ -63,9 +63,14 @@ class ManagerService():
     
     def _actionLoadFromURL(self, url:str):
         self.logger.info(f"Load from URL action recieved. Text: {url}")
-        
-        # for debugging
-        self.playlistService.createPlaylistFromURL(url)
+        # remove the text in the box
+        self.guiService.setPlaylistURLBoxText("")
+        # check to see if the url already exists.
+        playlistName = self.playlistService.getPlaylistNameFromURL(url)
+        if playlistName:
+            self.logger.info(f"Attempted to download playlist '{playlistName}' from url '{url}' even though it already exists.")
+        else:
+            self.playlistService.createPlaylistFromURL(url)
     
     def _actionStopDownload(self):
         # stop the current download, if it is actually going
@@ -74,6 +79,12 @@ class ManagerService():
             self.logger.info("Stopping playlist downloader.")
             self.playlistService.stopDownloadingPlaylist()
     
+    def _actionStartDownload(self):
+        # start the current download, if it actually needs to be downloaded
+        currentPlaylist = self.playlistService.getCurrentPlaylist()
+        if (currentPlaylist) and (not currentPlaylist.getDownloaded()):
+            self.playlistService.downloadPlaylist(currentPlaylist.getName())
+
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
         self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
@@ -81,8 +92,11 @@ class ManagerService():
         # self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
         # self.playlistService.downloadPlaylist(playlist.getName())
     
-    def _playlistSelectRequest(self, name:str):
+    def _playlistSelectRequest(self, playlist:Playlist):
+        name = playlist.getName()
         self.logger.info(f"Recieved request to select playlist '{name}'.")
+        # set the current playlist to this one
+        self.playlistService.setCurrentPlaylist(playlist)
     
     # Program
     
@@ -121,12 +135,15 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_LOAD_FROM_URL", self._actionLoadFromURL)
         self.eventService.addEvent("ACTION_STOP_DOWNLOAD")
         self.eventService.subscribeToEvent("ACTION_STOP_DOWNLOAD", self._actionStopDownload)
+        self.eventService.addEvent("ACTION_START_DOWNLOAD")
+        self.eventService.subscribeToEvent("ACTION_START_DOWNLOAD", self._actionStartDownload)
         
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
         self.eventService.addEvent("PLAYLIST_SELECT_REQUEST")
         self.eventService.subscribeToEvent("PLAYLIST_SELECT_REQUEST", self._playlistSelectRequest)
+        self.eventService.addEvent("PLAYLIST_CURRENT_CHANGE")
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")
