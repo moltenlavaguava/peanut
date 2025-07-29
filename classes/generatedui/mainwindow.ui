@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>703</width>
+    <width>691</width>
     <height>565</height>
    </rect>
   </property>
@@ -28,6 +28,10 @@ ProgressCircleBar &gt; #knobFrame {
 
 ScrollProgressBar #progressFrame {
 	background-color: red;
+}
+
+#info_playlistSelector {
+	border: 1px solid white;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -183,6 +187,52 @@ ScrollProgressBar #progressFrame {
     <property name="styleSheet">
      <string notr="true"/>
     </property>
+   </widget>
+   <widget class="QPushButton" name="action_stopDownload">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>500</y>
+      <width>101</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>stop download</string>
+    </property>
+   </widget>
+   <widget class="QScrollArea" name="info_playlistSelector">
+    <property name="geometry">
+     <rect>
+      <x>470</x>
+      <y>190</y>
+      <width>181</width>
+      <height>171</height>
+     </rect>
+    </property>
+    <property name="verticalScrollBarPolicy">
+     <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="widgetResizable">
+     <bool>true</bool>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+    </property>
+    <widget class="QWidget" name="scrollAreaWidgetContents">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>179</width>
+       <height>169</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout"/>
+    </widget>
    </widget>
   </widget>
  </widget>

@@ -21,6 +21,7 @@ class Window(QMainWindow):
         self.ui.action_loop.clicked.connect(self.buttonLoopActivated)
         self.ui.action_loadFromURL.clicked.connect(self.buttonLoadFromURLActivated)
         self.ui.action_previous.clicked.connect(self.buttonPreviousActivated)
+        self.ui.action_stopDownload.clicked.connect(self.buttonStopDownloadActivated)
         
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)
@@ -63,6 +64,10 @@ class Window(QMainWindow):
     @Slot()
     def buttonLoadFromURLActivated(self):
         self.eventService.triggerEvent("ACTION_LOAD_FROM_URL", self.ui.input_playlistURL.text())
+    
+    @Slot()
+    def buttonStopDownloadActivated(self):
+        self.eventService.triggerEvent("ACTION_STOP_DOWNLOAD")
     
     # catch when the window closes
     def closeEvent(self, event):

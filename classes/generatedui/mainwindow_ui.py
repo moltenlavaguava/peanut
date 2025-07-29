@@ -16,7 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QDial, QLabel, QLineEdit,
-    QMainWindow, QPushButton, QSizePolicy, QWidget)
+    QMainWindow, QPushButton, QScrollArea, QSizePolicy,
+    QVBoxLayout, QWidget)
 
 from customwidgets.scrollprogressbar.progresscirclebar import ProgressCircleBar
 from customwidgets.scrollprogressbar.scrollprogressbar import ScrollProgressBar
@@ -25,7 +26,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(703, 565)
+        MainWindow.resize(691, 565)
         MainWindow.setStyleSheet(u"ScrollProgressBar #backgroundFrame {\n"
 "	background-color: gray;\n"
 "}\n"
@@ -40,6 +41,10 @@ class Ui_MainWindow(object):
 "\n"
 "ScrollProgressBar #progressFrame {\n"
 "	background-color: red;\n"
+"}\n"
+"\n"
+"#info_playlistSelector {\n"
+"	border: 1px solid white;\n"
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -81,6 +86,22 @@ class Ui_MainWindow(object):
         self.info_progressBar1.setObjectName(u"info_progressBar1")
         self.info_progressBar1.setGeometry(QRect(350, 120, 111, 16))
         self.info_progressBar1.setStyleSheet(u"")
+        self.action_stopDownload = QPushButton(self.centralwidget)
+        self.action_stopDownload.setObjectName(u"action_stopDownload")
+        self.action_stopDownload.setGeometry(QRect(30, 500, 101, 24))
+        self.info_playlistSelector = QScrollArea(self.centralwidget)
+        self.info_playlistSelector.setObjectName(u"info_playlistSelector")
+        self.info_playlistSelector.setGeometry(QRect(470, 190, 181, 171))
+        self.info_playlistSelector.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.info_playlistSelector.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.info_playlistSelector.setWidgetResizable(True)
+        self.info_playlistSelector.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 179, 169))
+        self.verticalLayout = QVBoxLayout(self.scrollAreaWidgetContents)
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.info_playlistSelector.setWidget(self.scrollAreaWidgetContents)
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -99,5 +120,6 @@ class Ui_MainWindow(object):
         self.info_nowPlaying.setText(QCoreApplication.translate("MainWindow", u"now playing:", None))
         self.info_loadedPlaylist.setText(QCoreApplication.translate("MainWindow", u"loaded playlist:", None))
         self.action_previous.setText(QCoreApplication.translate("MainWindow", u"previous", None))
+        self.action_stopDownload.setText(QCoreApplication.translate("MainWindow", u"stop download", None))
     # retranslateUi
 

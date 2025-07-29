@@ -67,12 +67,22 @@ class ManagerService():
         # for debugging
         self.playlistService.createPlaylistFromURL(url)
     
+    def _actionStopDownload(self):
+        # stop the current download, if it is actually going
+        isDownloading = self.playlistService.getIsDownloading()
+        if isDownloading:
+            self.logger.info("Stopping playlist downloader.")
+            self.playlistService.stopDownloadingPlaylist()
+    
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
         self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
         # download the playlist
-        self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
-        self.playlistService.downloadPlaylist(playlist.getName())
+        # self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
+        # self.playlistService.downloadPlaylist(playlist.getName())
+    
+    def _playlistSelectRequest(self, name:str):
+        self.logger.info(f"Recieved request to select playlist '{name}'.")
     
     # Program
     
@@ -109,10 +119,14 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_PREVIOUS", self._actionPrevious)
         self.eventService.addEvent("ACTION_LOAD_FROM_URL")
         self.eventService.subscribeToEvent("ACTION_LOAD_FROM_URL", self._actionLoadFromURL)
+        self.eventService.addEvent("ACTION_STOP_DOWNLOAD")
+        self.eventService.subscribeToEvent("ACTION_STOP_DOWNLOAD", self._actionStopDownload)
         
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
+        self.eventService.addEvent("PLAYLIST_SELECT_REQUEST")
+        self.eventService.subscribeToEvent("PLAYLIST_SELECT_REQUEST", self._playlistSelectRequest)
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")
