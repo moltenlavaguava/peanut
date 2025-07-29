@@ -18,10 +18,10 @@ class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(packages=["classes"])
     
     eventService = providers.Singleton(EventService)
-    threadService = providers.Singleton(ThreadService)
+    threadService = providers.Singleton(ThreadService, eventService=eventService)
     configService = providers.Singleton(ConfigService)
     
-    loggingService = providers.Singleton(LoggingService, configService=configService, threadService=threadService)
+    loggingService = providers.Singleton(LoggingService, configService=configService, threadService=threadService, eventService=eventService)
     playlistService = providers.Singleton(PlaylistService, eventService=eventService, configService=configService, threadService=threadService, loggingService=loggingService)
     hotkeyService = providers.Singleton(HotkeyService, threadService=threadService, configService=configService, eventService=eventService)
     

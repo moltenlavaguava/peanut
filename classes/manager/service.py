@@ -55,8 +55,8 @@ class ManagerService():
     def _actionKill(self):
         self.logger.info("Kill action recieved.")
         
-        # for testing: stop playlist downloading.
-        self.playlistService.closeDownloaderProcess()
+        # close the program.
+        self.eventService.triggerEvent("PROGRAM_CLOSE")
     
     def _actionPrevious(self):
         self.logger.info("Previous action recieved.")
@@ -108,6 +108,9 @@ class ManagerService():
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
         
+        # general stop program event
+        self.eventService.addEvent("PROGRAM_CLOSE")
+        
         # start the logging service
         self.loggingService.start()
         
@@ -121,5 +124,5 @@ class ManagerService():
         self.playlistService.start()
         
         # startup the main loop
-        self.threadService.startMainLoop()
+        self.threadService.start()
         

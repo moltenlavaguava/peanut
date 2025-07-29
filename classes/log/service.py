@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
+from classes.event.service import EventService
 
 import logging
 import logging.handlers
 
 # class for managing logging across differnet processes
 class LoggingService():
-    def __init__(self, configService:ConfigService, threadService:ThreadService):
+    def __init__(self, configService:ConfigService, threadService:ThreadService, eventService:EventService):
         
         # ironic logging
         self.logger = logging.getLogger(__name__)
@@ -16,11 +17,18 @@ class LoggingService():
         # dependencies
         self.configService = configService
         self.threadService = threadService
+        self.eventService = eventService
     
     # starts the logging service.
     def start(self):
         self._loggingQueue = self.threadService.createProcessQueue("Logging Queue")
         self._loggingThread = self.threadService.createThread(self._loggingManager, "Logging Manager")
+        # subscribe to the program stop event
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
+        
+    def _eventCloseProgram(self):
+        # close the logging manager thread
+        self._loggingQueue.put(None)
     
     def getLoggingQueue(self):
         return self._loggingQueue
@@ -46,3 +54,4 @@ class LoggingService():
                 logger.handle(record)
             except Exception as e:
                 self.logger.error(f"An error occured while processing a record: {e}")
+        self.logger.info("Shutting down threaded logging manager.")

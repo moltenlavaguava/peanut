@@ -7,9 +7,11 @@ import logging
 import multiprocessing
 from multiprocessing.synchronize import Event
 
+from classes.event.service import EventService
+
 # manages threads and async utilities
 class ThreadService():
-    def __init__(self):
+    def __init__(self, eventService:EventService):
         
         # logging management
         self.logger = logging.getLogger(__name__)
@@ -24,6 +26,9 @@ class ThreadService():
         self._tasks = {}
         self._asyncioEvents = {}
         
+        # dependencies
+        self.eventService = eventService
+        
         # process management
         self._processes: dict[str, multiprocessing.Process] = {}
         self._queues: dict[str, multiprocessing.Queue] = {}
@@ -32,6 +37,14 @@ class ThreadService():
         # main loop. manually maintained
         self._mainLoopAlive: bool = False
         self._mainLoopObject: asyncio.BaseEventLoop = None
+        
+        # program closing management
+        self._programCloseEvent = self.createAsyncioEvent("Program Close Event")
+    
+    # EVENTS
+    
+    def _eventCloseProgram(self):
+        self.setAsyncioEvent("Program Close Event")
     
     # THREADING
     
@@ -236,12 +249,13 @@ class ThreadService():
         self._mainLoopObject = asyncio.get_event_loop()
         
         # keep main loop alive
-        while True:
-            await asyncio.sleep(1)
+        await self.getAsyncioEvent("Program Close Event").wait()
         
         self._mainLoopAlive = False
         self.logger.info("Closing main loop.")
     
-    # starts the main async loop.
-    def startMainLoop(self):
+    # starts the main async loop and sets up the necessary event handlers.
+    def start(self):
+        # subscribe to close event
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
         QtAsyncio.run(self._mainLoop(), keep_running=True, quit_qapp=False)

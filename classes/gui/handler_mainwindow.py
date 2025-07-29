@@ -67,15 +67,7 @@ class Window(QMainWindow):
     def buttonLoadFromURLActivated(self):
         self.eventService.triggerEvent("ACTION_LOAD_FROM_URL", self.ui.input_playlistURL.text())
     
-    # # catch when the window closes
-    # def closeEvent(self, event):
-        # if self.isClosingSafe:
-        #     pd("[Shutdown] Closing window.")
-        #     event.accept()
-        # else: 
-        #     pd("[Shutdown] Requesting window closure.")
-        #     # shutdown coroutines
-        #     killProcess(False)
-            
-        #     mainEventLoop.call_soon_threadsafe(lambda: asyncio.create_task(manageShutdown(), name="Shutdown via GUI"))
-        #     event.ignore()  # prevent window from closing until coroutine finishes
+    # catch when the window closes
+    def closeEvent(self, event):
+        # trigger program wide event
+        self.eventService.triggerEvent("PROGRAM_CLOSE")

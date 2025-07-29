@@ -84,6 +84,13 @@ class PlaylistService():
                                                                    stopEvent=self._stopEvent)
         # create the response listener thread
         self.threadService.createThread(self._playlistDownloadListener, "Playlist Download Listener")
+        
+        # listen for the program close event
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
+
+    # stops any relevant playlist functions.
+    def _eventCloseProgram(self):
+        self.closeDownloaderProcess()
 
     # listens for responses from the playlist downloader process.
     def _playlistDownloadListener(self):
