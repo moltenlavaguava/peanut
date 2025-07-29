@@ -17,9 +17,9 @@ from classes.log.service import LoggingService
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(packages=["classes"])
     
-    eventService = providers.Singleton(EventService)
-    threadService = providers.Singleton(ThreadService, eventService=eventService)
+    threadService = providers.Singleton(ThreadService)
     configService = providers.Singleton(ConfigService)
+    eventService = providers.Singleton(EventService, threadService=threadService)
     
     loggingService = providers.Singleton(LoggingService, configService=configService, threadService=threadService, eventService=eventService)
     playlistService = providers.Singleton(PlaylistService, eventService=eventService, configService=configService, threadService=threadService, loggingService=loggingService)

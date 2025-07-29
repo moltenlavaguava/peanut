@@ -7,11 +7,9 @@ import logging
 import multiprocessing
 from multiprocessing.synchronize import Event
 
-from classes.event.service import EventService
-
 # manages threads and async utilities
 class ThreadService():
-    def __init__(self, eventService:EventService):
+    def __init__(self):
         
         # logging management
         self.logger = logging.getLogger(__name__)
@@ -26,9 +24,6 @@ class ThreadService():
         self._tasks = {}
         self._asyncioEvents = {}
         
-        # dependencies
-        self.eventService = eventService
-        
         # process management
         self._processes: dict[str, multiprocessing.Process] = {}
         self._queues: dict[str, multiprocessing.Queue] = {}
@@ -41,9 +36,9 @@ class ThreadService():
         # program closing management
         self._programCloseEvent = self.createAsyncioEvent("Program Close Event")
     
-    # EVENTS
+    # EVENTS (but not really)
     
-    def _eventCloseProgram(self):
+    def onCloseProgram(self):
         self.setAsyncioEvent("Program Close Event")
     
     # THREADING
@@ -176,8 +171,8 @@ class ThreadService():
             self._tasks[name] = task
             return task
         else:
-            self.logger.info("createTask is being run in a different thread, using threadsafe version.")
-            task = asyncio.run_coroutine_threadsafe(asyncFunction, name=name, loop=self.getEventLoop())
+            self.logger.debug("createTask is being run in a different thread, using threadsafe version.")
+            task = asyncio.run_coroutine_threadsafe(asyncFunction, loop=self.getEventLoop())
             self._tasks[name] = task
             return task
     
@@ -256,6 +251,4 @@ class ThreadService():
     
     # starts the main async loop and sets up the necessary event handlers.
     def start(self):
-        # subscribe to close event
-        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
         QtAsyncio.run(self._mainLoop(), keep_running=True, quit_qapp=False)

@@ -74,6 +74,12 @@ class ManagerService():
         self.logger.info(f"Beginning download for playlist {playlist.getDisplayName()}.")
         self.playlistService.downloadPlaylist(playlist.getName())
     
+    # Program
+    
+    def _programClose(self):
+        # pass on event
+        self.threadService.onCloseProgram()
+    
     def startProgram(self):
         logging.info("Starting program.")
         
@@ -110,6 +116,7 @@ class ManagerService():
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._programClose)
         
         # start the logging service
         self.loggingService.start()

@@ -28,10 +28,7 @@ class Window(QMainWindow):
         
         # just utilty for now
         self.ui.input_playlistURL.setText("https://www.youtube.com/playlist?list=PLefKpFQ8Pvy5aCLAGHD8Zmzsdljos-t2l")
-        
-        # marking window as not being safe to close
-        # self.isClosingSafe = False
-        
+
         # oooooooo
         
     # window handler functions
@@ -70,4 +67,5 @@ class Window(QMainWindow):
     # catch when the window closes
     def closeEvent(self, event):
         # trigger program wide event
+        event.accept()
         self.eventService.triggerEvent("PROGRAM_CLOSE")

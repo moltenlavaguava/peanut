@@ -17,9 +17,16 @@ class GuiService():
         
         self._mainWindow = mainWindow
         self.eventService = eventService
-        
+    
+    # runs when the program is closing
+    def _eventCloseProgram(self):
+        # close the application
+        self._QApplication.quit()
+    
     def start(self):
         self.logger.info("Starting gui service.")
+        # setup event listener
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
