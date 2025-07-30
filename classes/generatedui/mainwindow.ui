@@ -247,6 +247,19 @@ ScrollProgressBar #progressFrame {
      <string>start download</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="action_startAudioPlayer">
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>500</y>
+      <width>201</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>start audio player for current playlist</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <customwidgets>

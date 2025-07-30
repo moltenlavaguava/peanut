@@ -23,6 +23,7 @@ class Window(QMainWindow):
         self.ui.action_previous.clicked.connect(self.buttonPreviousActivated)
         self.ui.action_stopDownload.clicked.connect(self.buttonStopDownloadActivated)
         self.ui.action_startDownload.clicked.connect(self.buttonStartDownloadActivated)
+        self.ui.action_startAudioPlayer.cicked.connect(self.buttonStartAudioPlayerActivated)
         
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)
@@ -73,6 +74,10 @@ class Window(QMainWindow):
     @Slot()
     def buttonStartDownloadActivated(self):
         self.eventService.triggerEvent("ACTION_START_DOWNLOAD")
+    
+    @Slot()
+    def buttonStartAudioPlayerActivated(self):
+        self.eventService.triggerEvent("ACTION_START_AUDIO_PLAYER")
     
     # catch when the window closes
     def closeEvent(self, event):

@@ -105,6 +105,9 @@ class Ui_MainWindow(object):
         self.action_startDownload = QPushButton(self.centralwidget)
         self.action_startDownload.setObjectName(u"action_startDownload")
         self.action_startDownload.setGeometry(QRect(130, 500, 101, 24))
+        self.action_startAudioPlayer = QPushButton(self.centralwidget)
+        self.action_startAudioPlayer.setObjectName(u"action_startAudioPlayer")
+        self.action_startAudioPlayer.setGeometry(QRect(230, 500, 201, 24))
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -125,5 +128,6 @@ class Ui_MainWindow(object):
         self.action_previous.setText(QCoreApplication.translate("MainWindow", u"previous", None))
         self.action_stopDownload.setText(QCoreApplication.translate("MainWindow", u"stop download", None))
         self.action_startDownload.setText(QCoreApplication.translate("MainWindow", u"start download", None))
+        self.action_startAudioPlayer.setText(QCoreApplication.translate("MainWindow", u"start audio player for current playlist", None))
     # retranslateUi
 

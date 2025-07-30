@@ -9,6 +9,7 @@ from classes.config.service import ConfigService
 from classes.event.service import EventService
 from classes.playlist.service import PlaylistService
 from classes.log.service import LoggingService
+from classes.audio.service import AudioService
 
 # Notes:
 # Singleton: one shared instance of the dependency
@@ -28,6 +29,7 @@ class Container(containers.DeclarativeContainer):
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
     
     guiService = providers.Singleton(GuiService, mainWindow=mainWindow, eventService=eventService)
+    audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService)
     managerService = providers.Singleton(ManagerService, 
                                   guiService=guiService, 
                                   threadService=threadService, 
@@ -36,4 +38,5 @@ class Container(containers.DeclarativeContainer):
                                   eventService=eventService, 
                                   playlistService=playlistService,
                                   loggingService=loggingService,
+                                  audioService=audioService,
                                   )
