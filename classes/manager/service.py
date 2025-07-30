@@ -12,6 +12,7 @@ from classes.log.service import LoggingService
 import PySide6.QtAsyncio as QtAsyncio
 
 import logging
+import os
 
 # main service class
 
@@ -73,6 +74,7 @@ class ManagerService():
             self.playlistService.createPlaylistFromURL(url)
     
     def _actionStopDownload(self):
+        self.logger.info("Stop Download button activated.")
         # stop the current download, if it is actually going
         isDownloading = self.playlistService.getIsDownloading()
         if isDownloading:
@@ -80,6 +82,7 @@ class ManagerService():
             self.playlistService.stopDownloadingPlaylist()
     
     def _actionStartDownload(self):
+        self.logger.info("Start Download button activated.")
         # start the current download, if it actually needs to be downloaded
         currentPlaylist = self.playlistService.getCurrentPlaylist()
         if (currentPlaylist) and (not currentPlaylist.getDownloaded()):
@@ -104,6 +107,24 @@ class ManagerService():
         # pass on event
         self.threadService.onCloseProgram()
     
+    # STARTING 
+    
+    # get the existing playlists based on the files in the output folder.
+    def loadExistingPlaylists(self):
+        outputFolder = self.configService.getOtherOptions()["outputFolder"]
+        if not os.path.isdir(outputFolder): return
+        playlistFolders = os.listdir(outputFolder)
+        for folder in playlistFolders:
+            # if this isn't a folder, continue
+            if not os.path.isdir(os.path.join(outputFolder, folder)): continue
+            destPath = os.path.join(outputFolder, folder, "data.peanut")
+            if os.path.isfile(destPath):
+                try:
+                    self.playlistService.importPlaylistFromFile(destPath)
+                except Exception as e:
+                    self.logger.error(f"An error occured while importing the playlist file at '{destPath}': {e}")
+    
+    # start the program.
     def startProgram(self):
         logging.info("Starting program.")
         
@@ -148,6 +169,9 @@ class ManagerService():
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._programClose)
+        
+        # schedule the loading of the playlists in the main loop
+        self.threadService.scheduleInMainLoop(self.loadExistingPlaylists)
         
         # start the logging service
         self.loggingService.start()

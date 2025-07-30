@@ -9,6 +9,7 @@ import unicodedata
 import logging
 
 from .track import PlaylistTrack
+import traceback
 
 # import yt-dlp's sanitation
 from yt_dlp import utils as yt_dlp_utils
@@ -22,33 +23,32 @@ logger = logging.getLogger(__name__)
 
 class Playlist():
     
-    def __init__(self, playlistURL):
-        # set basic information
-        self._tracks: list[PlaylistTrack] = []
-        self._name: str = "Untitled"
-        self._displayName: str = "Untitled"
-        self._length: int = 0
-        self._playlistURL: str = playlistURL
-        self._downloaded: False
-
-    @classmethod
-    def fromFile(cls, fileLocation:str):
-        instance = cls()
-        if not os.path.isfile(fileLocation):
-            raise FileNotFoundError(f"File with location {fileLocation} not found.")
-        with open(fileLocation) as file:
-            data = json.loads(file.read())
-            try:
-                cls._tracks = [PlaylistTrack(track["video url"], track["name"], track["display name"], track["index"], track["length"], track["downloaded"]) for track in data["tracks"]]
-                cls._name = data["name"]
-                cls._length = data["length"]
-                cls._playlistURL = data["playlistURL"]
-                cls._displayName = data["displayName"]
-                cls._downloaded = data["downloaded"]
-                return instance
-            except KeyError as e:
-                logger.warning("One or more elements is missing from the file. returning nothing")
-                return None
+    # supports both using a playlist url and a file location
+    def __init__(self, playlistURL: str = None, fileLocation: str = None):
+        if not fileLocation:
+            # set basic information
+            self._tracks: list[PlaylistTrack] = []
+            self._name: str = "Untitled"
+            self._displayName: str = "Untitled"
+            self._length: int = 0
+            self._playlistURL: str = playlistURL
+            self._downloaded: False
+        else:
+            if not os.path.isfile(fileLocation):
+                raise FileNotFoundError(f"File with location {fileLocation} not found.")   
+            with open(fileLocation) as file:
+                data = json.loads(file.read())
+                try:
+                    self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
+                                                  displayName=trackData["display name"], index=trackData["index"], 
+                                                  length=trackData["length"], downloaded=trackData["downloaded"]) for trackData in data["tracks"]]
+                    self._name = data["name"]
+                    self._length = data["length"]
+                    self._playlistURL = data["playlistURL"]
+                    self._displayName = data["displayName"]
+                    self._downloaded = data["downloaded"]
+                except KeyError as e:
+                    logger.warning("One or more elements is missing from the file. returning nothing")
             
     def addTrack(self, track:PlaylistTrack):
         self._tracks.append(track)

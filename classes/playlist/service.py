@@ -40,14 +40,23 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
         if stopEvent.is_set(): stopEvent.clear()
         match data["action"]:
             case "INITIALIZE":
-                downloader.initalizePlaylist(playlist)
-                # signal finish
-                responseQueue.put({"action": data["action"], "playlist": playlist})
+                try:
+                    downloader.initalizePlaylist(playlist)
+                    # signal finish
+                    responseQueue.put({"action": "INITIALIZE_DONE", "playlist": playlist})
+                except Exception as e:
+                    logger.error(f"An error occured while initializing the playlist {playlist.getName()}: {e}")
+                    responseQueue.put({"action": "INITIALIZE_DONE", "playlist": None})
             case "DOWNLOAD":
-                # do the download. "data": necessary args for doing all the fun stuff
-                downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent)
-                # signal finish
-                responseQueue.put({"action": data["action"], "playlist": playlist})
+                logger.info(f"Downloading playlist in alternate process.")
+                try:
+                    # do the download. "data": necessary args for doing all the fun stuff
+                    downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, responseQueue=responseQueue)
+                    # signal finish (only give back name of playlist)
+                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), "downloaded": playlist.getDownloaded()})
+                except Exception as e:
+                    logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
+                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": None})
     logger.info("Closing playlist downloader process.")
 
 # playlist service class
@@ -106,20 +115,30 @@ class PlaylistService():
                 # request to close this thread
                 break
             match response["action"]:
-                case "INITIALIZE":
-                    playlist: Playlist = response["playlist"]
+                case "INITIALIZE_DONE": # playlist initialization finished
+                    playlist: Playlist|None = response["playlist"]
+                    if not playlist: continue
                     name = playlist.getName()
                     self.addPlaylist(playlist)
-                    # trigger the event
-                    self.eventService.triggerEvent("PLAYLIST_INITALIZATION_FINISH", playlist)
-                    # save the playlist in the url tracker
-                    self.addPlaylistURLDictEntry(playlist.getPlaylistURL(), name)
                     # save the file
                     self.savePlaylistFile(name)
-                case "DOWNLOAD":
-                    playlist = response["playlist"]
+                case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading
+                    trackIndex = response["trackIndex"]
+                    playlistName = response["playlistName"]
+                    # mark it as downloaded
+                    currentTrack = self.getPlaylist(playlistName).getTrack(trackIndex)
+                    currentTrack.setDownloaded(True)
+                    currentTrack.setLength(response["trackLength"])
+                    # save the file. if this gets to be too cpu intensive, then stop doing this
+                    self.savePlaylistFile(playlistName)
+                case "DOWNLOAD_DONE": # playlist download finished (or stopped)
+                    playlistName = response["playlistName"]
+                    if not playlistName: continue
+                    # get the current playlist object
+                    playlist = self.getPlaylist(playlistName)
                     self.logger.info("Playlist downloader stopped.")
-                    self.updatePlaylist(playlist)
+                    # set the downloaded state
+                    playlist.setDownloaded(response["downloaded"])
                     self.savePlaylistFile(playlist.getName())
         self.logger.info("Closing Playlist Download Listener.")
             
@@ -135,6 +154,11 @@ class PlaylistService():
     def savePlaylistFile(self, name:str):
         outputDirectory = self.configService.getOtherOptions()["outputFolder"]
         self.getPlaylist(name).dumpToFile(os.path.join(outputDirectory, name, "data.peanut"))
+    
+    # loads a playlist object from a given file path.
+    def importPlaylistFromFile(self, filePath:str):
+        playlist = Playlist(fileLocation=filePath)
+        self.addPlaylist(playlist)
     
     # MANAGEMENT
     
@@ -156,15 +180,6 @@ class PlaylistService():
     def setIsDownloading(self, downloading:bool):
         self._isDownloading = downloading
     
-    # updates an existing entry in the playlist list to the new object.
-    def updatePlaylist(self, playlist:Playlist):
-        name = playlist.getName()
-        playlists = self.getPlaylists()
-        if name in playlists:
-            playlists[name] = playlist
-        else:
-            self.logger.warning(f"Failed to update playlist '{playlist.getName()}': playlist not in list")
-    
     def addPlaylist(self, playlist:Playlist):
         name = playlist.getName()
         playlists = self.getPlaylists()
@@ -173,6 +188,10 @@ class PlaylistService():
             self.logger.warning(f"Failed to add playlist '{name}' to list: playlist already exists in list")
             return
         playlists[name] = playlist
+        # add url to the url dict
+        self.addPlaylistURLDictEntry(playlist.getPlaylistURL(), name)
+        # trigger the init finish event
+        self.eventService.triggerEvent("PLAYLIST_INITALIZATION_FINISH", playlist)
         
     def getPlaylists(self):
         return self._playlists
@@ -221,7 +240,7 @@ class PlaylistService():
     
     # creates and initalizes a playlist object. blocks the current thread/coroutine until it finishes. 
     def createPlaylistFromURL(self, url:str):
-        playlist = Playlist(url)
+        playlist = Playlist(playlistURL=url)
         # send into process to ..process
         self.setIsDownloading (False)
         self._downloadQueue.put({"action": "INITIALIZE", "playlist": playlist})

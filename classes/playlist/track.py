@@ -17,7 +17,7 @@ class PlaylistTrack():
         self._displayName = displayName
         self._index = index
         self._length = length
-        self._downloaded = False
+        self._downloaded = downloaded
         
     def getVideoURL(self):
         return self._videoURL
@@ -49,7 +49,7 @@ class PlaylistTrack():
             "video url": self._videoURL,
             "name": self._name,
             "display name": self._displayName,
-            "index:": self._index,
+            "index": self._index,
             "length": self._length,
             "downloaded": self._downloaded,
         }

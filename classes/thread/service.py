@@ -32,6 +32,7 @@ class ThreadService():
         # main loop. manually maintained
         self._mainLoopAlive: bool = False
         self._mainLoopObject: asyncio.BaseEventLoop = None
+        self._scheduledMethods: list[callable] = [] # will be run when the main loop starts
         
         # program closing management
         self._programCloseEvent = self.createAsyncioEvent("Program Close Event")
@@ -176,6 +177,14 @@ class ThreadService():
             self._tasks[name] = task
             return task
     
+    # gets a list of methods to run inside of the main loop once it starts. Should be run before the main loop starts.
+    def scheduleInMainLoop(self, func:callable):
+        self._scheduledMethods.append(func)
+    
+    # get the list of methods to run before the main loop starts.
+    def getMainLoopMethods(self):
+        return self._scheduledMethods
+    
     # PROCESSES
     
     def getProcessEvents(self):
@@ -238,6 +247,10 @@ class ThreadService():
     # function for the main loop
     async def _mainLoop(self):
         self.logger.info("Booting up main loop.")
+        
+        # run the scheduled methods
+        for func in self.getMainLoopMethods():
+            func()
         
         # set variables
         self._mainLoopAlive = True

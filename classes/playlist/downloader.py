@@ -8,6 +8,7 @@ import os
 import subprocess
 import mutagen
 from multiprocessing.synchronize import Event
+from multiprocessing import Queue
 
 # import yt-dlp's sanitation
 from yt_dlp import utils as yt_dlp_utils
@@ -59,18 +60,19 @@ class PlaylistDownloader():
         self._convertAudioFile(filePath, newPath, ffmpegPath)
         # get the length of the audio
         length = self._getAudioFileLength(newPath)
-        track.setLength(length)
         self.logger.info(f"Finished processing {filePath}")
         # mark entry as finished
         track.setDownloaded(True)
+        return length
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
-    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event):
+    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue):
         tracks = playlist.getTracks()
+        name = playlist.getName()
         # replace playlist name with actual name
-        downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", playlist.getName())
+        downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", name)
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
-            for track in tracks:
+            for index, track in enumerate(tracks):
                 if stopEvent.is_set():
                     break
                 if track.getDownloaded():
@@ -78,7 +80,9 @@ class PlaylistDownloader():
                 info = self._downloadVideo(ydl, track.getVideoURL())
                 path = ydl.prepare_filename(info)
                 # convert file to specified format (async) and get the length of the file
-                self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
+                trackLength = self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
+                # signal the completion of the track download
+                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "trackIndex": index, "playlistName": name, "trackLength": trackLength})
             if not stopEvent.is_set():
                 self.logger.info("Done downloading playlist.")
                 playlist.setDownloaded(True)
@@ -87,20 +91,17 @@ class PlaylistDownloader():
     def initalizePlaylist(self, playlist:Playlist):
         playlistURL = playlist.getPlaylistURL()
         with yt_dlp.YoutubeDL(self.downloadOptions) as ydl:
-            try:
-                tracks = []
-                info_dict = ydl.extract_info(playlistURL, download=False)
-                playlist.setName(self._sanitizeFilename(info_dict["title"]))
-                playlist.setDisplayName(info_dict["title"])
-                if 'entries' in info_dict:
-                    index = 0
-                    for track in info_dict['entries']:
-                        if track and 'url' in track:
-                            index += 1
-                            tracks.append(PlaylistTrack(track["url"], self._sanitizeFilename(track["title"]), track["title"], index))
-                playlist.setTracks(tracks)
-                playlist.setLength(len(tracks))
-                playlist.setDownloaded(False)
-                self.logger.info(f"Successfully finished initalizing playlist '{playlist.getDisplayName()}'")
-            except Exception as e:
-                self.logger.error(f"Error extracting playlist info: {e}")
+            tracks = []
+            info_dict = ydl.extract_info(playlistURL, download=False)
+            playlist.setName(self._sanitizeFilename(info_dict["title"]))
+            playlist.setDisplayName(info_dict["title"])
+            if 'entries' in info_dict:
+                index = 0
+                for track in info_dict['entries']:
+                    if track and 'url' in track:
+                        index += 1
+                        tracks.append(PlaylistTrack(track["url"], self._sanitizeFilename(track["title"]), track["title"], index))
+            playlist.setTracks(tracks)
+            playlist.setLength(len(tracks))
+            playlist.setDownloaded(False)
+            self.logger.info(f"Successfully finished initalizing playlist '{playlist.getDisplayName()}'")
