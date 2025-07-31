@@ -671,9 +671,6 @@ import multiprocessing
 
 from classes.hotkey.hotkeyoptions import HotkeyOptions
 
-# disable pygame intro message
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "any value will be acceptable lol"
-
 
 # OPTIONS
 

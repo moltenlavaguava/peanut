@@ -23,7 +23,7 @@ class Window(QMainWindow):
         self.ui.action_previous.clicked.connect(self.buttonPreviousActivated)
         self.ui.action_stopDownload.clicked.connect(self.buttonStopDownloadActivated)
         self.ui.action_startDownload.clicked.connect(self.buttonStartDownloadActivated)
-        self.ui.action_startAudioPlayer.cicked.connect(self.buttonStartAudioPlayerActivated)
+        self.ui.action_startAudioPlayer.clicked.connect(self.buttonStartAudioPlayerActivated)
         
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)

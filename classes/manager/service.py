@@ -90,6 +90,11 @@ class ManagerService():
         if (currentPlaylist) and (not currentPlaylist.getDownloaded()):
             self.playlistService.downloadPlaylist(currentPlaylist.getName())
 
+    def _actionStartAudioPlayer(self):
+        self.logger.info("Recieved action to start the audio player.")
+        # get current playlist and load it into the audio player
+        self.audioService.setPlaylist(self.playlistService.getCurrentPlaylist())
+
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
         self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
@@ -160,7 +165,8 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_STOP_DOWNLOAD", self._actionStopDownload)
         self.eventService.addEvent("ACTION_START_DOWNLOAD")
         self.eventService.subscribeToEvent("ACTION_START_DOWNLOAD", self._actionStartDownload)
-        
+        self.eventService.addEvent("ACTION_START_AUDIO_PLAYER")
+        self.eventService.subscribeToEvent("ACTION_START_AUDIO_PLAYER", self._actionStartAudioPlayer)
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
@@ -184,8 +190,11 @@ class ManagerService():
         # start the hotkey service
         self.hotkeyService.start()
         
-        # start the playlist service.
+        # start the playlist service
         self.playlistService.start()
+        
+        # start the audio service
+        self.audioService.start()
         
         # startup the main loop
         self.threadService.start()
