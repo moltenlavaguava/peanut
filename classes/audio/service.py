@@ -153,6 +153,8 @@ class AudioService():
                 # reset the skip event if it was set
                 if skipEvent.is_set():
                     self.threadService.resetAsyncioEvent("AUDIO_SKIP")
+                    # unpause the audio to prevent weird bugs
+                    self.setPaused(False)
             # if the request to shuffle was made, restart the playlist
             if shuffleEvent.is_set():
                 self.threadService.resetAsyncioEvent("AUDIO_SHUFFLE")
