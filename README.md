@@ -2,7 +2,7 @@
 
 An attempt at a decent audio player that works off youtube
 
-Currently very WIP, gui is in progress
+Currently very WIP, gui is in progress (but works)
 
 ## Installation
 
