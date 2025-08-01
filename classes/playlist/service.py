@@ -243,7 +243,8 @@ class PlaylistService():
         # get the ffmpeg path
         ffmpegPath = os.path.join(os.getcwd(), options["binariesFolder"], options["ffmpegPath"])
         # package the data together
-        data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": ffmpegPath}
+        data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": 
+            ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg")}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)

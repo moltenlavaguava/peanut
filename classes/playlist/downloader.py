@@ -6,6 +6,7 @@ import asyncio
 from pathlib import Path
 import os
 import subprocess
+import requests
 from multiprocessing.synchronize import Event
 from multiprocessing import Queue
 
@@ -59,11 +60,23 @@ class PlaylistDownloader():
         track.setDownloaded(True)
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
-    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue):
+    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str):
         tracks = playlist.getTracks()
         name = playlist.getName()
+        # make the images directory
+        os.makedirs(thumbnailOutput, exist_ok=True)
         # replace playlist name with actual name
         downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", name)
+        if not playlist.getThumbnailDownloaded():
+            # download the playlist image 
+            self.logger.info(f"Downloading playlist '{playlist.getDisplayName()}' thumbnail.")
+            playlistThumbnailResponse = requests.get(playlist.getThumbnailURL(), stream=True)
+            playlistThumbnailResponse.raise_for_status()
+            with open(playlistThumbnailLocation, "wb") as f:
+                for chunk in playlistThumbnailResponse.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            self.logger.info(f"Playlist '{playlist.getDisplayName()}' thumbnail download finished.")
+            playlist.setThumbnailDownloaded(True)
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
             for index, track in enumerate(tracks):
                 if stopEvent.is_set():
@@ -73,8 +86,17 @@ class PlaylistDownloader():
                 self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
                 info = self._downloadVideo(ydl, track.getVideoURL())
                 path = ydl.prepare_filename(info)
-                # convert file to specified format (async) and get the length of the file
+                # convert file to specified format (not getting the track length atm)
                 self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
+                # download the thumbnail file
+                self.logger.info(f"Downloading thumbnail for track '{track.getDisplayName()}'.")
+                thumbnailResponse = requests.get(track.getImageURL(), stream=True)
+                thumbnailResponse.raise_for_status() # throw error if a bad status code happens
+                thumbnailOutputLocation = os.path.join(thumbnailOutput, f"{track.getName()}.jpg")
+                with open(thumbnailOutputLocation, "wb") as f:
+                    for chunk in thumbnailResponse.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                self.logger.info(f"Thumbnail download for track '{track.getDisplayName()}' done.")
                 # signal the completion of the track download
                 responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "absoluteIndex": track.getIndex(), "playlistName": name})
             if not stopEvent.is_set():
@@ -94,8 +116,9 @@ class PlaylistDownloader():
                 for track in info_dict['entries']:
                     if track and 'url' in track:
                         index += 1
-                        tracks.append(PlaylistTrack(track["url"], self._sanitizeFilename(track["title"]), track["title"], index))
+                        tracks.append(PlaylistTrack(videoURL=track["url"], name=self._sanitizeFilename(track["title"]), displayName=track["title"], index=index, imageURL=track["thumbnails"][-1]["url"]))
             playlist.setTracks(tracks)
             playlist.setLength(len(tracks))
             playlist.setDownloaded(False)
+            playlist.setThumbnailURL(info_dict["thumbnails"][-1]["url"])
             self.logger.info(f"Successfully finished initalizing playlist '{playlist.getDisplayName()}'")

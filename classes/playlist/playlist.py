@@ -32,7 +32,9 @@ class Playlist():
             self._displayName: str = "Untitled"
             self._length: int = 0
             self._playlistURL: str = playlistURL
-            self._downloaded: False
+            self._downloaded = False
+            self._thumbnailURL = ""
+            self._thumbnailDownloaded = False
         else:
             if not os.path.isfile(fileLocation):
                 raise FileNotFoundError(f"File with location {fileLocation} not found.")   
@@ -40,12 +42,15 @@ class Playlist():
                 data = json.loads(file.read())
                 try:
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
-                                                  displayName=trackData["display name"], index=trackData["index"], downloaded=trackData["downloaded"]) for trackData in data["tracks"]]
+                                                  displayName=trackData["display name"], index=trackData["index"], 
+                                                  downloaded=trackData["downloaded"], imageURL=trackData["image url"]) for trackData in data["tracks"]]
                     self._name = data["name"]
                     self._length = data["length"]
                     self._playlistURL = data["playlistURL"]
                     self._displayName = data["displayName"]
                     self._downloaded = data["downloaded"]
+                    self._thumbnailURL = data["thumbnailURL"]
+                    self._thumbnailDownloaded = data["thumbnailDownloaded"]
                 except KeyError as e:
                     logger.warning("One or more elements is missing from the file. returning nothing")
             
@@ -87,6 +92,8 @@ class Playlist():
             "playlistURL": self._playlistURL, 
             "length": self._length, 
             "downloaded": self._downloaded,
+            "thumbnailURL": self._thumbnailURL,
+            "thumbnailDownloaded": self._thumbnailDownloaded,
             "tracks": [track.toDict() for track in self._tracks],
             }, indent=4)
         with open(fileLocation, "w") as file:
@@ -110,6 +117,18 @@ class Playlist():
     
     def getPlaylistURL(self):
         return self._playlistURL
+    
+    def getThumbnailURL(self):
+        return self._thumbnailURL
+    
+    def setThumbnailURL(self, url:str):
+        self._thumbnailURL = url
+    
+    def setThumbnailDownloaded(self, downloaded:bool):
+        self._thumbnailDownloaded = downloaded
+        
+    def getThumbnailDownloaded(self):
+        return self._thumbnailDownloaded
     
     def randomize(self):
         random.shuffle(self._tracks)

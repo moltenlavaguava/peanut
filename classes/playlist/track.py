@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 # stores all data for a playlist track
 class PlaylistTrack():
     
-    def __init__(self, videoURL:str, name:str, displayName:str, index:int, length:float = None, downloaded:bool = None):
+    def __init__(self, videoURL:str, name:str, displayName:str, index:int, length:float = None, downloaded:bool = None, imageURL:str = None):
         if not downloaded: downloaded = False
         if not length: length = 0
         # set variables
@@ -18,6 +18,7 @@ class PlaylistTrack():
         self._index = index
         self._length = length
         self._downloaded = downloaded
+        self._imageURL = imageURL
         
     def getVideoURL(self):
         return self._videoURL
@@ -43,6 +44,12 @@ class PlaylistTrack():
     def setDownloaded(self, downloaded:bool):
         self._downloaded = downloaded
     
+    def getImageURL(self):
+        return self._imageURL
+    
+    def setImageURL(self, url:str):
+        self._imageURL = url
+    
     # returns the class in a dictionary form.
     def toDict(self):
         return {
@@ -52,4 +59,5 @@ class PlaylistTrack():
             "index": self._index,
             "length": self._length,
             "downloaded": self._downloaded,
+            "image url": self._imageURL
         }
