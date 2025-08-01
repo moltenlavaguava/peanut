@@ -8,7 +8,7 @@ from classes.event.service import EventService
 from classes.playlist.service import PlaylistService
 from classes.playlist.playlist import Playlist
 from classes.log.service import LoggingService
-from classes.audios.service import AudioService
+from classes.audio.service import AudioService
 
 import PySide6.QtAsyncio as QtAsyncio
 

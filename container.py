@@ -9,7 +9,7 @@ from classes.config.service import ConfigService
 from classes.event.service import EventService
 from classes.playlist.service import PlaylistService
 from classes.log.service import LoggingService
-from classes.audios.service import AudioService
+from classes.audio.service import AudioService
 
 # Notes:
 # Singleton: one shared instance of the dependency
