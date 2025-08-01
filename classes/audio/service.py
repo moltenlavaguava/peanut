@@ -33,6 +33,7 @@ class AudioService():
         self._trackLoaded = False
         self._currentTrack: PlaylistTrack|None = None
         self._tempPause = False # primarly used with the scroll. meant to keep track of if the track was paused before the scroll was done
+        self._closeProgramEvent = False # becomes true once the global PROGRAM_CLOSE triggers.
         
         # options
         self.volume = 1
@@ -55,6 +56,9 @@ class AudioService():
         self._skipAudioEvent = ts.createAsyncioEvent("AUDIO_SKIP")
         self._shuffleAudioEvent = ts.createAsyncioEvent("AUDIO_SHUFFLE")
         self._previousAudioEvent = ts.createAsyncioEvent("AUDIO_PREVIOUS")
+        
+        # subscribing to events
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventProgramClose)
 
     # File Management
     def getFilePathFromName(self, name:str):
@@ -75,6 +79,12 @@ class AudioService():
     
     def invokePreviousEvent(self):
         self._previousAudioEvent.set()
+    
+    def _eventProgramClose(self):
+        self._closeProgramEvent = True
+        # if any audio is playing, stop it
+        if self.getTrackLoaded():
+            self.unloadTrack()
     
     # Internal Management
     
@@ -104,9 +114,9 @@ class AudioService():
                     if self.playlistService.getIsDownloading():
                         # wait for the download
                         self.logger.info(f"Track '{track.getDisplayName()}' isn't downloaded yet. Waiting for finish.")
-                        while not (track.getDownloaded()) and (not shuffleEvent.is_set()):
+                        while not (track.getDownloaded()) and (not (shuffleEvent.is_set() or self._closeProgramEvent)):
                             await asyncio.sleep(0.5)
-                        if shuffleEvent.is_set():
+                        if (shuffleEvent.is_set() or self._closeProgramEvent):
                             # break and restart the playlist
                             break
                         else:
@@ -120,12 +130,14 @@ class AudioService():
                 playback = self.loadTrack(track, pause=firstTrack)
                 firstTrack = False
                 # wait for it to finish
-                while (playback.active) and (not (skipEvent.is_set() or shuffleEvent.is_set() or previousEvent.is_set())):
+                while (playback.active) and (not (skipEvent.is_set() or shuffleEvent.is_set() or previousEvent.is_set() or self._closeProgramEvent)):
                     if not self.getPaused():
                         # set the progress bar progress
                         progress = playback.curr_pos / playback.duration
                         self.eventService.triggerEvent("AUDIO_TRACK_PROGRESS", progress)
                     await asyncio.sleep(0.1)
+                if self._closeProgramEvent:
+                    break # stop the loop without doing anything else
                 self.logger.info(f"Track '{track.getDisplayName()}' finished.")
                 self.unloadTrack()
                 self.eventService.triggerEvent("AUDIO_TRACK_END", track)
@@ -146,7 +158,10 @@ class AudioService():
                 self.threadService.resetAsyncioEvent("AUDIO_SHUFFLE")
             else:
                 break
-        self.logger.info(f"Playlist {playlist.getDisplayName()} done.")
+        if not self._closeProgramEvent:
+            self.logger.info(f"Playlist {playlist.getDisplayName()} done.")
+        else:
+            self.logger.info("Playlist manager closing.")
         self.unloadPlaylist()
                 
     # actual audio work

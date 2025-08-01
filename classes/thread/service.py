@@ -261,6 +261,9 @@ class ThreadService():
         # keep main loop alive
         await self.getAsyncioEvent("Program Close Event").wait()
         
+        # wait for the playlist manager to stop
+        await self.getTask("Playlist Manager")
+        
         self._mainLoopAlive = False
         self.logger.info("Closing main loop.")
     
