@@ -183,6 +183,8 @@ class AudioService():
             self.unloadTrack()
         # load the track
         playback = Playback()
+        # cache the playback
+        self.setCurrentPlayback(playback)
         playback.load_file(path)
         playback.play() # actually make it so it can be played
         if pause: 
@@ -192,8 +194,6 @@ class AudioService():
             self.eventService.triggerEvent("AUDIO_TRACK_START", track)
         # set the track length bc it already does that
         track.setLength(playback.duration)
-        # cache the playback
-        self.setCurrentPlayback(playback)
         # set necessary variables
         self.setTrackLoaded(True)
         return playback
