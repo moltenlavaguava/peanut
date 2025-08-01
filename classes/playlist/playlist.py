@@ -40,8 +40,7 @@ class Playlist():
                 data = json.loads(file.read())
                 try:
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
-                                                  displayName=trackData["display name"], index=trackData["index"], 
-                                                  length=trackData["length"], downloaded=trackData["downloaded"]) for trackData in data["tracks"]]
+                                                  displayName=trackData["display name"], index=trackData["index"], downloaded=trackData["downloaded"]) for trackData in data["tracks"]]
                     self._name = data["name"]
                     self._length = data["length"]
                     self._playlistURL = data["playlistURL"]
@@ -113,4 +112,4 @@ class Playlist():
         return self._playlistURL
     
     def randomize(self):
-        random.shuffle(self._entries)
+        random.shuffle(self._tracks)

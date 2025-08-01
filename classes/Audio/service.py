@@ -8,13 +8,12 @@ from classes.playlist.playlist import Playlist
 from classes.playlist.track import PlaylistTrack
 from classes.thread.service import ThreadService
 
+from just_playback import Playback
+
 import logging
 import pathlib
 import os
-
-# disable pygame intro message
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "shut up pygame no one likes you"
-import pygame
+import asyncio
 
 # manages various audio functions.
 class AudioService():
@@ -33,29 +32,49 @@ class AudioService():
         self._paused = False
         self._trackLoaded = False
         self._currentTrack: PlaylistTrack|None = None
+        self._tempPause = False # primarly used with the scroll. meant to keep track of if the track was paused before the scroll was done
+        
+        # options
+        self.volume = 1
         
         # playlist caching
         self._playlist: Playlist|None = None
+        self._currentPlayback: Playback|None = None
         
         # caching options
         self._currentOutputDirectory: str = ""
     
     # start the service
     def start(self):
-        self._currentOutputDirectory = self.configService.getOtherOptions()["outputFolder"]
-        # init the mixer
-        pygame.mixer.init()
-        
+        self.logger.info("Starting audio service.")
+        options = self.configService.getOtherOptions()
+        self._currentOutputDirectory = options["outputFolder"]
+        self._outputExtension = options["outputConversionExtension"]
+        # register events
+        ts = self.threadService
+        self._skipAudioEvent = ts.createAsyncioEvent("AUDIO_SKIP")
+        self._shuffleAudioEvent = ts.createAsyncioEvent("AUDIO_SHUFFLE")
+        self._previousAudioEvent = ts.createAsyncioEvent("AUDIO_PREVIOUS")
+
     # File Management
     def getFilePathFromName(self, name:str):
         outputDir = self._currentOutputDirectory
-        playlist = self.getPlaylist()
+        playlist = self.getCurrentPlaylist()
         if not playlist:
             self.logger.warning(f"Failed to get file from name '{name}': no playlist is loaded into the AudioService")
             return ""
-        return os.path.join(outputDir, playlist.getName(), name)
+        return os.path.join(outputDir, playlist.getName(), "music", name + self._outputExtension)
     
     # Event Management
+    
+    def invokeSkipEvent(self):
+        self._skipAudioEvent.set()
+        
+    def invokeShuffleEvent(self):
+        self._shuffleAudioEvent.set()
+    
+    def invokePreviousEvent(self):
+        self._previousAudioEvent.set()
     
     # Internal Management
     
@@ -63,47 +82,139 @@ class AudioService():
     async def _managePlaylist(self):
         firstTrack = True # makes the first track not automatically play
         playlist = self.getCurrentPlaylist()
+        length = playlist.getLength()
+        skipEvent = self._skipAudioEvent
+        shuffleEvent = self._shuffleAudioEvent
+        previousEvent = self._previousAudioEvent
         while True:
-            # iterate through each track in the playlist n play it
-            for index, track in enumerate(playlist.getTracks()):
+            # iterate through each track in the playlist n play it (imitating a for loop, but not doing one b/c no previous abilities)
+            index = -1
+            while True:
+                index += 1
+                # if the index is out of bounds, signal the finish of the playlist
+                if index == length:
+                    break
+                # clamp index
+                if index < 0: index = 0
+                track = playlist.getTracks()[index]
+                self.setCurrentTrack(track)
+                # check to see if anything's downloading
+                if not track.getDownloaded():
+                    # track isn't downloaded, either skip it or wait
+                    if self.playlistService.getIsDownloading():
+                        # wait for the download
+                        self.logger.info(f"Track '{track.getDisplayName()}' isn't downloaded yet. Waiting for finish.")
+                        while not (track.getDownloaded()) and (not shuffleEvent.is_set()):
+                            await asyncio.sleep(0.5)
+                        if shuffleEvent.is_set():
+                            # break and restart the playlist
+                            break
+                        else:
+                            self.logger.info(f"Download for track '{track.getDisplayName()}' complete.")
+                    else:
+                        # skip this track
+                        self.logger.info(f"Skipping undownloaded track '{track.getDisplayName()}'.")
+                        continue
+                self.logger.info(f"Now playing: {index + 1}. {track.getDisplayName()}")
                 # loading and playing audio
-                self.loadTrack(track.getName(), pause=firstTrack)
+                playback = self.loadTrack(track, pause=firstTrack)
                 firstTrack = False
                 # wait for it to finish
+                while (playback.active) and (not (skipEvent.is_set() or shuffleEvent.is_set() or previousEvent.is_set())):
+                    if not self.getPaused():
+                        # set the progress bar progress
+                        progress = playback.curr_pos / playback.duration
+                        self.eventService.triggerEvent("AUDIO_TRACK_PROGRESS", progress)
+                    await asyncio.sleep(0.1)
+                self.logger.info(f"Track '{track.getDisplayName()}' finished.")
+                self.unloadTrack()
+                self.eventService.triggerEvent("AUDIO_TRACK_END", track)
+                # if the request to shuffle was made, reset the playlist playing
+                if shuffleEvent.is_set():
+                    self.logger.info(f"Restarting (shuffled) playlist from beginning.")
+                    break
+                # if the previous event was set, go to the previous track
+                if previousEvent.is_set():
+                    self.logger.info(f"Going to previous track.")
+                    self.threadService.resetAsyncioEvent("AUDIO_PREVIOUS")
+                    index -= 2 # go back 2 b/c every new track index increases by one
+                # reset the skip event if it was set
+                if skipEvent.is_set():
+                    self.threadService.resetAsyncioEvent("AUDIO_SKIP")
+            # if the request to shuffle was made, restart the playlist
+            if shuffleEvent.is_set():
+                self.threadService.resetAsyncioEvent("AUDIO_SHUFFLE")
+            else:
+                break
+        self.logger.info(f"Playlist {playlist.getDisplayName()} done.")
+        self.unloadPlaylist()
                 
-            
-    
     # actual audio work
     
+    # sets the absolute position of the audio.
+    def setAudioPosition(self, pos:float):
+        playback = self.getCurrentPlayback()
+        playback.seek(pos)
+    
     def pauseAudio(self):
-        pygame.mixer.music.pause()
+        playback = self.getCurrentPlayback()
+        # to reduce weird audio pops
+        # playback.set_volume(0)
+        playback.pause()
         self.setPaused(True)
+        self.eventService.triggerEvent("AUDIO_TRACK_PAUSE", self._currentTrack)
     
     def resumeAudio(self):
-        pygame.mixer.music.unpause()
+        playback = self.getCurrentPlayback()
+        # to reduce weird audio pops
+        # playback.set_volume(self.volume)
+        playback.resume()
         self.setPaused(False)
+        self.eventService.triggerEvent("AUDIO_TRACK_RESUME", self._currentTrack)
     
-    # loads the specified track into pygame. does "not" play it.
-    def loadTrack(self, name:str, pause:bool=None):
+    # loads the specified track.
+    def loadTrack(self, track:PlaylistTrack, pause:bool=None):
         if not pause: pause = False
+        name = track.getName()
         # get the file path
         path = self.getFilePathFromName(name)
         if self.getTrackLoaded():
             self.logger.warning(f"Track was already loaded when loading track '{name}'. Loading anyway")
             self.unloadTrack()
-        # load the track into pygame
-        pygame.mixer.music.load(name)
-        pygame.mixer.music.play() # actually make it so it can be played
-        if pause: self.pauseAudio()
+        # load the track
+        playback = Playback()
+        playback.load_file(path)
+        playback.play() # actually make it so it can be played
+        if pause: 
+            self.pauseAudio()
+            playback.seek(0)
+        else:
+            self.eventService.triggerEvent("AUDIO_TRACK_START", track)
+        # set the track length bc it already does that
+        track.setLength(playback.duration)
+        # cache the playback
+        self.setCurrentPlayback(playback)
         # set necessary variables
         self.setTrackLoaded(True)
+        return playback
     
     # unloads the current track.
     def unloadTrack(self):
-        if self.getTrackLoaded():
+        if not self.getTrackLoaded():
             self.logger.warning("Attempted to unload track when no track was loaded")
             return
-        pygame.mixer.music.unload()
+        self.getCurrentPlayback().stop()
+        self.setCurrentPlayback(None)
+        self.setTrackLoaded(False)
+        self.setCurrentTrack(None)
+        self.setTempPause(False)
+    
+    # unloads the current playlist.
+    def unloadPlaylist(self):
+        if self.getCurrentPlaylist():
+            self._playlist = None
+        else:
+            self.logger.warning(f"Failed to unload playlist: no playlist was loaded")
     
     # sets up the audio handler for the current playlist.
     def loadPlaylist(self, playlist:Playlist):
@@ -116,6 +227,18 @@ class AudioService():
         self.threadService.createTask(self._managePlaylist(), "Playlist Manager")
     
     # getting / setting
+    
+    def setTempPause(self, pause:bool):
+        self._tempPause = pause
+        
+    def getTempPause(self):
+        return self._tempPause
+    
+    def getCurrentPlayback(self):
+        return self._currentPlayback
+    
+    def setCurrentPlayback(self, playback:Playback|None):
+        self._currentPlayback = playback
     
     def setTrackLoaded(self, loaded:bool):
         self._trackLoaded = loaded

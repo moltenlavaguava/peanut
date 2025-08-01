@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QV
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
 from classes.event.service import EventService
 from classes.playlist.playlist import Playlist
+from classes.playlist.track import PlaylistTrack
 
 from .handler_mainwindow import Window
 
@@ -31,6 +32,14 @@ class GuiService():
     def setCurrentPlaylistBoxText(self, text:str):
         box = self.getMainWindow().ui.info_loadedPlaylist
         box.setText(text)
+    
+    def setCurrentTrackBoxText(self, text:str):
+        box = self.getMainWindow().ui.info_nowPlaying
+        box.setText(text)
+    
+    def setProgressBarProgress(self, progress:float):
+        bar = self.getMainWindow().ui.info_progressBar
+        bar.setProgress(progress)
     
     # INTERIOR MANAGEMENT
     
@@ -94,12 +103,33 @@ class GuiService():
         # add the conection
         self.addConnection(f"Playlist Select Request Connection: {name}", connection)
     
+    def _eventAudioTrackStart(self, track:PlaylistTrack):
+        self.setCurrentTrackBoxText(f"now playing: {track.getDisplayName()}")
+    
+    def _eventAudioTrackPause(self, track:PlaylistTrack):
+        self.setCurrentTrackBoxText(f"now playing: {track.getDisplayName()} (paused)")
+    
+    def _eventAudioTrackResume(self, track:PlaylistTrack):
+        self.setCurrentTrackBoxText(f"now playing: {track.getDisplayName()}")
+    
+    def _eventAudioTrackEnd(self, track:PlaylistTrack):
+        self.setCurrentTrackBoxText(f"now playing:")
+    
+    # runs when the audio progress changes (updated ~2/sec)
+    def _eventAudioTrackProgress(self, progress:float):
+        self.setProgressBarProgress(progress)
+    
     def start(self):
         self.logger.info("Starting gui service.")
         # setup event listeners
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._eventPlaylistInitialized)
         self.eventService.subscribeToEvent("PLAYLIST_CURRENT_CHANGE", self._eventCurrentPlaylistChange)
+        self.eventService.subscribeToEvent("AUDIO_TRACK_START", self._eventAudioTrackStart)
+        self.eventService.subscribeToEvent("AUDIO_TRACK_PAUSE", self._eventAudioTrackPause)
+        self.eventService.subscribeToEvent("AUDIO_TRACK_RESUME", self._eventAudioTrackResume)
+        self.eventService.subscribeToEvent("AUDIO_TRACK_END", self._eventAudioTrackEnd)
+        self.eventService.subscribeToEvent("AUDIO_TRACK_PROGRESS", self._eventAudioTrackProgress)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window

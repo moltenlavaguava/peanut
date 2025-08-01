@@ -139,7 +139,9 @@ class ThreadService():
         if name in events:
             self.logger.warning(f"Failed to create asyncio event with name '{name}': event already exists")
             return
-        events[name] = asyncio.Event()
+        event = asyncio.Event()
+        events[name] = event
+        return event
     
     # returns the current event loop if it exists.
     def getEventLoop(self):
@@ -163,7 +165,7 @@ class ThreadService():
     
     # creates an asyncio task with the given name.
     def createTask(self, asyncFunction:asyncio._CoroutineLike, name:str):
-        if name in self._tasks:
+        if name in self._tasks and not self._tasks[name].done():
             self.logger.warning(f"Task name {name} already exists. returning")
             return
         if self.isThreadMainThread():

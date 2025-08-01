@@ -28,9 +28,6 @@ class Window(QMainWindow):
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)
         self.ui.info_progressBar.manualProgressChangeEnd.connect(self.progressBarChangeEnd)
-        
-        # just utilty for now
-        self.ui.input_playlistURL.setText("https://www.youtube.com/playlist?list=PLefKpFQ8Pvy5aCLAGHD8Zmzsdljos-t2l")
 
         # oooooooo
         
@@ -49,11 +46,11 @@ class Window(QMainWindow):
     
     @Slot()
     def progressBarChangeBegin(self, progress:float):
-        pass
+        self.eventService.triggerEvent("ACTION_START_PROGRESS_SCROLL", progress)
     
     @Slot()
     def progressBarChangeEnd(self, progress:float):
-        pass
+        self.eventService.triggerEvent("ACTION_END_PROGRESS_SCROLL", progress)
         
     @Slot()
     def buttonShuffleActivated(self):

@@ -17,15 +17,16 @@ import time
 import sys
 
 # run in different process. handles downloading logic.
-def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, loggingLevel:logging._Level, responseQueue:multiprocessing.Queue, stopEvent:Event):
+def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, responseQueue:multiprocessing.Queue, stopEvent:Event):
     logger = logging.getLogger(f"{multiprocessing.current_process().name}")
-    logger.setLevel(loggingLevel)
+    # clear any existing queue handlers
+    logger.handlers.clear()
     queueHandler = logging.handlers.QueueHandler(loggingQueue)
     logger.addHandler(queueHandler)
+    logger.propagate = False
     
     # setup downloader
     downloader = PlaylistDownloader(logger)
-    
     logger.info("Playlist downloader process setup.") # yes, it actually works
     
     # listen for a download request
@@ -35,6 +36,8 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
             # request to close this process
             responseQueue.put(None)
             break
+        # send information communicating that the data was recieved
+        responseQueue.put({"action": "DATA_RECIEVED"})
         playlist: Playlist = data["playlist"]
         # reset stop event just in case it was set
         if stopEvent.is_set(): stopEvent.clear()
@@ -48,7 +51,6 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
                     logger.error(f"An error occured while initializing the playlist {playlist.getName()}: {e}")
                     responseQueue.put({"action": "INITIALIZE_DONE", "playlist": None})
             case "DOWNLOAD":
-                logger.info(f"Downloading playlist in alternate process.")
                 try:
                     # do the download. "data": necessary args for doing all the fun stuff
                     downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, responseQueue=responseQueue)
@@ -78,6 +80,7 @@ class PlaylistService():
         
         # keep track of downloading state
         self._isDownloading = False
+        self._downloadQueueEmpty = True
         
         # current playlist
         self._currentPlaylist: Playlist | None = None
@@ -95,8 +98,7 @@ class PlaylistService():
         # create the playlist downloader process
         self._downloaderProcess = self.threadService.createProcess(_downloaderProcessManager, "Playlist Downloader", start=True, 
                                                                    loggingQueue=self.loggingService.getLoggingQueue(), downloadQueue=self._downloadQueue, 
-                                                                   loggingLevel=self.configService.getLoggerOptions()["level"], responseQueue=self._responseQueue,
-                                                                   stopEvent=self._stopEvent)
+                                                                   responseQueue=self._responseQueue, stopEvent=self._stopEvent)
         # create the response listener thread
         self.threadService.createThread(self._playlistDownloadListener, "Playlist Download Listener")
         
@@ -115,6 +117,8 @@ class PlaylistService():
                 # request to close this thread
                 break
             match response["action"]:
+                case "DATA_RECIEVED": # the downloader recieved the request
+                    self.setDownloadQueueEmpty(True)
                 case "INITIALIZE_DONE": # playlist initialization finished
                     playlist: Playlist|None = response["playlist"]
                     if not playlist: continue
@@ -123,12 +127,13 @@ class PlaylistService():
                     # save the file
                     self.savePlaylistFile(name)
                 case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading
-                    trackIndex = response["trackIndex"]
                     playlistName = response["playlistName"]
                     # mark it as downloaded
-                    currentTrack = self.getPlaylist(playlistName).getTrack(trackIndex)
+                    absoluteIndex = response["absoluteIndex"]
+                    playlist = self.getPlaylist(playlistName)
+                    currentTrack = next((t for t in playlist.getTracks() if t.getIndex() == absoluteIndex), None)
+                    self.logger.info(f"Marking track '{currentTrack.getDisplayName()}' as finished in the playlist service.")
                     currentTrack.setDownloaded(True)
-                    currentTrack.setLength(response["trackLength"])
                     # save the file. if this gets to be too cpu intensive, then stop doing this
                     self.savePlaylistFile(playlistName)
                 case "DOWNLOAD_DONE": # playlist download finished (or stopped)
@@ -161,6 +166,12 @@ class PlaylistService():
         self.addPlaylist(playlist)
     
     # MANAGEMENT
+    
+    def setDownloadQueueEmpty(self, empty:bool):
+        self._downloadQueueEmpty = empty
+    
+    def getDownloadQueueEmpty(self):
+        return self._downloadQueueEmpty
     
     # sends a request to close the playlist downloader process.
     def closeDownloaderProcess(self):
@@ -237,6 +248,7 @@ class PlaylistService():
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)
         self._downloadQueue.put({"action": "DOWNLOAD", "playlist": playlist, "data": data})
+        self.setDownloadQueueEmpty(False)
     
     # creates and initalizes a playlist object. blocks the current thread/coroutine until it finishes. 
     def createPlaylistFromURL(self, url:str):
@@ -244,6 +256,7 @@ class PlaylistService():
         # send into process to ..process
         self.setIsDownloading (False)
         self._downloadQueue.put({"action": "INITIALIZE", "playlist": playlist})
+        self.setDownloadQueueEmpty(False)
     
     def getPlaylistURLDict(self):
         return self._playlistURLDict

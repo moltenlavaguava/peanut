@@ -42,12 +42,36 @@ class ManagerService():
     
     def _actionPlay(self):
         self.logger.info("Play action recieved.")
+        # check to see if a track is loaded
+        if self.audioService.getTrackLoaded():
+            paused = self.audioService.getPaused()
+            if paused:
+                self.audioService.resumeAudio()
+            else:
+                self.audioService.pauseAudio()
     
     def _actionSkip(self):
         self.logger.info("Skip action recieved.")
+        # check to see if a track is loaded
+        if self.audioService.getTrackLoaded():
+            # send the event
+            self.audioService.invokeSkipEvent()
     
     def _actionShuffle(self):
-        self.logger.info("Shuffle action recieved.")
+        # if the shuffle event is set or the download queue is full, don't do anything
+        if (self.threadService.getAsyncioEvent("AUDIO_SHUFFLE").is_set() or (not self.playlistService.getDownloadQueueEmpty())): return
+        # make sure a playlist is actually loaded
+        playlist = self.audioService.getCurrentPlaylist()
+        if playlist:
+            self.logger.info("Shuffling playlist.")
+            # shuffle the playlist
+            playlist.randomize()
+            # if the playlist is downloading, restart the downloader
+            if self.playlistService.getIsDownloading():
+                self.playlistService.stopDownloadingPlaylist()
+                self.playlistService.downloadPlaylist(playlist.getName())
+            # send the shuffle request
+            self.audioService.invokeShuffleEvent()
     
     def _actionLoop(self):
         self.logger.info("Loop action recieved.")
@@ -63,6 +87,8 @@ class ManagerService():
     
     def _actionPrevious(self):
         self.logger.info("Previous action recieved.")
+        if self.audioService.getTrackLoaded():
+            self.audioService.invokePreviousEvent()
     
     def _actionLoadFromURL(self, url:str):
         self.logger.info(f"Load from URL action recieved. Text: {url}")
@@ -93,7 +119,26 @@ class ManagerService():
     def _actionStartAudioPlayer(self):
         self.logger.info("Recieved action to start the audio player.")
         # get current playlist and load it into the audio player
-        self.audioService.setPlaylist(self.playlistService.getCurrentPlaylist())
+        if (not self.audioService.getCurrentPlaylist()) and (self.playlistService.getCurrentPlaylist()):
+            self.audioService.loadPlaylist(self.playlistService.getCurrentPlaylist())
+
+    def _actionStartProgressScroll(self, progress:float):
+        if self.audioService.getTrackLoaded():
+            # pause the audio, but cache if it was already paused.
+            tempPause = not self.audioService.getPaused()
+            self.audioService.setTempPause(tempPause)
+            self.audioService.pauseAudio()
+    
+    def _actionEndProgressScroll(self, progress:float):
+        if self.audioService.getTrackLoaded():
+            # get the length of the current track and do the math
+            length = self.audioService.getCurrentTrack().getLength()
+            newLength = length * progress
+            self.audioService.setAudioPosition(newLength)
+            # if the audio was temp paused, unpause it
+            if self.audioService.getTempPause():
+                self.audioService.resumeAudio()
+                self.audioService.setTempPause(False)
 
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
@@ -138,8 +183,6 @@ class ManagerService():
         # load the config
         self.configService.setHotkeyOptions(self.options["hotkeys"])
         del self.options["hotkeys"]
-        self.configService.setLoggerOptions(self.options["logger"])
-        del self.options["logger"]
         self.configService.setOtherOptions(self.options)
         
         # register events
@@ -167,12 +210,23 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_START_DOWNLOAD", self._actionStartDownload)
         self.eventService.addEvent("ACTION_START_AUDIO_PLAYER")
         self.eventService.subscribeToEvent("ACTION_START_AUDIO_PLAYER", self._actionStartAudioPlayer)
+        self.eventService.addEvent("ACTION_START_PROGRESS_SCROLL")
+        self.eventService.subscribeToEvent("ACTION_START_PROGRESS_SCROLL", self._actionStartProgressScroll)
+        self.eventService.addEvent("ACTION_END_PROGRESS_SCROLL")
+        self.eventService.subscribeToEvent("ACTION_END_PROGRESS_SCROLL", self._actionEndProgressScroll)
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
         self.eventService.addEvent("PLAYLIST_SELECT_REQUEST")
         self.eventService.subscribeToEvent("PLAYLIST_SELECT_REQUEST", self._playlistSelectRequest)
         self.eventService.addEvent("PLAYLIST_CURRENT_CHANGE")
+        
+        # audio events
+        self.eventService.addEvent("AUDIO_TRACK_START")
+        self.eventService.addEvent("AUDIO_TRACK_PAUSE")
+        self.eventService.addEvent("AUDIO_TRACK_RESUME")
+        self.eventService.addEvent("AUDIO_TRACK_END")
+        self.eventService.addEvent("AUDIO_TRACK_PROGRESS")
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")

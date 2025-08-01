@@ -29,7 +29,7 @@ class Container(containers.DeclarativeContainer):
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
     
     guiService = providers.Singleton(GuiService, mainWindow=mainWindow, eventService=eventService)
-    audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService, configService=configService)
+    audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService, configService=configService, threadService=threadService)
     managerService = providers.Singleton(ManagerService, 
                                   guiService=guiService, 
                                   threadService=threadService, 

@@ -40,7 +40,7 @@ class LoggingService():
         # get necessary tools
         queue = self._loggingQueue
         root = logging.getLogger()
-        root.setLevel(self.configService.getLoggerOptions()["level"])
+        root.setLevel(logging.getLogger().getEffectiveLevel())
         
         while True:
             try:

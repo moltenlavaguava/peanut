@@ -6,7 +6,6 @@ import asyncio
 from pathlib import Path
 import os
 import subprocess
-import mutagen
 from multiprocessing.synchronize import Event
 from multiprocessing import Queue
 
@@ -48,9 +47,6 @@ class PlaylistDownloader():
         # delete old file
         os.remove(filePath)
     
-    def _getAudioFileLength(self, path):
-        return mutagen.File(path).info.length
-    
     # converts an audio file to the desired extension and gets the length of the file.
     def _processAudioFile(self, filePath:str, extension:str, track:PlaylistTrack, ffmpegPath:str):
         self.logger.info(f"Processing {filePath}...")
@@ -58,12 +54,9 @@ class PlaylistDownloader():
         newPath = str(Path(filePath).with_suffix(extension))
         # convert
         self._convertAudioFile(filePath, newPath, ffmpegPath)
-        # get the length of the audio
-        length = self._getAudioFileLength(newPath)
         self.logger.info(f"Finished processing {filePath}")
         # mark entry as finished
         track.setDownloaded(True)
-        return length
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
     def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue):
@@ -77,12 +70,13 @@ class PlaylistDownloader():
                     break
                 if track.getDownloaded():
                     continue
+                self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
                 info = self._downloadVideo(ydl, track.getVideoURL())
                 path = ydl.prepare_filename(info)
                 # convert file to specified format (async) and get the length of the file
-                trackLength = self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
+                self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
                 # signal the completion of the track download
-                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "trackIndex": index, "playlistName": name, "trackLength": trackLength})
+                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "absoluteIndex": track.getIndex(), "playlistName": name})
             if not stopEvent.is_set():
                 self.logger.info("Done downloading playlist.")
                 playlist.setDownloaded(True)
