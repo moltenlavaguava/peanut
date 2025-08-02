@@ -159,7 +159,7 @@ class PlaylistDownloader():
                     if not albumName in playlist.getAlbums():
                         albumImageURL = info["thumbnails"][-1]["url"]
                         self.logger.debug(f"Downloading album image for track '{albumDisplayName}' via auto-generated video.")
-                        imgPath = os.path.join(thumbnailOutput, f"{albumName}.jpg")
+                        imgPath = os.path.join(thumbnailOutput, f"album_{albumName}.jpg")
                         self._downloadThumbnail(albumImageURL, imgPath)
                         self._squareImage(imgPath)
                         # square the image
