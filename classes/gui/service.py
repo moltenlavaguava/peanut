@@ -1,24 +1,28 @@
 from __future__ import annotations
 from PySide6.QtCore import Qt, Slot, QMetaObject
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
 from classes.event.service import EventService
 from classes.playlist.playlist import Playlist
 from classes.playlist.track import PlaylistTrack
+from classes.config.service import ConfigService
 
 from .handler_mainwindow import Window
 
+import os
 import logging
 
 class GuiService():
     
-    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService):
+    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, configService:ConfigService):
         
         self.logger = logging.getLogger(__name__)
         
         self._mainWindow = mainWindow
         self.eventService = eventService
+        self.configService = configService
         
         # connect() connections
         self._connections: dict[str, QMetaObject.Connection] = {}
@@ -134,6 +138,8 @@ class GuiService():
         self._QApplication = QApplication([])
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService)
+        # change the main window icon
+        self._QApplication.setWindowIcon(QIcon(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "windowicon.png")))
         # get the main playlist display panel
         self._playlistListBox = self._window.ui.info_playlistSelector
         self._window.show()

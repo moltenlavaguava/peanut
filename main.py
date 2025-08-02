@@ -14,6 +14,7 @@ from classes.hotkey.hotkeyoptions import HotkeyOptions
 options = {
     "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6",
     "outputFolder": os.path.join(os.getcwd(), "output"),
+    "resourceFolder": os.path.join(os.getcwd(), "resources"),
     "outputConversionExtension": ".ogg",
     "binariesFolder": "binaries",
     "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
