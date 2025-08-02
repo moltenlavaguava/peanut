@@ -138,6 +138,10 @@ class GuiService():
         self._QApplication = QApplication([])
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService)
+        
+        # customizing buttons
+        self._window.ui.action_play.setPaddingPercentage(0, 0, 0, 0.07142857142) # to center the play button
+        
         # get the main playlist display panel
         self._playlistListBox = self._window.ui.info_playlistSelector
         self._window.show()

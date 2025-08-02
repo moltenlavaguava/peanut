@@ -14,8 +14,8 @@
    <string>peanut</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../../resources/resources.qrc">
-    <normaloff>:/window/windowicon.png</normaloff>:/window/windowicon.png</iconset>
+   <iconset resource="../../resources.qrc">
+    <normaloff>:/icon/resources/windowicon.png</normaloff>:/icon/resources/windowicon.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">/* unsorted */
@@ -42,13 +42,8 @@ ScrollProgressBar #progressFrame {
 
 /* curve buttons */
 
-#action_play {
-	border-radius: 30px;
-	background-color: blue;
-}
-
 CircleImageButton {
-	background-color: red;
+	background-color: rgb(85, 170, 255);
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -264,18 +259,18 @@ CircleImageButton {
      <string>start audio player for current playlist</string>
     </property>
    </widget>
-   <widget class="CircleImageButton" name="CircleImageButton">
+   <widget class="CircleImageButton" name="action_play">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>70</y>
+      <x>150</x>
+      <y>100</y>
       <width>40</width>
       <height>40</height>
      </rect>
     </property>
     <property name="icon">
-     <iconset resource="../../resources/resources.qrc">
-      <normaloff>:/buttons/organize.png</normaloff>:/buttons/organize.png</iconset>
+     <iconset resource="../../resources.qrc">
+      <normaloff>:/buttons/resources/play.png</normaloff>:/buttons/resources/play.png</iconset>
     </property>
    </widget>
   </widget>
@@ -298,7 +293,7 @@ CircleImageButton {
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../resources/resources.qrc"/>
+  <include location="../../resources.qrc"/>
  </resources>
  <connections/>
 </ui>

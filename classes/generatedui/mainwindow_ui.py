@@ -30,7 +30,7 @@ class Ui_MainWindow(object):
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(800, 653)
         icon = QIcon()
-        icon.addFile(u":/window/windowicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon.addFile(u":/icon/resources/windowicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         MainWindow.setWindowIcon(icon)
         MainWindow.setStyleSheet(u"/* unsorted */\n"
 "\n"
@@ -56,13 +56,8 @@ class Ui_MainWindow(object):
 "\n"
 "/* curve buttons */\n"
 "\n"
-"#action_play {\n"
-"	border-radius: 30px;\n"
-"	background-color: blue;\n"
-"}\n"
-"\n"
 "CircleImageButton {\n"
-"	background-color: red;\n"
+"	background-color: rgb(85, 170, 255);\n"
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -123,12 +118,12 @@ class Ui_MainWindow(object):
         self.action_startAudioPlayer = QPushButton(self.centralwidget)
         self.action_startAudioPlayer.setObjectName(u"action_startAudioPlayer")
         self.action_startAudioPlayer.setGeometry(QRect(230, 500, 201, 24))
-        self.CircleImageButton = CircleImageButton(self.centralwidget)
-        self.CircleImageButton.setObjectName(u"CircleImageButton")
-        self.CircleImageButton.setGeometry(QRect(60, 70, 40, 40))
+        self.action_play = CircleImageButton(self.centralwidget)
+        self.action_play.setObjectName(u"action_play")
+        self.action_play.setGeometry(QRect(150, 100, 40, 40))
         icon1 = QIcon()
-        icon1.addFile(u":/buttons/organize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.CircleImageButton.setIcon(icon1)
+        icon1.addFile(u":/buttons/resources/play.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_play.setIcon(icon1)
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)

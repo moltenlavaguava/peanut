@@ -1,0 +1,16 @@
+<RCC>
+  <qresource prefix="buttons">
+    <file>resources/organize.png</file>
+    <file>resources/pause.png</file>
+    <file>resources/play.png</file>
+    <file>resources/reverse.png</file>
+    <file>resources/shuffle.png</file>
+    <file>resources/skip.png</file>
+  </qresource>
+  <qresource prefix="icon">
+    <file>resources/windowicon.png</file>
+  </qresource>
+  <qresource prefix="unsorted">
+    <file>resources/placeholder.jpg</file>
+  </qresource>
+</RCC>
