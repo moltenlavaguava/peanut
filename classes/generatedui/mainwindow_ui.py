@@ -116,7 +116,7 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"program", None))
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"peanut", None))
         self.action_play.setText(QCoreApplication.translate("MainWindow", u"play", None))
         self.action_skip.setText(QCoreApplication.translate("MainWindow", u"skip", None))
         self.action_shuffle.setText(QCoreApplication.translate("MainWindow", u"shuffle", None))

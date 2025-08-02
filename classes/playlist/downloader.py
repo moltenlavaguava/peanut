@@ -89,7 +89,7 @@ class PlaylistDownloader():
             # if this wasn't the artist's own upload, return
             if not mainResult["videoType"] == "MUSIC_VIDEO_TYPE_ATV": self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no videoType entry present"); return None, None, None
             # if the track length is more than <maxVariation> seconds different than the yt video, return
-            if abs(mainResult["duration_seconds"] - trackLength) > maxVariation: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no duration_seconds entry present"); return None, None, None
+            if abs(mainResult["duration_seconds"] - trackLength) > maxVariation: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': track lengths do not match up"); return None, None, None
             albumName = self._sanitizeFilename(mainResult["album"]["name"])
             albumDisplayName = mainResult["album"]["name"]
             albumID = mainResult["album"]["id"]

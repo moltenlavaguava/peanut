@@ -246,7 +246,7 @@ class PlaylistService():
         # package the data together
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": 
             ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
-            "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), "useYoutubeMusicAlbums": True, "maxVariation": 3}
+            "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), "useYoutubeMusicAlbums": True, "maxVariation": 45}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)
