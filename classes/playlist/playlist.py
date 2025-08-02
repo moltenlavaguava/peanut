@@ -35,6 +35,7 @@ class Playlist():
             self._downloaded = False
             self._thumbnailURL = ""
             self._thumbnailDownloaded = False
+            self._albums: dict[str, list[str]] = {} 
         else:
             if not os.path.isfile(fileLocation):
                 raise FileNotFoundError(f"File with location {fileLocation} not found.")   
@@ -43,7 +44,9 @@ class Playlist():
                 try:
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
                                                   displayName=trackData["display name"], index=trackData["index"], 
-                                                  downloaded=trackData["downloaded"], imageURL=trackData["image url"]) for trackData in data["tracks"]]
+                                                  downloaded=trackData["downloaded"], albumName=trackData["album name"],
+                                                  albumDisplayName=trackData["album display name"], 
+                                                  artistName=trackData["artist name"]) for trackData in data["tracks"]]
                     self._name = data["name"]
                     self._length = data["length"]
                     self._playlistURL = data["playlistURL"]
@@ -51,6 +54,7 @@ class Playlist():
                     self._downloaded = data["downloaded"]
                     self._thumbnailURL = data["thumbnailURL"]
                     self._thumbnailDownloaded = data["thumbnailDownloaded"]
+                    self._albums = data["albums"]
                 except KeyError as e:
                     logger.warning("One or more elements is missing from the file. returning nothing")
             
@@ -94,6 +98,7 @@ class Playlist():
             "downloaded": self._downloaded,
             "thumbnailURL": self._thumbnailURL,
             "thumbnailDownloaded": self._thumbnailDownloaded,
+            "albums": self._albums,
             "tracks": [track.toDict() for track in self._tracks],
             }, indent=4)
         with open(fileLocation, "w") as file:
@@ -132,3 +137,23 @@ class Playlist():
     
     def randomize(self):
         random.shuffle(self._tracks)
+    
+    # adds an album entry to the playlist. mostly for download caching.
+    def addAlbumEntry(self, name:str, entry):
+        self._albums[name] = entry
+        
+    def getAlbums(self):
+        return self._albums
+    
+    def setAlbums(self, albums):
+        self._albums = albums
+    
+    # searches through the track list, removing the track that was previously in the new track's place (effectively updating it)
+    def updateTrack(self, track:PlaylistTrack):
+        index = track.getIndex()
+        tracks = self.getTracks()
+        for i, t in enumerate(tracks):
+            if t.getIndex() == index:
+                # this is the track, replace it
+                tracks[i] = track
+                break

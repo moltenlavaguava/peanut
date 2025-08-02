@@ -209,7 +209,7 @@ class AudioService():
             playback.seek(0)
         else:
             self.eventService.triggerEvent("AUDIO_TRACK_START", track)
-        # set the track length bc it already does that
+        # set the track length bc it already does that (and is more accurate)
         track.setLength(playback.duration)
         # set necessary variables
         self.setTrackLoaded(True)

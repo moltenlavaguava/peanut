@@ -55,7 +55,7 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
                     # do the download. "data": necessary args for doing all the fun stuff
                     downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, responseQueue=responseQueue)
                     # signal finish (only give back name of playlist)
-                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), "downloaded": playlist.getDownloaded()})
+                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums()})
                 except Exception as e:
                     logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": None})
@@ -129,11 +129,10 @@ class PlaylistService():
                 case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading
                     playlistName = response["playlistName"]
                     # mark it as downloaded
-                    absoluteIndex = response["absoluteIndex"]
+                    track = response["track"]
                     playlist = self.getPlaylist(playlistName)
-                    currentTrack = next((t for t in playlist.getTracks() if t.getIndex() == absoluteIndex), None)
-                    self.logger.info(f"Marking track '{currentTrack.getDisplayName()}' as finished in the playlist service.")
-                    currentTrack.setDownloaded(True)
+                    playlist.updateTrack(track)
+                    self.logger.info(f"Marking track '{track.getDisplayName()}' as finished in the playlist service.")
                     # save the file. if this gets to be too cpu intensive, then stop doing this
                     self.savePlaylistFile(playlistName)
                 case "DOWNLOAD_DONE": # playlist download finished (or stopped)
@@ -144,6 +143,8 @@ class PlaylistService():
                     self.logger.info("Playlist downloader stopped.")
                     # set the downloaded state
                     playlist.setDownloaded(response["downloaded"])
+                    # set albums
+                    playlist.setAlbums(response["albums"])
                     self.savePlaylistFile(playlist.getName())
         self.logger.info("Closing Playlist Download Listener.")
             
@@ -244,7 +245,8 @@ class PlaylistService():
         ffmpegPath = os.path.join(os.getcwd(), options["binariesFolder"], options["ffmpegPath"])
         # package the data together
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": 
-            ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg")}
+            ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
+            "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), "useYoutubeMusicAlbums": True, "maxVariation": 3}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)

@@ -8,9 +8,12 @@ logger = logging.getLogger(__name__)
 # stores all data for a playlist track
 class PlaylistTrack():
     
-    def __init__(self, videoURL:str, name:str, displayName:str, index:int, length:float = None, downloaded:bool = None, imageURL:str = None):
+    def __init__(self, videoURL:str, name:str, displayName:str, index:int, length:float = None, downloaded:bool = None, albumName:str = None, albumDisplayName:str = None, artistName:str = None):
         if not downloaded: downloaded = False
         if not length: length = 0
+        if not albumName: albumName = ""
+        if not albumDisplayName: albumDisplayName = ""
+        if not artistName: artistName = ""
         # set variables
         self._videoURL = videoURL
         self._name = name
@@ -18,7 +21,9 @@ class PlaylistTrack():
         self._index = index
         self._length = length
         self._downloaded = downloaded
-        self._imageURL = imageURL
+        self._albumName = albumName
+        self._albumDisplayName = albumDisplayName
+        self._artistName = artistName
         
     def getVideoURL(self):
         return self._videoURL
@@ -43,13 +48,25 @@ class PlaylistTrack():
     
     def setDownloaded(self, downloaded:bool):
         self._downloaded = downloaded
+
+    def setAlbumName(self, name:str):
+        self._albumName = name
+        
+    def getAlbumName(self):
+        return self._albumName
     
-    def getImageURL(self):
-        return self._imageURL
+    def setAlbumDisplayName(self, name:str):
+        self._albumDisplayName = name
+        
+    def getAlbumDisplayName(self):
+        return self._albumDisplayName
     
-    def setImageURL(self, url:str):
-        self._imageURL = url
+    def setArtistName(self, name:str):
+        self._artistName = name
     
+    def getArtistName(self):
+        return self._artistName
+
     # returns the class in a dictionary form.
     def toDict(self):
         return {
@@ -59,5 +76,7 @@ class PlaylistTrack():
             "index": self._index,
             "length": self._length,
             "downloaded": self._downloaded,
-            "image url": self._imageURL
+            "album name": self._albumName,
+            "album display name": self._albumDisplayName,
+            "artist name": self._artistName,
         }

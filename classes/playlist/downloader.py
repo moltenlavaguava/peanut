@@ -9,6 +9,8 @@ import subprocess
 import requests
 from multiprocessing.synchronize import Event
 from multiprocessing import Queue
+from ytmusicapi import YTMusic
+from PIL import Image
 
 # import yt-dlp's sanitation
 from yt_dlp import utils as yt_dlp_utils
@@ -29,11 +31,39 @@ class PlaylistDownloader():
         }
        # get logger
        self.logger = logger
-       
+       self.ytmusic = YTMusic()
+    
+    # utility
     
     # sanitize names using yt-dlp's method
     def _sanitizeFilename(self, txt:str):
         return yt_dlp_utils._utils.sanitize_filename(txt, restricted=True)
+    
+    # file handling
+    
+    # squares an image. used to turn thumbnails into album covers.
+    def _squareImage(self, filePath:str):
+        img = Image.open(filePath)
+        width, height = img.size
+        minDim = min(width, height)
+        
+        left = (width - minDim) / 2
+        top = (height - minDim) / 2
+        right = (width + minDim) / 2
+        bottom = (height + minDim) / 2
+
+        box = (left, top, right, bottom)
+        cropimg = img.crop(box)
+        cropimg.save(filePath)
+    
+    # downloading
+    
+    def _downloadThumbnail(self, url:str, outputLocation:str):
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        with open(outputLocation, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
     
     # download a given video.
     def _downloadVideo(self, ydl: yt_dlp.YoutubeDL, url:str):
@@ -48,6 +78,39 @@ class PlaylistDownloader():
         # delete old file
         os.remove(filePath)
     
+    # searches yt music for album data for the given track.
+    def _getAlbumData(self, searchTerm:str, trackLength:float, maxVariation:float, playlist:Playlist, imageDownloadFolder:str):
+        results = self.ytmusic.search(searchTerm, "songs", None, limit=1, ignore_spelling=True)
+    
+        if results:
+            mainResult = results[0]
+            # if no album, return
+            if not mainResult["album"]: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': No album entry present"); return None, None, None
+            # if this wasn't the artist's own upload, return
+            if not mainResult["videoType"] == "MUSIC_VIDEO_TYPE_ATV": self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no videoType entry present"); return None, None, None
+            # if the track length is more than <maxVariation> seconds different than the yt video, return
+            if abs(mainResult["duration_seconds"] - trackLength) > maxVariation: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no duration_seconds entry present"); return None, None, None
+            albumName = self._sanitizeFilename(mainResult["album"]["name"])
+            albumDisplayName = mainResult["album"]["name"]
+            albumID = mainResult["album"]["id"]
+            artistName = None # will be assigned shortly
+            # check to see if the album art is already downloaded
+            albums = playlist.getAlbums()
+            if not albumName in albums:
+                albumData = self.ytmusic.get_album(albumID)
+                imageURL = albumData["thumbnails"][-1]["url"]
+                # download go brrrrrrrrrr
+                self.logger.debug(f"Downloading album image for album '{albumDisplayName}' via youtube music search.")
+                self._downloadThumbnail(imageURL, os.path.join(imageDownloadFolder, f"album_{albumName}.jpg"))
+                artistName = ", ".join(d["name"] for d in albumData["artists"])
+                # save the album to prevent redownloading
+                playlist.addAlbumEntry(albumName, {"artist": artistName, "display name:": albumDisplayName})
+            else:
+                artistName = albums[albumName]["artist"]
+            return albumName, albumDisplayName, artistName
+        else:
+            self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no results found with search term"); return None, None, None
+    
     # converts an audio file to the desired extension and gets the length of the file.
     def _processAudioFile(self, filePath:str, extension:str, track:PlaylistTrack, ffmpegPath:str):
         self.logger.info(f"Processing {filePath}...")
@@ -60,7 +123,7 @@ class PlaylistDownloader():
         track.setDownloaded(True)
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
-    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str):
+    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str, useYoutubeMusicAlbums:bool, maxVariation:int):
         tracks = playlist.getTracks()
         name = playlist.getName()
         # make the images directory
@@ -68,14 +131,7 @@ class PlaylistDownloader():
         # replace playlist name with actual name
         downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", name)
         if not playlist.getThumbnailDownloaded():
-            # download the playlist image 
-            self.logger.info(f"Downloading playlist '{playlist.getDisplayName()}' thumbnail.")
-            playlistThumbnailResponse = requests.get(playlist.getThumbnailURL(), stream=True)
-            playlistThumbnailResponse.raise_for_status()
-            with open(playlistThumbnailLocation, "wb") as f:
-                for chunk in playlistThumbnailResponse.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            self.logger.info(f"Playlist '{playlist.getDisplayName()}' thumbnail download finished.")
+            self._downloadThumbnail(playlist.getThumbnailURL(), playlistThumbnailLocation)
             playlist.setThumbnailDownloaded(True)
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
             for index, track in enumerate(tracks):
@@ -83,22 +139,46 @@ class PlaylistDownloader():
                     break
                 if track.getDownloaded():
                     continue
+                
+                # download + processing
                 self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
                 info = self._downloadVideo(ydl, track.getVideoURL())
                 path = ydl.prepare_filename(info)
+                with open("output.txt", "w", encoding="utf-8") as f:
+                    f.write(str(info))
                 # convert file to specified format (not getting the track length atm)
                 self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
-                # download the thumbnail file
-                self.logger.info(f"Downloading thumbnail for track '{track.getDisplayName()}'.")
-                thumbnailResponse = requests.get(track.getImageURL(), stream=True)
-                thumbnailResponse.raise_for_status() # throw error if a bad status code happens
-                thumbnailOutputLocation = os.path.join(thumbnailOutput, f"{track.getName()}.jpg")
-                with open(thumbnailOutputLocation, "wb") as f:
-                    for chunk in thumbnailResponse.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                self.logger.info(f"Thumbnail download for track '{track.getDisplayName()}' done.")
+                
+                # attempt to get music data
+                autogenVideo = True # whether or not the album data was handled via auto-generated video
+                try:
+                    albumName = self._sanitizeFilename(info["album"])
+                    albumDisplayName = info["album"]
+                    artistName = ", ".join(info["artists"])
+                    # check to see if the album was already downloaded
+                    if not albumName in playlist.getAlbums():
+                        albumImageURL = info["thumbnails"][-1]["url"]
+                        self.logger.debug(f"Downloading album image for track '{albumDisplayName}' via auto-generated video.")
+                        imgPath = os.path.join(thumbnailOutput, f"{albumName}.jpg")
+                        self._downloadThumbnail(albumImageURL, imgPath)
+                        self._squareImage(imgPath)
+                        # square the image
+                    track.setAlbumName(albumName)
+                    track.setAlbumDisplayName(albumDisplayName)
+                    track.setArtistName(artistName)
+                except KeyError:
+                    autogenVideo = False
+                
+                if not autogenVideo:
+                    # try to get an album cover from youtube music
+                    albumName, albumDisplayName, artistName = self._getAlbumData(track.getDisplayName(), track.getLength(), maxVariation, playlist, thumbnailOutput)
+                    if albumName:
+                        track.setAlbumName(albumName)
+                        track.setAlbumDisplayName(albumDisplayName)
+                        track.setArtistName(artistName)
+                
                 # signal the completion of the track download
-                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "absoluteIndex": track.getIndex(), "playlistName": name})
+                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name})
             if not stopEvent.is_set():
                 self.logger.info("Done downloading playlist.")
                 playlist.setDownloaded(True)
@@ -116,7 +196,7 @@ class PlaylistDownloader():
                 for track in info_dict['entries']:
                     if track and 'url' in track:
                         index += 1
-                        tracks.append(PlaylistTrack(videoURL=track["url"], name=self._sanitizeFilename(track["title"]), displayName=track["title"], index=index, imageURL=track["thumbnails"][-1]["url"]))
+                        tracks.append(PlaylistTrack(videoURL=track["url"], name=self._sanitizeFilename(track["title"]), displayName=track["title"], index=index, length=track["duration"]))
             playlist.setTracks(tracks)
             playlist.setLength(len(tracks))
             playlist.setDownloaded(False)
