@@ -19,15 +19,22 @@ from PySide6.QtWidgets import (QApplication, QDial, QLabel, QLineEdit,
     QMainWindow, QPushButton, QScrollArea, QSizePolicy,
     QVBoxLayout, QWidget)
 
+from customwidgets.circleimagebutton.circleimagebutton import CircleImageButton
 from customwidgets.scrollprogressbar.progresscirclebar import ProgressCircleBar
 from customwidgets.scrollprogressbar.scrollprogressbar import ScrollProgressBar
+import resources_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(691, 565)
-        MainWindow.setStyleSheet(u"ScrollProgressBar #backgroundFrame {\n"
+        MainWindow.resize(800, 653)
+        icon = QIcon()
+        icon.addFile(u":/window/windowicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        MainWindow.setWindowIcon(icon)
+        MainWindow.setStyleSheet(u"/* unsorted */\n"
+"\n"
+"ScrollProgressBar #backgroundFrame {\n"
 "	background-color: gray;\n"
 "}\n"
 "\n"
@@ -45,12 +52,20 @@ class Ui_MainWindow(object):
 "\n"
 "#info_playlistSelector {\n"
 "	border: 1px solid white;\n"
+"}\n"
+"\n"
+"/* curve buttons */\n"
+"\n"
+"#action_play {\n"
+"	border-radius: 30px;\n"
+"	background-color: blue;\n"
+"}\n"
+"\n"
+"CircleImageButton {\n"
+"	background-color: red;\n"
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.action_play = QPushButton(self.centralwidget)
-        self.action_play.setObjectName(u"action_play")
-        self.action_play.setGeometry(QRect(70, 150, 75, 24))
         self.action_skip = QPushButton(self.centralwidget)
         self.action_skip.setObjectName(u"action_skip")
         self.action_skip.setGeometry(QRect(40, 230, 75, 24))
@@ -108,6 +123,12 @@ class Ui_MainWindow(object):
         self.action_startAudioPlayer = QPushButton(self.centralwidget)
         self.action_startAudioPlayer.setObjectName(u"action_startAudioPlayer")
         self.action_startAudioPlayer.setGeometry(QRect(230, 500, 201, 24))
+        self.CircleImageButton = CircleImageButton(self.centralwidget)
+        self.CircleImageButton.setObjectName(u"CircleImageButton")
+        self.CircleImageButton.setGeometry(QRect(60, 70, 40, 40))
+        icon1 = QIcon()
+        icon1.addFile(u":/buttons/organize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.CircleImageButton.setIcon(icon1)
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -117,7 +138,6 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"peanut", None))
-        self.action_play.setText(QCoreApplication.translate("MainWindow", u"play", None))
         self.action_skip.setText(QCoreApplication.translate("MainWindow", u"skip", None))
         self.action_shuffle.setText(QCoreApplication.translate("MainWindow", u"shuffle", None))
         self.action_loop.setText(QCoreApplication.translate("MainWindow", u"loop", None))

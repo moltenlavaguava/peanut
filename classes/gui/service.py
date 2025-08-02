@@ -138,8 +138,6 @@ class GuiService():
         self._QApplication = QApplication([])
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService)
-        # change the main window icon
-        self._QApplication.setWindowIcon(QIcon(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "windowicon.png")))
         # get the main playlist display panel
         self._playlistListBox = self._window.ui.info_playlistSelector
         self._window.show()

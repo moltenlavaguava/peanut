@@ -1,0 +1,16 @@
+<RCC>
+  <qresource prefix="window">
+    <file>windowicon.png</file>
+  </qresource>
+  <qresource prefix="buttons">
+    <file>play.png</file>
+    <file>organize.png</file>
+    <file>pause.png</file>
+    <file>reverse.png</file>
+    <file>shuffle.png</file>
+    <file>skip.png</file>
+  </qresource>
+  <qresource prefix="other">
+    <file>placeholder.jpg</file>
+  </qresource>
+</RCC>
