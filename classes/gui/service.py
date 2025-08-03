@@ -143,5 +143,5 @@ class GuiService():
         self._window.ui.action_play.setPaddingPercentage(0, 0, 0, 0.07142857142) # to center the play button
         
         # get the main playlist display panel
-        self._playlistListBox = self._window.ui.info_playlistSelector
+        # self._playlistListBox = self._window.ui.info_playlistSelector
         self._window.show()

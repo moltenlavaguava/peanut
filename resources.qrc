@@ -1,5 +1,13 @@
 <RCC>
   <qresource prefix="buttons">
+    <file>resources/volume.png</file>
+    <file>resources/mute.png</file>
+    <file>resources/help.png</file>
+    <file>resources/home.png</file>
+    <file>resources/settings.png</file>
+    <file>resources/download.png</file>
+    <file>resources/loop.png</file>
+    <file>resources/stop.png</file>
     <file>resources/organize.png</file>
     <file>resources/pause.png</file>
     <file>resources/play.png</file>

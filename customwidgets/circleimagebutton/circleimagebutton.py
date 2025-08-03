@@ -27,11 +27,14 @@ class CircleImageButton(QPushButton):
         # maintain the circleness as much as possible
         xs = self.width()
         ys = self.height()
+        minimum = min(xs, ys)
         
         padding = self.getPaddingPercentage()
         t, r, b, l = padding["top"], padding["right"], padding["bottom"], padding["left"]
         
         # update border radius + padding
-        self.setStyleSheet(f"border-radius: {min(xs, ys) // 2}px;\npadding: {ys * t}px {xs * r}px {ys * b}px {xs * l}px;")
+        self.setStyleSheet(f"border-radius: {minimum // 2}px;\npadding: {ys * t}px {xs * r}px {ys * b}px {xs * l}px;")
         # make sure the image ratio is maintained
         self.setIconSize(QSize(xs * self._imageRatio, ys * self._imageRatio))
+        # keep the button a square
+        self.setMaximumSize(minimum, minimum)
