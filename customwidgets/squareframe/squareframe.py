@@ -1,26 +1,14 @@
-from PySide6.QtWidgets import QSizePolicy, QFrame
-from PySide6.QtCore import Qt, QSize
-
+from PySide6.QtWidgets import QFrame
 
 class SquareFrame(QFrame):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.aspectRatio = 1
-        
-    def resizeEvent(self, event):
-        print("resize square")
-        
-        # Calculate new dimensions based on the current size and aspect ratio
-        currentSize = event.size()
-        newWidth = currentSize.width()
-        newHeight = currentSize.height()
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
-        if newWidth / self.aspectRatio > newHeight:
-            # If the current width makes the height too small, adjust width
-            newWidth = int(newHeight * self.aspectRatio)
-        else:
-            # Otherwise, adjust height
-            newHeight = int(newWidth / self.aspectRatio)
-            
-        self.setMaximumSize(newWidth, newHeight)
+    def resizeEvent(self, event):
+        """
+        This is the only logic needed. It runs when the application is live
+        and forces the widget to be square.
+        """
         super().resizeEvent(event)
+        new_width = self.height()
+        self.setFixedWidth(new_width)

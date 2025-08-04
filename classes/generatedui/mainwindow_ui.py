@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
-    QMainWindow, QSizePolicy, QSpacerItem, QVBoxLayout,
-    QWidget)
+    QMainWindow, QScrollArea, QSizePolicy, QSpacerItem,
+    QVBoxLayout, QWidget)
 
 from customwidgets.circleimagebutton.circleimagebutton import CircleImageButton
 from customwidgets.scrollprogressbar.progresscirclebar import ProgressCircleBar
@@ -59,6 +59,15 @@ class Ui_MainWindow(object):
 "\n"
 "CircleImageButton {\n"
 "	background-color: rgb(85, 255, 127);\n"
+"}\n"
+"\n"
+"#centralwidget {\n"
+"	background-color:  #121212;\n"
+"}\n"
+"\n"
+"/* QFrame {\n"
+"	background: transparent;\n"
+"	border: none;\n"
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -126,31 +135,64 @@ class Ui_MainWindow(object):
         self.container_upperMiddleFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_upperMiddleFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.container_upperMiddleFrame)
+        self.horizontalLayout_2.setSpacing(20)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.horizontalLayout_2.setContentsMargins(0, -1, 0, -1)
-        self.SquareFrame = SquareFrame(self.container_upperMiddleFrame)
-        self.SquareFrame.setObjectName(u"SquareFrame")
-        self.SquareFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.container_albumCover = SquareFrame(self.container_upperMiddleFrame)
+        self.container_albumCover.setObjectName(u"container_albumCover")
+        self.container_albumCover.setMinimumSize(QSize(320, 0))
+        self.container_albumCover.setMaximumSize(QSize(320, 16777215))
+        self.container_albumCover.setFrameShape(QFrame.Shape.StyledPanel)
+        self.verticalLayout_4 = QVBoxLayout(self.container_albumCover)
+        self.verticalLayout_4.setSpacing(0)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
+        self.info_albumCover = QLabel(self.container_albumCover)
+        self.info_albumCover.setObjectName(u"info_albumCover")
+        self.info_albumCover.setScaledContents(True)
+        self.info_albumCover.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.horizontalLayout_2.addWidget(self.SquareFrame)
+        self.verticalLayout_4.addWidget(self.info_albumCover)
 
-        self.container_nextList = QFrame(self.container_upperMiddleFrame)
+
+        self.horizontalLayout_2.addWidget(self.container_albumCover)
+
+        self.container_nextListFrame = QFrame(self.container_upperMiddleFrame)
+        self.container_nextListFrame.setObjectName(u"container_nextListFrame")
+        self.container_nextListFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.container_nextListFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_3 = QVBoxLayout(self.container_nextListFrame)
+        self.verticalLayout_3.setSpacing(0)
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.container_nextList = QScrollArea(self.container_nextListFrame)
         self.container_nextList.setObjectName(u"container_nextList")
-        self.container_nextList.setFrameShape(QFrame.Shape.StyledPanel)
-        self.container_nextList.setFrameShadow(QFrame.Shadow.Raised)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.container_nextList.sizePolicy().hasHeightForWidth())
+        self.container_nextList.setSizePolicy(sizePolicy3)
+        self.container_nextList.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 716, 316))
+        self.container_nextList.setWidget(self.scrollAreaWidgetContents)
 
-        self.horizontalLayout_2.addWidget(self.container_nextList)
+        self.verticalLayout_3.addWidget(self.container_nextList)
+
+
+        self.horizontalLayout_2.addWidget(self.container_nextListFrame)
 
 
         self.verticalLayout_2.addWidget(self.container_upperMiddleFrame)
 
         self.container_middleFrame = QFrame(self.centralwidget)
         self.container_middleFrame.setObjectName(u"container_middleFrame")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(10)
-        sizePolicy3.setHeightForWidth(self.container_middleFrame.sizePolicy().hasHeightForWidth())
-        self.container_middleFrame.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(10)
+        sizePolicy4.setHeightForWidth(self.container_middleFrame.sizePolicy().hasHeightForWidth())
+        self.container_middleFrame.setSizePolicy(sizePolicy4)
         self.container_middleFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_middleFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout = QVBoxLayout(self.container_middleFrame)
@@ -167,25 +209,32 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addWidget(self.info_artistAlbum)
 
+        self.info_playlistData = QLabel(self.container_middleFrame)
+        self.info_playlistData.setObjectName(u"info_playlistData")
+        self.info_playlistData.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.verticalLayout.addWidget(self.info_playlistData)
+
 
         self.verticalLayout_2.addWidget(self.container_middleFrame)
 
         self.container_lowerMiddleFrame = QFrame(self.centralwidget)
         self.container_lowerMiddleFrame.setObjectName(u"container_lowerMiddleFrame")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(5)
-        sizePolicy4.setHeightForWidth(self.container_lowerMiddleFrame.sizePolicy().hasHeightForWidth())
-        self.container_lowerMiddleFrame.setSizePolicy(sizePolicy4)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(5)
+        sizePolicy5.setHeightForWidth(self.container_lowerMiddleFrame.sizePolicy().hasHeightForWidth())
+        self.container_lowerMiddleFrame.setSizePolicy(sizePolicy5)
         self.container_lowerMiddleFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_lowerMiddleFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_3 = QHBoxLayout(self.container_lowerMiddleFrame)
+        self.horizontalLayout_3.setSpacing(15)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
         self.horizontalLayout_3.setContentsMargins(0, -1, 0, -1)
-        self.label = QLabel(self.container_lowerMiddleFrame)
-        self.label.setObjectName(u"label")
+        self.info_trackCurrentTime = QLabel(self.container_lowerMiddleFrame)
+        self.info_trackCurrentTime.setObjectName(u"info_trackCurrentTime")
 
-        self.horizontalLayout_3.addWidget(self.label)
+        self.horizontalLayout_3.addWidget(self.info_trackCurrentTime)
 
         self.info_progressBar = ScrollProgressBar(self.container_lowerMiddleFrame)
         self.info_progressBar.setObjectName(u"info_progressBar")
@@ -193,21 +242,21 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_3.addWidget(self.info_progressBar)
 
-        self.label_2 = QLabel(self.container_lowerMiddleFrame)
-        self.label_2.setObjectName(u"label_2")
+        self.info_trackTotalTime = QLabel(self.container_lowerMiddleFrame)
+        self.info_trackTotalTime.setObjectName(u"info_trackTotalTime")
 
-        self.horizontalLayout_3.addWidget(self.label_2)
+        self.horizontalLayout_3.addWidget(self.info_trackTotalTime)
 
 
         self.verticalLayout_2.addWidget(self.container_lowerMiddleFrame)
 
         self.container_lowerFrame = QFrame(self.centralwidget)
         self.container_lowerFrame.setObjectName(u"container_lowerFrame")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(15)
-        sizePolicy5.setHeightForWidth(self.container_lowerFrame.sizePolicy().hasHeightForWidth())
-        self.container_lowerFrame.setSizePolicy(sizePolicy5)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(15)
+        sizePolicy6.setHeightForWidth(self.container_lowerFrame.sizePolicy().hasHeightForWidth())
+        self.container_lowerFrame.setSizePolicy(sizePolicy6)
         self.container_lowerFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_lowerFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_4 = QHBoxLayout(self.container_lowerFrame)
@@ -215,11 +264,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.container_left = QFrame(self.container_lowerFrame)
         self.container_left.setObjectName(u"container_left")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy6.setHorizontalStretch(1)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.container_left.sizePolicy().hasHeightForWidth())
-        self.container_left.setSizePolicy(sizePolicy6)
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy7.setHorizontalStretch(1)
+        sizePolicy7.setVerticalStretch(0)
+        sizePolicy7.setHeightForWidth(self.container_left.sizePolicy().hasHeightForWidth())
+        self.container_left.setSizePolicy(sizePolicy7)
         self.container_left.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_left.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_6 = QHBoxLayout(self.container_left)
@@ -228,11 +277,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_6.setContentsMargins(0, 0, 0, 0)
         self.container_volumeBar = QFrame(self.container_left)
         self.container_volumeBar.setObjectName(u"container_volumeBar")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.container_volumeBar.sizePolicy().hasHeightForWidth())
-        self.container_volumeBar.setSizePolicy(sizePolicy7)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy8.setHorizontalStretch(0)
+        sizePolicy8.setVerticalStretch(0)
+        sizePolicy8.setHeightForWidth(self.container_volumeBar.sizePolicy().hasHeightForWidth())
+        self.container_volumeBar.setSizePolicy(sizePolicy8)
         self.container_volumeBar.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_volumeBar.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_8 = QHBoxLayout(self.container_volumeBar)
@@ -268,11 +317,11 @@ class Ui_MainWindow(object):
 
         self.container_middle = QFrame(self.container_lowerFrame)
         self.container_middle.setObjectName(u"container_middle")
-        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy8.setHorizontalStretch(2)
-        sizePolicy8.setVerticalStretch(0)
-        sizePolicy8.setHeightForWidth(self.container_middle.sizePolicy().hasHeightForWidth())
-        self.container_middle.setSizePolicy(sizePolicy8)
+        sizePolicy9 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy9.setHorizontalStretch(2)
+        sizePolicy9.setVerticalStretch(0)
+        sizePolicy9.setHeightForWidth(self.container_middle.sizePolicy().hasHeightForWidth())
+        self.container_middle.setSizePolicy(sizePolicy9)
         self.container_middle.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_middle.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_5 = QHBoxLayout(self.container_middle)
@@ -354,8 +403,8 @@ class Ui_MainWindow(object):
 
         self.container_right = QFrame(self.container_lowerFrame)
         self.container_right.setObjectName(u"container_right")
-        sizePolicy6.setHeightForWidth(self.container_right.sizePolicy().hasHeightForWidth())
-        self.container_right.setSizePolicy(sizePolicy6)
+        sizePolicy7.setHeightForWidth(self.container_right.sizePolicy().hasHeightForWidth())
+        self.container_right.setSizePolicy(sizePolicy7)
         self.container_right.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_right.setFrameShadow(QFrame.Shadow.Raised)
 
@@ -381,9 +430,11 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"peanut", None))
+        self.info_albumCover.setText("")
         self.info_trackName.setText(QCoreApplication.translate("MainWindow", u"now playing:", None))
         self.info_artistAlbum.setText(QCoreApplication.translate("MainWindow", u"artist \u2022 album", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"0:69", None))
-        self.label_2.setText(QCoreApplication.translate("MainWindow", u"4:20", None))
+        self.info_playlistData.setText(QCoreApplication.translate("MainWindow", u"playlistName \u2022 69/420", None))
+        self.info_trackCurrentTime.setText(QCoreApplication.translate("MainWindow", u"0:69", None))
+        self.info_trackTotalTime.setText(QCoreApplication.translate("MainWindow", u"4:20", None))
     # retranslateUi
 

@@ -44,6 +44,15 @@ ScrollProgressBar #progressFrame {
 
 CircleImageButton {
 	background-color: rgb(85, 255, 127);
+}
+
+#centralwidget {
+	background-color:  #121212;
+}
+
+/* QFrame {
+	background: transparent;
+	border: none;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -148,6 +157,9 @@ CircleImageButton {
        <enum>QFrame::Shadow::Raised</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="spacing">
+        <number>20</number>
+       </property>
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -155,20 +167,102 @@ CircleImageButton {
         <number>0</number>
        </property>
        <item>
-        <widget class="SquareFrame" name="SquareFrame">
+        <widget class="SquareFrame" name="container_albumCover">
+         <property name="minimumSize">
+          <size>
+           <width>320</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>320</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="info_albumCover">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="scaledContents">
+             <bool>true</bool>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="container_nextList">
+        <widget class="QFrame" name="container_nextListFrame">
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
          <property name="frameShadow">
           <enum>QFrame::Shadow::Raised</enum>
          </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QScrollArea" name="container_nextList">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="widgetResizable">
+             <bool>true</bool>
+            </property>
+            <widget class="QWidget" name="scrollAreaWidgetContents">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>716</width>
+               <height>316</height>
+              </rect>
+             </property>
+            </widget>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -209,6 +303,16 @@ CircleImageButton {
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QLabel" name="info_playlistData">
+         <property name="text">
+          <string>playlistName • 69/420</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
@@ -227,6 +331,9 @@ CircleImageButton {
        <enum>QFrame::Shadow::Raised</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <property name="spacing">
+        <number>15</number>
+       </property>
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -234,7 +341,7 @@ CircleImageButton {
         <number>0</number>
        </property>
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="info_trackCurrentTime">
          <property name="text">
           <string>0:69</string>
          </property>
@@ -248,7 +355,7 @@ CircleImageButton {
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="info_trackTotalTime">
          <property name="text">
           <string>4:20</string>
          </property>
@@ -580,6 +687,7 @@ CircleImageButton {
    <class>SquareFrame</class>
    <extends>QFrame</extends>
    <header>customwidgets.squareframe.squareframe</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources>

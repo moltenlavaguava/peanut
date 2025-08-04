@@ -36,6 +36,9 @@ class Window(QMainWindow):
         
         # disallowing any resizing
         self.setFixedSize(self.size().width(), self.size().height())
+        
+        # set the default image for the album cover
+        
 
         # oooooooo
         

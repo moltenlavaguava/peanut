@@ -1,6 +1,6 @@
 from __future__ import annotations
 from PySide6.QtCore import Qt, Slot, QMetaObject
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
@@ -141,6 +141,9 @@ class GuiService():
         
         # customizing buttons
         self._window.ui.action_play.setPaddingPercentage(0, 0, 0, 0.07142857142) # to center the play button
+        
+        # set the default album cover iamge
+        self._window.ui.info_albumCover.setPixmap(QPixmap(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg")))
         
         # get the main playlist display panel
         # self._playlistListBox = self._window.ui.info_playlistSelector

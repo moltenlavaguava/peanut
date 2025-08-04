@@ -19,4 +19,4 @@ DOM_XML = """
 """
 
 if __name__ == "__main__":
-    QPyDesignerCustomWidgetCollection.registerCustomWidget(SquareFrame, tool_tip=TOOLTIP, xml=DOM_XML, module="customwidgets.squareframe.squareframe", container=False)
+    QPyDesignerCustomWidgetCollection.registerCustomWidget(SquareFrame, tool_tip=TOOLTIP, xml=DOM_XML, module="customwidgets.squareframe.squareframe", container=True)

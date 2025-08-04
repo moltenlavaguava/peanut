@@ -144,8 +144,6 @@ class PlaylistDownloader():
                 self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
                 info = self._downloadVideo(ydl, track.getVideoURL())
                 path = ydl.prepare_filename(info)
-                with open("output.txt", "w", encoding="utf-8") as f:
-                    f.write(str(info))
                 # convert file to specified format (not getting the track length atm)
                 self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
                 
