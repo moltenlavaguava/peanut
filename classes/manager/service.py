@@ -140,6 +140,14 @@ class ManagerService():
                 self.audioService.resumeAudio()
                 self.audioService.setTempPause(False)
 
+    def _actionHome(self):
+        self.guiService.loadPagePlaylistSelector()
+        # stop the current audio manager
+        self.eventService.triggerEvent("AUDIO_STOP")
+        # unload the current audio player if it exists
+        if self.audioService.getCurrentPlaylist():
+            self.audioService.unloadPlaylist()
+
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
         self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
@@ -152,12 +160,24 @@ class ManagerService():
         self.logger.info(f"Recieved request to select playlist '{name}'.")
         # set the current playlist to this one
         self.playlistService.setCurrentPlaylist(playlist)
+        # change the page to the audio player
+        self.guiService.loadPageAudioPlayer()
+        # start the audio player
+        self.audioService.loadPlaylist(playlist)
     
     # Program
     
     def _programClose(self):
+        # close the audio manager
+        self.eventService.triggerEvent("AUDIO_STOP")
         # pass on event
         self.threadService.onCloseProgram()
+    
+    # Audio
+    
+    def _audioSelect(self, selectIndex:int):
+        self.logger.debug(f"Audio select event fired. select index: {selectIndex}")
+        self.audioService.invokeSelectEvent(selectIndex)
     
     # STARTING 
     
@@ -214,6 +234,8 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_START_PROGRESS_SCROLL", self._actionStartProgressScroll)
         self.eventService.addEvent("ACTION_END_PROGRESS_SCROLL")
         self.eventService.subscribeToEvent("ACTION_END_PROGRESS_SCROLL", self._actionEndProgressScroll)
+        self.eventService.addEvent("ACTION_HOME")
+        self.eventService.subscribeToEvent("ACTION_HOME", self._actionHome)
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
@@ -227,6 +249,9 @@ class ManagerService():
         self.eventService.addEvent("AUDIO_TRACK_RESUME")
         self.eventService.addEvent("AUDIO_TRACK_END")
         self.eventService.addEvent("AUDIO_TRACK_PROGRESS")
+        self.eventService.addEvent("AUDIO_STOP")
+        self.eventService.addEvent("AUDIO_SELECT")
+        self.eventService.subscribeToEvent("AUDIO_SELECT", self._audioSelect)
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")

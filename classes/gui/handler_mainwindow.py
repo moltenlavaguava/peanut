@@ -19,8 +19,9 @@ class Window(QMainWindow):
         self.ui.action_skip.clicked.connect(self.buttonSkipActivated)
         self.ui.action_shuffle.clicked.connect(self.buttonShuffleActivated)
         self.ui.action_loop.clicked.connect(self.buttonLoopActivated)
-        # self.ui.action_loadFromURL.clicked.connect(self.buttonLoadFromURLActivated)
+        self.ui.action_loadFromURL.clicked.connect(self.buttonLoadFromURLActivated)
         self.ui.action_previous.clicked.connect(self.buttonPreviousActivated)
+        self.ui.action_home.clicked.connect(self.buttonHomeActivated)
         # self.ui.action_stopDownload.clicked.connect(self.buttonStopDownloadActivated)
         # self.ui.action_startDownload.clicked.connect(self.buttonStartDownloadActivated)
         # self.ui.action_startAudioPlayer.clicked.connect(self.buttonStartAudioPlayerActivated)
@@ -87,15 +88,9 @@ class Window(QMainWindow):
     def buttonStartAudioPlayerActivated(self):
         self.eventService.triggerEvent("ACTION_START_AUDIO_PLAYER")
     
-    # # run when the entire ui resizes
-    # def paintEvent(self, event):
-    #     print("resizing")
-    #     super().paintEvent(event)
-    #     # make the album frame square
-    #     size = self.ui.container_albumCover.size()
-    #     print(size)
-    #     minimum = min(size.width(), size.height())
-    #     self.ui.container_albumCover.setMaximumSize(minimum, minimum)
+    @Slot()
+    def buttonHomeActivated(self):
+        self.eventService.triggerEvent("ACTION_HOME")
     
     # catch when the window closes
     def closeEvent(self, event):

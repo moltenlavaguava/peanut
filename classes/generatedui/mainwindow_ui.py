@@ -15,8 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
-    QMainWindow, QScrollArea, QSizePolicy, QSpacerItem,
+from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout,
+    QLabel, QLineEdit, QMainWindow, QPushButton,
+    QScrollArea, QSizePolicy, QSpacerItem, QStackedWidget,
     QVBoxLayout, QWidget)
 
 from customwidgets.circleimagebutton.circleimagebutton import CircleImageButton
@@ -65,7 +66,7 @@ class Ui_MainWindow(object):
 "	background-color:  #121212;\n"
 "}\n"
 "\n"
-"/* QFrame {\n"
+"QFrame {\n"
 "	background: transparent;\n"
 "	border: none;\n"
 "}")
@@ -118,6 +119,12 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addWidget(self.action_help)
 
+        self.info_pageTitle = QLabel(self.container_topFrame)
+        self.info_pageTitle.setObjectName(u"info_pageTitle")
+        self.info_pageTitle.setTextFormat(Qt.TextFormat.MarkdownText)
+
+        self.horizontalLayout.addWidget(self.info_pageTitle)
+
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
@@ -125,13 +132,25 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_2.addWidget(self.container_topFrame)
 
-        self.container_upperMiddleFrame = QFrame(self.centralwidget)
-        self.container_upperMiddleFrame.setObjectName(u"container_upperMiddleFrame")
+        self.container_stackedWidget = QStackedWidget(self.centralwidget)
+        self.container_stackedWidget.setObjectName(u"container_stackedWidget")
         sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(45)
-        sizePolicy2.setHeightForWidth(self.container_upperMiddleFrame.sizePolicy().hasHeightForWidth())
-        self.container_upperMiddleFrame.setSizePolicy(sizePolicy2)
+        sizePolicy2.setVerticalStretch(92)
+        sizePolicy2.setHeightForWidth(self.container_stackedWidget.sizePolicy().hasHeightForWidth())
+        self.container_stackedWidget.setSizePolicy(sizePolicy2)
+        self.page_audioPlayer = QWidget()
+        self.page_audioPlayer.setObjectName(u"page_audioPlayer")
+        self.verticalLayout_5 = QVBoxLayout(self.page_audioPlayer)
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
+        self.verticalLayout_5.setContentsMargins(0, 0, 0, 0)
+        self.container_upperMiddleFrame = QFrame(self.page_audioPlayer)
+        self.container_upperMiddleFrame.setObjectName(u"container_upperMiddleFrame")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(45)
+        sizePolicy3.setHeightForWidth(self.container_upperMiddleFrame.sizePolicy().hasHeightForWidth())
+        self.container_upperMiddleFrame.setSizePolicy(sizePolicy3)
         self.container_upperMiddleFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_upperMiddleFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.container_upperMiddleFrame)
@@ -140,8 +159,8 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setContentsMargins(0, -1, 0, -1)
         self.container_albumCover = SquareFrame(self.container_upperMiddleFrame)
         self.container_albumCover.setObjectName(u"container_albumCover")
-        self.container_albumCover.setMinimumSize(QSize(320, 0))
-        self.container_albumCover.setMaximumSize(QSize(320, 16777215))
+        self.container_albumCover.setMinimumSize(QSize(330, 0))
+        self.container_albumCover.setMaximumSize(QSize(330, 16777215))
         self.container_albumCover.setFrameShape(QFrame.Shape.StyledPanel)
         self.verticalLayout_4 = QVBoxLayout(self.container_albumCover)
         self.verticalLayout_4.setSpacing(0)
@@ -167,16 +186,18 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.container_nextList = QScrollArea(self.container_nextListFrame)
         self.container_nextList.setObjectName(u"container_nextList")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.container_nextList.sizePolicy().hasHeightForWidth())
-        self.container_nextList.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.container_nextList.sizePolicy().hasHeightForWidth())
+        self.container_nextList.setSizePolicy(sizePolicy4)
         self.container_nextList.setWidgetResizable(True)
-        self.scrollAreaWidgetContents = QWidget()
-        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 716, 316))
-        self.container_nextList.setWidget(self.scrollAreaWidgetContents)
+        self.container_nextListScrollArea = QWidget()
+        self.container_nextListScrollArea.setObjectName(u"container_nextListScrollArea")
+        self.container_nextListScrollArea.setGeometry(QRect(0, 0, 712, 330))
+        self.verticalLayout_7 = QVBoxLayout(self.container_nextListScrollArea)
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.container_nextList.setWidget(self.container_nextListScrollArea)
 
         self.verticalLayout_3.addWidget(self.container_nextList)
 
@@ -184,15 +205,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.container_nextListFrame)
 
 
-        self.verticalLayout_2.addWidget(self.container_upperMiddleFrame)
+        self.verticalLayout_5.addWidget(self.container_upperMiddleFrame)
 
-        self.container_middleFrame = QFrame(self.centralwidget)
+        self.container_middleFrame = QFrame(self.page_audioPlayer)
         self.container_middleFrame.setObjectName(u"container_middleFrame")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(10)
-        sizePolicy4.setHeightForWidth(self.container_middleFrame.sizePolicy().hasHeightForWidth())
-        self.container_middleFrame.setSizePolicy(sizePolicy4)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(10)
+        sizePolicy5.setHeightForWidth(self.container_middleFrame.sizePolicy().hasHeightForWidth())
+        self.container_middleFrame.setSizePolicy(sizePolicy5)
         self.container_middleFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_middleFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout = QVBoxLayout(self.container_middleFrame)
@@ -216,15 +237,15 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.info_playlistData)
 
 
-        self.verticalLayout_2.addWidget(self.container_middleFrame)
+        self.verticalLayout_5.addWidget(self.container_middleFrame)
 
-        self.container_lowerMiddleFrame = QFrame(self.centralwidget)
+        self.container_lowerMiddleFrame = QFrame(self.page_audioPlayer)
         self.container_lowerMiddleFrame.setObjectName(u"container_lowerMiddleFrame")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(5)
-        sizePolicy5.setHeightForWidth(self.container_lowerMiddleFrame.sizePolicy().hasHeightForWidth())
-        self.container_lowerMiddleFrame.setSizePolicy(sizePolicy5)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(5)
+        sizePolicy6.setHeightForWidth(self.container_lowerMiddleFrame.sizePolicy().hasHeightForWidth())
+        self.container_lowerMiddleFrame.setSizePolicy(sizePolicy6)
         self.container_lowerMiddleFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_lowerMiddleFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_3 = QHBoxLayout(self.container_lowerMiddleFrame)
@@ -248,15 +269,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.addWidget(self.info_trackTotalTime)
 
 
-        self.verticalLayout_2.addWidget(self.container_lowerMiddleFrame)
+        self.verticalLayout_5.addWidget(self.container_lowerMiddleFrame)
 
-        self.container_lowerFrame = QFrame(self.centralwidget)
+        self.container_lowerFrame = QFrame(self.page_audioPlayer)
         self.container_lowerFrame.setObjectName(u"container_lowerFrame")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(15)
-        sizePolicy6.setHeightForWidth(self.container_lowerFrame.sizePolicy().hasHeightForWidth())
-        self.container_lowerFrame.setSizePolicy(sizePolicy6)
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy7.setHorizontalStretch(0)
+        sizePolicy7.setVerticalStretch(15)
+        sizePolicy7.setHeightForWidth(self.container_lowerFrame.sizePolicy().hasHeightForWidth())
+        self.container_lowerFrame.setSizePolicy(sizePolicy7)
         self.container_lowerFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_lowerFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_4 = QHBoxLayout(self.container_lowerFrame)
@@ -264,11 +285,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.container_left = QFrame(self.container_lowerFrame)
         self.container_left.setObjectName(u"container_left")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy7.setHorizontalStretch(1)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.container_left.sizePolicy().hasHeightForWidth())
-        self.container_left.setSizePolicy(sizePolicy7)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy8.setHorizontalStretch(1)
+        sizePolicy8.setVerticalStretch(0)
+        sizePolicy8.setHeightForWidth(self.container_left.sizePolicy().hasHeightForWidth())
+        self.container_left.setSizePolicy(sizePolicy8)
         self.container_left.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_left.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_6 = QHBoxLayout(self.container_left)
@@ -277,11 +298,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_6.setContentsMargins(0, 0, 0, 0)
         self.container_volumeBar = QFrame(self.container_left)
         self.container_volumeBar.setObjectName(u"container_volumeBar")
-        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy8.setHorizontalStretch(0)
-        sizePolicy8.setVerticalStretch(0)
-        sizePolicy8.setHeightForWidth(self.container_volumeBar.sizePolicy().hasHeightForWidth())
-        self.container_volumeBar.setSizePolicy(sizePolicy8)
+        sizePolicy9 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy9.setHorizontalStretch(0)
+        sizePolicy9.setVerticalStretch(0)
+        sizePolicy9.setHeightForWidth(self.container_volumeBar.sizePolicy().hasHeightForWidth())
+        self.container_volumeBar.setSizePolicy(sizePolicy9)
         self.container_volumeBar.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_volumeBar.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_8 = QHBoxLayout(self.container_volumeBar)
@@ -317,11 +338,11 @@ class Ui_MainWindow(object):
 
         self.container_middle = QFrame(self.container_lowerFrame)
         self.container_middle.setObjectName(u"container_middle")
-        sizePolicy9 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy9.setHorizontalStretch(2)
-        sizePolicy9.setVerticalStretch(0)
-        sizePolicy9.setHeightForWidth(self.container_middle.sizePolicy().hasHeightForWidth())
-        self.container_middle.setSizePolicy(sizePolicy9)
+        sizePolicy10 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy10.setHorizontalStretch(2)
+        sizePolicy10.setVerticalStretch(0)
+        sizePolicy10.setHeightForWidth(self.container_middle.sizePolicy().hasHeightForWidth())
+        self.container_middle.setSizePolicy(sizePolicy10)
         self.container_middle.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_middle.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_5 = QHBoxLayout(self.container_middle)
@@ -403,8 +424,8 @@ class Ui_MainWindow(object):
 
         self.container_right = QFrame(self.container_lowerFrame)
         self.container_right.setObjectName(u"container_right")
-        sizePolicy7.setHeightForWidth(self.container_right.sizePolicy().hasHeightForWidth())
-        self.container_right.setSizePolicy(sizePolicy7)
+        sizePolicy8.setHeightForWidth(self.container_right.sizePolicy().hasHeightForWidth())
+        self.container_right.setSizePolicy(sizePolicy8)
         self.container_right.setFrameShape(QFrame.Shape.StyledPanel)
         self.container_right.setFrameShadow(QFrame.Shadow.Raised)
 
@@ -419,22 +440,73 @@ class Ui_MainWindow(object):
         self.horizontalLayout_4.addItem(self.horizontalSpacer_3)
 
 
-        self.verticalLayout_2.addWidget(self.container_lowerFrame)
+        self.verticalLayout_5.addWidget(self.container_lowerFrame)
+
+        self.container_stackedWidget.addWidget(self.page_audioPlayer)
+        self.page_playlistSelector = QWidget()
+        self.page_playlistSelector.setObjectName(u"page_playlistSelector")
+        self.verticalLayout_6 = QVBoxLayout(self.page_playlistSelector)
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
+        self.verticalLayout_6.setContentsMargins(0, 0, 0, 0)
+        self.container_playlistLoader = QFrame(self.page_playlistSelector)
+        self.container_playlistLoader.setObjectName(u"container_playlistLoader")
+        sizePolicy5.setHeightForWidth(self.container_playlistLoader.sizePolicy().hasHeightForWidth())
+        self.container_playlistLoader.setSizePolicy(sizePolicy5)
+        self.container_playlistLoader.setFrameShape(QFrame.Shape.StyledPanel)
+        self.container_playlistLoader.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_7 = QHBoxLayout(self.container_playlistLoader)
+        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.input_playlistURL = QLineEdit(self.container_playlistLoader)
+        self.input_playlistURL.setObjectName(u"input_playlistURL")
+
+        self.horizontalLayout_7.addWidget(self.input_playlistURL)
+
+        self.action_loadFromURL = QPushButton(self.container_playlistLoader)
+        self.action_loadFromURL.setObjectName(u"action_loadFromURL")
+
+        self.horizontalLayout_7.addWidget(self.action_loadFromURL)
+
+
+        self.verticalLayout_6.addWidget(self.container_playlistLoader)
+
+        self.container_playlistSelector = QFrame(self.page_playlistSelector)
+        self.container_playlistSelector.setObjectName(u"container_playlistSelector")
+        sizePolicy11 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy11.setHorizontalStretch(0)
+        sizePolicy11.setVerticalStretch(90)
+        sizePolicy11.setHeightForWidth(self.container_playlistSelector.sizePolicy().hasHeightForWidth())
+        self.container_playlistSelector.setSizePolicy(sizePolicy11)
+        self.container_playlistSelector.setFrameShape(QFrame.Shape.StyledPanel)
+        self.container_playlistSelector.setFrameShadow(QFrame.Shadow.Raised)
+        self.gridLayout = QGridLayout(self.container_playlistSelector)
+        self.gridLayout.setObjectName(u"gridLayout")
+
+        self.verticalLayout_6.addWidget(self.container_playlistSelector)
+
+        self.container_stackedWidget.addWidget(self.page_playlistSelector)
+
+        self.verticalLayout_2.addWidget(self.container_stackedWidget)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
+
+        self.container_stackedWidget.setCurrentIndex(0)
+
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"peanut", None))
+        self.info_pageTitle.setText(QCoreApplication.translate("MainWindow", u"filler text", None))
         self.info_albumCover.setText("")
         self.info_trackName.setText(QCoreApplication.translate("MainWindow", u"now playing:", None))
         self.info_artistAlbum.setText(QCoreApplication.translate("MainWindow", u"artist \u2022 album", None))
         self.info_playlistData.setText(QCoreApplication.translate("MainWindow", u"playlistName \u2022 69/420", None))
         self.info_trackCurrentTime.setText(QCoreApplication.translate("MainWindow", u"0:69", None))
         self.info_trackTotalTime.setText(QCoreApplication.translate("MainWindow", u"4:20", None))
+        self.input_playlistURL.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Load from youtube playlist url...", None))
+        self.action_loadFromURL.setText(QCoreApplication.translate("MainWindow", u"Load", None))
     # retranslateUi
 

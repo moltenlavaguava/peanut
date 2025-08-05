@@ -24,6 +24,9 @@ class GuiService():
         self.eventService = eventService
         self.configService = configService
         
+        # caches all existing track widgets
+        self._trackWidgets: list[QWidget] = []
+        
         # connect() connections
         self._connections: dict[str, QMetaObject.Connection] = {}
     
@@ -33,9 +36,9 @@ class GuiService():
         textBox = self.getMainWindow().ui.input_playlistURL
         textBox.setText(text)
     
-    def setCurrentPlaylistBoxText(self, text:str):
-        box = self.getMainWindow().ui.info_loadedPlaylist
-        box.setText(text)
+    def setPlaylistDataText(self, playlistName:str, currentTrackIndex:int, totalTracks:int):
+        box = self.getMainWindow().ui.info_playlistData
+        box.setText(f"{playlistName} • {currentTrackIndex}/{totalTracks}")
     
     def setCurrentTrackBoxText(self, text:str):
         box = self.getMainWindow().ui.info_nowPlaying
@@ -44,6 +47,59 @@ class GuiService():
     def setProgressBarProgress(self, progress:float):
         bar = self.getMainWindow().ui.info_progressBar
         bar.setProgress(progress)
+    
+    # generic method to set the main stack widget's page
+    def setMainWindowPage(self, pageWidget:QWidget):
+        stackedWidget = self._window.ui.container_stackedWidget
+        stackedWidget.setCurrentWidget(pageWidget)
+    
+    # sets the title text box's text
+    def setTitleTextBoxText(self, text:str):
+        self._window.ui.info_pageTitle.setText(text)
+    
+    # loads the audio player page and changes the title text accordingly
+    def loadPageAudioPlayer(self):
+        self.setMainWindowPage(self._window.ui.page_audioPlayer)
+        self.setTitleTextBoxText("Player")
+        
+    def loadPagePlaylistSelector(self):
+        self.setMainWindowPage(self._window.ui.page_playlistSelector)
+        self.setTitleTextBoxText("Playlist Selector")
+        
+    # element that contains the playlist selection options
+    def getPlaylistSelectorElement(self):
+        return self._window.ui.container_playlistSelector
+    
+    # returns the widget that stores all of the upcoming widgets
+    def getNextListScrollArea(self):
+        return self._window.ui.container_nextListScrollArea
+    
+    # removes all current track widgets in the list box.
+    def removeTrackWidgets(self):
+        # gets the layout for the next list scroll area
+        layout = self.getNextListScrollArea().layout()
+        for widget in self.getTrackWidgetList():
+            layout.removeWidget(widget)
+            widget.deleteLater()
+        # removes the cache for all the track widgets
+        self._trackWidgets = []
+    
+    # populates the next list scroll area with the current playlist's track widgets.
+    def populateNextListScrollArea(self, playlist:Playlist):
+        # collecting information
+        scrollArea = self.getNextListScrollArea()
+        layout = scrollArea.layout()
+        
+        # defining function to run when the buttons are clicked
+        @Slot(GuiService, int)
+        def buttonActivated(self, buttonIndex:int):
+            self.eventService.triggerEvent("AUDIO_SELECT", buttonIndex)
+        
+        for index, track in enumerate(playlist.getTracks()):
+            button = QPushButton(track.getDisplayName(), scrollArea)
+            button.clicked.connect(lambda checked, i=index: buttonActivated(self, i)) # checked singal is always sent
+            layout.addWidget(button)
+            self.addTrackWidgetToList(button)
     
     # INTERIOR MANAGEMENT
     
@@ -71,9 +127,11 @@ class GuiService():
             return
         connections[name] = connection
     
-    # element that contains the playlist selection options
-    def getPlaylistSelectorElement(self):
-        return self._playlistListBox 
+    def getTrackWidgetList(self):
+        return self._trackWidgets
+    
+    def addTrackWidgetToList(self, widget:QWidget):
+        self.getTrackWidgetList().append(widget)
     
     # EVENTS
     
@@ -83,21 +141,24 @@ class GuiService():
         self._QApplication.quit()
     
     def _eventCurrentPlaylistChange(self, newPlaylist:Playlist|None):
-        newName = f"loaded playlist: {newPlaylist.getDisplayName() if newPlaylist else ''}"
-        self.setCurrentPlaylistBoxText(newName)
+        # update the playlist data text box
+        self.setPlaylistDataText(newPlaylist.getDisplayName(), 1, newPlaylist.getLength())
+        # populate the track list
+        self.removeTrackWidgets()
+        self.populateNextListScrollArea(newPlaylist)
+        
     
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
         # get data
         box = self.getPlaylistSelectorElement()
-        contents = box.findChild(QWidget, "scrollAreaWidgetContents") # the widget inside the box that holds the things
-        layout = contents.layout()
+        layout = box.layout()
         name = playlist.getName()
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
+        layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         # create a playlist selector
-        button = QPushButton(playlist.getDisplayName(), contents)
+        button = QPushButton(playlist.getDisplayName(), box)
         # add to the layout
-        layout.insertWidget(-1, button)
+        layout.addWidget(button)
         # subscribe clicks to events
         @Slot()
         def onButtonPress():
@@ -142,9 +203,11 @@ class GuiService():
         # customizing buttons
         self._window.ui.action_play.setPaddingPercentage(0, 0, 0, 0.07142857142) # to center the play button
         
+        # set the default page on startup
+        self.loadPagePlaylistSelector()
+        
         # set the default album cover iamge
         self._window.ui.info_albumCover.setPixmap(QPixmap(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg")))
         
-        # get the main playlist display panel
-        # self._playlistListBox = self._window.ui.info_playlistSelector
+        # show the window
         self._window.show()
