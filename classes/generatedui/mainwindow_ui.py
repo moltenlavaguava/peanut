@@ -99,26 +99,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addWidget(self.action_home)
 
-        self.action_settings = CircleImageButton(self.container_topFrame)
-        self.action_settings.setObjectName(u"action_settings")
-        sizePolicy1.setHeightForWidth(self.action_settings.sizePolicy().hasHeightForWidth())
-        self.action_settings.setSizePolicy(sizePolicy1)
-        icon2 = QIcon()
-        icon2.addFile(u":/buttons/resources/settings.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_settings.setIcon(icon2)
-
-        self.horizontalLayout.addWidget(self.action_settings)
-
-        self.action_help = CircleImageButton(self.container_topFrame)
-        self.action_help.setObjectName(u"action_help")
-        sizePolicy1.setHeightForWidth(self.action_help.sizePolicy().hasHeightForWidth())
-        self.action_help.setSizePolicy(sizePolicy1)
-        icon3 = QIcon()
-        icon3.addFile(u":/buttons/resources/help.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_help.setIcon(icon3)
-
-        self.horizontalLayout.addWidget(self.action_help)
-
         self.info_pageTitle = QLabel(self.container_topFrame)
         self.info_pageTitle.setObjectName(u"info_pageTitle")
         self.info_pageTitle.setTextFormat(Qt.TextFormat.MarkdownText)
@@ -312,9 +292,9 @@ class Ui_MainWindow(object):
         self.action_mute.setObjectName(u"action_mute")
         sizePolicy1.setHeightForWidth(self.action_mute.sizePolicy().hasHeightForWidth())
         self.action_mute.setSizePolicy(sizePolicy1)
-        icon4 = QIcon()
-        icon4.addFile(u":/buttons/resources/volume.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_mute.setIcon(icon4)
+        icon2 = QIcon()
+        icon2.addFile(u":/buttons/resources/volume.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_mute.setIcon(icon2)
 
         self.horizontalLayout_8.addWidget(self.action_mute)
 
@@ -353,9 +333,9 @@ class Ui_MainWindow(object):
         self.action_download.setObjectName(u"action_download")
         sizePolicy1.setHeightForWidth(self.action_download.sizePolicy().hasHeightForWidth())
         self.action_download.setSizePolicy(sizePolicy1)
-        icon5 = QIcon()
-        icon5.addFile(u":/buttons/resources/download.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_download.setIcon(icon5)
+        icon3 = QIcon()
+        icon3.addFile(u":/buttons/resources/download.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_download.setIcon(icon3)
 
         self.horizontalLayout_5.addWidget(self.action_download)
 
@@ -363,9 +343,9 @@ class Ui_MainWindow(object):
         self.action_organize.setObjectName(u"action_organize")
         sizePolicy1.setHeightForWidth(self.action_organize.sizePolicy().hasHeightForWidth())
         self.action_organize.setSizePolicy(sizePolicy1)
-        icon6 = QIcon()
-        icon6.addFile(u":/buttons/resources/organize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_organize.setIcon(icon6)
+        icon4 = QIcon()
+        icon4.addFile(u":/buttons/resources/organize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_organize.setIcon(icon4)
 
         self.horizontalLayout_5.addWidget(self.action_organize)
 
@@ -373,9 +353,9 @@ class Ui_MainWindow(object):
         self.action_previous.setObjectName(u"action_previous")
         sizePolicy1.setHeightForWidth(self.action_previous.sizePolicy().hasHeightForWidth())
         self.action_previous.setSizePolicy(sizePolicy1)
-        icon7 = QIcon()
-        icon7.addFile(u":/buttons/resources/reverse.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_previous.setIcon(icon7)
+        icon5 = QIcon()
+        icon5.addFile(u":/buttons/resources/reverse.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_previous.setIcon(icon5)
 
         self.horizontalLayout_5.addWidget(self.action_previous)
 
@@ -383,9 +363,9 @@ class Ui_MainWindow(object):
         self.action_play.setObjectName(u"action_play")
         sizePolicy1.setHeightForWidth(self.action_play.sizePolicy().hasHeightForWidth())
         self.action_play.setSizePolicy(sizePolicy1)
-        icon8 = QIcon()
-        icon8.addFile(u":/buttons/resources/play.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_play.setIcon(icon8)
+        icon6 = QIcon()
+        icon6.addFile(u":/buttons/resources/play.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_play.setIcon(icon6)
 
         self.horizontalLayout_5.addWidget(self.action_play)
 
@@ -393,9 +373,9 @@ class Ui_MainWindow(object):
         self.action_skip.setObjectName(u"action_skip")
         sizePolicy1.setHeightForWidth(self.action_skip.sizePolicy().hasHeightForWidth())
         self.action_skip.setSizePolicy(sizePolicy1)
-        icon9 = QIcon()
-        icon9.addFile(u":/buttons/resources/skip.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_skip.setIcon(icon9)
+        icon7 = QIcon()
+        icon7.addFile(u":/buttons/resources/skip.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_skip.setIcon(icon7)
 
         self.horizontalLayout_5.addWidget(self.action_skip)
 
@@ -403,9 +383,9 @@ class Ui_MainWindow(object):
         self.action_shuffle.setObjectName(u"action_shuffle")
         sizePolicy1.setHeightForWidth(self.action_shuffle.sizePolicy().hasHeightForWidth())
         self.action_shuffle.setSizePolicy(sizePolicy1)
-        icon10 = QIcon()
-        icon10.addFile(u":/buttons/resources/shuffle.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_shuffle.setIcon(icon10)
+        icon8 = QIcon()
+        icon8.addFile(u":/buttons/resources/shuffle.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_shuffle.setIcon(icon8)
 
         self.horizontalLayout_5.addWidget(self.action_shuffle)
 
@@ -413,9 +393,9 @@ class Ui_MainWindow(object):
         self.action_loop.setObjectName(u"action_loop")
         sizePolicy1.setHeightForWidth(self.action_loop.sizePolicy().hasHeightForWidth())
         self.action_loop.setSizePolicy(sizePolicy1)
-        icon11 = QIcon()
-        icon11.addFile(u":/buttons/resources/loop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_loop.setIcon(icon11)
+        icon9 = QIcon()
+        icon9.addFile(u":/buttons/resources/loop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_loop.setIcon(icon9)
 
         self.horizontalLayout_5.addWidget(self.action_loop)
 

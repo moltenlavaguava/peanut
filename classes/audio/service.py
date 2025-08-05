@@ -99,6 +99,7 @@ class AudioService():
     async def _managePlaylist(self):
         firstTrack = True # makes the first track not automatically play
         playlist = self.getCurrentPlaylist()
+        tracks = playlist.getTracks()
         length = playlist.getLength()
         skipEvent = self._skipAudioEvent
         shuffleEvent = self._shuffleAudioEvent
@@ -114,7 +115,7 @@ class AudioService():
                     break
                 # clamp index
                 if index < 0: index = 0
-                track = playlist.getTracks()[index]
+                track = tracks[index]
                 self.setCurrentTrack(track)
                 # check to see if anything's downloading
                 if not track.getDownloaded():
@@ -122,7 +123,7 @@ class AudioService():
                     if self.playlistService.getIsDownloading() or firstTrack:
                         # wait for the download
                         self.logger.info(f"Track '{track.getDisplayName()}' isn't downloaded yet. Waiting for finish.")
-                        while not (track.getDownloaded()) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
+                        while (not tracks[index].getDownloaded()) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
                             await asyncio.sleep(0.5)
                         if (shuffleEvent.is_set() or self._stopAudioEvent):
                             # break and restart the playlist

@@ -31,6 +31,9 @@ class PlaylistTrack():
     def getName(self):
         return self._name
     
+    def setDisplayName(self, name:str):
+        self._displayName = name
+    
     def getDisplayName(self):
         return self._displayName
     

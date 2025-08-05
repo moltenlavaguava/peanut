@@ -89,7 +89,8 @@ class PlaylistDownloader():
             # if this wasn't the artist's own upload, return
             if not mainResult["videoType"] == "MUSIC_VIDEO_TYPE_ATV": self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no videoType entry present"); return None, None, None
             # if the track length is more than <maxVariation> seconds different than the yt video, return
-            if abs(mainResult["duration_seconds"] - trackLength) > maxVariation: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': track lengths do not match up"); return None, None, None
+            if abs(mainResult["duration_seconds"] - trackLength) > maxVariation: 
+                self.logger.debug(f"Album Data Request failed for term '{searchTerm}': track lengths do not match up ({mainResult['duration_seconds']}s on yt music vs. {trackLength}, with max variation of {maxVariation}s)"); return None, None, None
             albumName = self._sanitizeFilename(mainResult["album"]["name"])
             albumDisplayName = mainResult["album"]["name"]
             albumID = mainResult["album"]["id"]
@@ -107,7 +108,7 @@ class PlaylistDownloader():
                 playlist.addAlbumEntry(albumName, {"artist": artistName, "display name:": albumDisplayName})
             else:
                 artistName = albums[albumName]["artist"]
-            return albumName, albumDisplayName, artistName
+            return albumName, albumDisplayName, artistName, mainResult["title"]
         else:
             self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no results found with search term"); return None, None, None
     
@@ -169,11 +170,13 @@ class PlaylistDownloader():
                 
                 if not autogenVideo:
                     # try to get an album cover from youtube music
-                    albumName, albumDisplayName, artistName = self._getAlbumData(track.getDisplayName(), track.getLength(), maxVariation, playlist, thumbnailOutput)
+                    # self.logger.debug(f"Info: {track.toDict()}")
+                    albumName, albumDisplayName, artistName, trackName = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=track.getLength(), maxVariation=maxVariation, playlist=playlist, imageDownloadFolder=thumbnailOutput)
                     if albumName:
                         track.setAlbumName(albumName)
                         track.setAlbumDisplayName(albumDisplayName)
                         track.setArtistName(artistName)
+                        track.setDisplayName(trackName)
                 
                 # signal the completion of the track download
                 responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name})
@@ -194,6 +197,8 @@ class PlaylistDownloader():
                 for track in info_dict['entries']:
                     if track and 'url' in track:
                         index += 1
+                        if track["duration"] == 0:
+                            self.logger.warning(f"Track duration for {track['title']} is 0s which probably is not correct")
                         tracks.append(PlaylistTrack(videoURL=track["url"], name=self._sanitizeFilename(track["title"]), displayName=track["title"], index=index, length=track["duration"]))
             playlist.setTracks(tracks)
             playlist.setLength(len(tracks))

@@ -71,7 +71,7 @@ QFrame {
       <property name="frameShadow">
        <enum>QFrame::Shadow::Raised</enum>
       </property>
-      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0">
+      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0">
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -95,34 +95,6 @@ QFrame {
          <property name="icon">
           <iconset resource="../../resources.qrc">
            <normaloff>:/buttons/resources/home.png</normaloff>:/buttons/resources/home.png</iconset>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="CircleImageButton" name="action_settings">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="icon">
-          <iconset resource="../../resources.qrc">
-           <normaloff>:/buttons/resources/settings.png</normaloff>:/buttons/resources/settings.png</iconset>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="CircleImageButton" name="action_help">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="icon">
-          <iconset resource="../../resources.qrc">
-           <normaloff>:/buttons/resources/help.png</normaloff>:/buttons/resources/help.png</iconset>
          </property>
         </widget>
        </item>

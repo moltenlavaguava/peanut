@@ -13,6 +13,7 @@ from .handler_mainwindow import Window
 
 import os
 import logging
+import resources_rc
 
 class GuiService():
     
@@ -40,9 +41,8 @@ class GuiService():
         box = self.getMainWindow().ui.info_playlistData
         box.setText(f"{playlistName} • {currentTrackIndex}/{totalTracks}")
     
-    def setCurrentTrackBoxText(self, text:str):
-        box = self.getMainWindow().ui.info_nowPlaying
-        box.setText(text)
+    def setTrackNameBoxText(self, text:str):
+        self._window.ui.info_trackName.setText(text)
     
     def setProgressBarProgress(self, progress:float):
         bar = self.getMainWindow().ui.info_progressBar
@@ -100,6 +100,30 @@ class GuiService():
             button.clicked.connect(lambda checked, i=index: buttonActivated(self, i)) # checked singal is always sent
             layout.addWidget(button)
             self.addTrackWidgetToList(button)
+    
+    # button changing
+    
+    def setDownloadButtonState(self, downloadState:bool):
+        button = self._window.ui.action_download
+        if downloadState:
+            # replace the button icon with a stop button
+            button.setIcon(QIcon(":/buttons/resources/stop.png"))
+        else:
+            # replace the button icon with a download button
+            button.setIcon(QIcon(":/buttons/resources/download.png"))
+            
+    def setPlayButtonState(self, playingState:bool):
+        button = self._window.ui.action_play
+        if playingState:
+            # replace the button icon with a pause button
+            button.setIcon(QIcon(":/buttons/resources/pause.png"))
+            # change the button padding ratio
+            button.setPaddingPercentage(0, 0, 0, 0)
+        else:
+            # replace the button icon with a play button
+            button.setIcon(QIcon(":/buttons/resources/play.png"))
+            # change the button padding ratio
+            button.setPaddingPercentage(0, 0, 0, 0.07142857142)
     
     # INTERIOR MANAGEMENT
     
@@ -169,16 +193,23 @@ class GuiService():
         self.addConnection(f"Playlist Select Request Connection: {name}", connection)
     
     def _eventAudioTrackStart(self, track:PlaylistTrack):
-        self.setCurrentTrackBoxText(f"now playing: {track.getDisplayName()}")
+        self.setTrackNameBoxText(track.getDisplayName())
     
     def _eventAudioTrackPause(self, track:PlaylistTrack):
-        self.setCurrentTrackBoxText(f"now playing: {track.getDisplayName()} (paused)")
+        # change the play button state
+        self.setPlayButtonState(False)
     
     def _eventAudioTrackResume(self, track:PlaylistTrack):
-        self.setCurrentTrackBoxText(f"now playing: {track.getDisplayName()}")
+        self.setPlayButtonState(True)
     
     def _eventAudioTrackEnd(self, track:PlaylistTrack):
-        self.setCurrentTrackBoxText(f"now playing:")
+        self.setTrackNameBoxText("")
+    
+    def _eventDownloadStartRequest(self):
+        self.setDownloadButtonState(True)
+    
+    def _eventDownloadStopRequest(self):
+        self.setDownloadButtonState(False)
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float):
@@ -195,13 +226,15 @@ class GuiService():
         self.eventService.subscribeToEvent("AUDIO_TRACK_RESUME", self._eventAudioTrackResume)
         self.eventService.subscribeToEvent("AUDIO_TRACK_END", self._eventAudioTrackEnd)
         self.eventService.subscribeToEvent("AUDIO_TRACK_PROGRESS", self._eventAudioTrackProgress)
+        self.eventService.subscribeToEvent("DOWNLOAD_START_REQUEST", self._eventDownloadStartRequest)
+        self.eventService.subscribeToEvent("DOWNLOAD_STOP_REQUEST", self._eventDownloadStopRequest)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService)
         
         # customizing buttons
-        self._window.ui.action_play.setPaddingPercentage(0, 0, 0, 0.07142857142) # to center the play button
+        self.setPlayButtonState(True) # to center the play button
         
         # set the default page on startup
         self.loadPagePlaylistSelector()

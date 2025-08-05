@@ -39,13 +39,6 @@ options["downloadOptions"] = {
     "verbose": False,
     'ignoreerrors': True,
     "restrictfilenames": True,
-    'extractor_args': {
-        'youtube': [
-            'player_client=web',       # force using web client
-            'no_check_formats=1',      # don't re-check all formats
-            'skip=dash,configs'        # skip DASH manifests + config JSONs
-        ]
-    },
 }
 
 if __name__ == "__main__":

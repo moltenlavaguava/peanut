@@ -126,6 +126,8 @@ class PlaylistService():
                     self.addPlaylist(playlist)
                     # save the file
                     self.savePlaylistFile(name)
+                    # mark the download as being complete
+                    self.setIsDownloading(False)
                 case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading
                     playlistName = response["playlistName"]
                     # mark it as downloaded
@@ -135,7 +137,7 @@ class PlaylistService():
                     self.logger.info(f"Marking track '{track.getDisplayName()}' as finished in the playlist service.")
                     # save the file. if this gets to be too cpu intensive, then stop doing this
                     self.savePlaylistFile(playlistName)
-                case "DOWNLOAD_DONE": # playlist download finished (or stopped)
+                case "PLAYLIST_DOWNLOAD_DONE": # playlist download finished (or stopped)
                     playlistName = response["playlistName"]
                     if not playlistName: continue
                     # get the current playlist object
@@ -146,6 +148,8 @@ class PlaylistService():
                     # set albums
                     playlist.setAlbums(response["albums"])
                     self.savePlaylistFile(playlist.getName())
+                    # mark the download as being complete
+                    self.setIsDownloading(False)
         self.logger.info("Closing Playlist Download Listener.")
             
      # for playlist downloader
@@ -230,6 +234,12 @@ class PlaylistService():
     
     # starts downloading a given playlist from its name. blocks the current thread/coroutine until it finishes.
     def downloadPlaylist(self, name:str):
+        if self.getIsDownloading():
+            self.logger.warning(f"Attempted to download playlist '{name}' even though one is already downloading.")
+            return
+        if not self.getDownloadQueueEmpty():
+            self.logger.warning(f"Attempted to download playlist '{name}' even though download queue was not empty.")
+            return
         # retrieve the playlist
         playlist = self.getPlaylist(name)
         if not playlist: return
@@ -257,7 +267,7 @@ class PlaylistService():
     def createPlaylistFromURL(self, url:str):
         playlist = Playlist(playlistURL=url)
         # send into process to ..process
-        self.setIsDownloading (False)
+        self.setIsDownloading(False)
         self._downloadQueue.put({"action": "INITIALIZE", "playlist": playlist})
         self.setDownloadQueueEmpty(False)
     

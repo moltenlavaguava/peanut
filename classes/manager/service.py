@@ -41,14 +41,17 @@ class ManagerService():
     # Action
     
     def _actionPlay(self):
-        self.logger.info("Play action recieved.")
         # check to see if a track is loaded
         if self.audioService.getTrackLoaded():
             paused = self.audioService.getPaused()
             if paused:
+                self.logger.debug("Playing audio.")
                 self.audioService.resumeAudio()
             else:
+                self.logger.debug("Pausing audio.")
                 self.audioService.pauseAudio()
+        else:
+            self.logger.debug("Failed to run play action: track is not loaded.")    
     
     def _actionSkip(self):
         self.logger.info("Skip action recieved.")
@@ -101,26 +104,20 @@ class ManagerService():
         else:
             self.playlistService.createPlaylistFromURL(url)
     
-    def _actionStopDownload(self):
-        self.logger.info("Stop Download button activated.")
-        # stop the current download, if it is actually going
-        isDownloading = self.playlistService.getIsDownloading()
-        if isDownloading:
-            self.logger.info("Stopping playlist downloader.")
-            self.playlistService.stopDownloadingPlaylist()
-    
-    def _actionStartDownload(self):
-        self.logger.info("Start Download button activated.")
-        # start the current download, if it actually needs to be downloaded
+    def _actionDownload(self):
+        self.logger.debug("Download button activated.")
+        # either start the download or stop it
         currentPlaylist = self.playlistService.getCurrentPlaylist()
-        if (currentPlaylist) and (not currentPlaylist.getDownloaded()):
+        if not currentPlaylist: return
+        downloading = self.playlistService.getIsDownloading()
+        if downloading:
+            # stop downloading the current playlist
+            self.playlistService.stopDownloadingPlaylist()
+            self.eventService.triggerEvent("DOWNLOAD_STOP_REQUEST")
+        else:
+            # start downloading the current playlist
             self.playlistService.downloadPlaylist(currentPlaylist.getName())
-
-    def _actionStartAudioPlayer(self):
-        self.logger.info("Recieved action to start the audio player.")
-        # get current playlist and load it into the audio player
-        if (not self.audioService.getCurrentPlaylist()) and (self.playlistService.getCurrentPlaylist()):
-            self.audioService.loadPlaylist(self.playlistService.getCurrentPlaylist())
+            self.eventService.triggerEvent("DOWNLOAD_START_REQUEST")
 
     def _actionStartProgressScroll(self, progress:float):
         if self.audioService.getTrackLoaded():
@@ -224,12 +221,8 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_PREVIOUS", self._actionPrevious)
         self.eventService.addEvent("ACTION_LOAD_FROM_URL")
         self.eventService.subscribeToEvent("ACTION_LOAD_FROM_URL", self._actionLoadFromURL)
-        self.eventService.addEvent("ACTION_STOP_DOWNLOAD")
-        self.eventService.subscribeToEvent("ACTION_STOP_DOWNLOAD", self._actionStopDownload)
-        self.eventService.addEvent("ACTION_START_DOWNLOAD")
-        self.eventService.subscribeToEvent("ACTION_START_DOWNLOAD", self._actionStartDownload)
-        self.eventService.addEvent("ACTION_START_AUDIO_PLAYER")
-        self.eventService.subscribeToEvent("ACTION_START_AUDIO_PLAYER", self._actionStartAudioPlayer)
+        self.eventService.addEvent("ACTION_DOWNLOAD")
+        self.eventService.subscribeToEvent("ACTION_DOWNLOAD", self._actionDownload)
         self.eventService.addEvent("ACTION_START_PROGRESS_SCROLL")
         self.eventService.subscribeToEvent("ACTION_START_PROGRESS_SCROLL", self._actionStartProgressScroll)
         self.eventService.addEvent("ACTION_END_PROGRESS_SCROLL")
@@ -252,6 +245,10 @@ class ManagerService():
         self.eventService.addEvent("AUDIO_STOP")
         self.eventService.addEvent("AUDIO_SELECT")
         self.eventService.subscribeToEvent("AUDIO_SELECT", self._audioSelect)
+        
+        # download events
+        self.eventService.addEvent("DOWNLOAD_START_REQUEST")
+        self.eventService.addEvent("DOWNLOAD_STOP_REQUEST")
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")
