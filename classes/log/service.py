@@ -55,3 +55,5 @@ class LoggingService():
             except Exception as e:
                 self.logger.error(f"An error occured while processing a record: {e}")
         self.logger.info("Shutting down threaded logging manager.")
+        # close the queue
+        queue.close()

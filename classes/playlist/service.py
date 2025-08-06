@@ -101,6 +101,7 @@ class PlaylistService():
                                                                    responseQueue=self._responseQueue, stopEvent=self._stopEvent)
         # create the response listener thread
         self.threadService.createThread(self._playlistDownloadListener, "Playlist Download Listener")
+        self.threadService.createThreadEvent("Playlist Downloader Close")
         
         # listen for the program close event
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
@@ -128,6 +129,7 @@ class PlaylistService():
                     self.savePlaylistFile(name)
                     # mark the download as being complete
                     self.setIsDownloading(False)
+                    self.eventService.triggerEvent("DOWNLOAD_STOP")
                 case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading
                     playlistName = response["playlistName"]
                     # mark it as downloaded
@@ -150,7 +152,12 @@ class PlaylistService():
                     self.savePlaylistFile(playlist.getName())
                     # mark the download as being complete
                     self.setIsDownloading(False)
+                    self.eventService.triggerEvent("DOWNLOAD_STOP")
         self.logger.info("Closing Playlist Download Listener.")
+        # close the queues
+        responseQueue.close()
+        self._downloadQueue.close()
+        self.threadService.setThreadEvent("Playlist Downloader Close")
             
      # for playlist downloader
     
@@ -233,7 +240,8 @@ class PlaylistService():
         self._currentPlaylist = playlist
     
     # starts downloading a given playlist from its name. blocks the current thread/coroutine until it finishes.
-    def downloadPlaylist(self, name:str):
+    def downloadPlaylist(self, name:str, startIndex:int = None):
+        if not startIndex: startIndex = 0
         if self.getIsDownloading():
             self.logger.warning(f"Attempted to download playlist '{name}' even though one is already downloading.")
             return

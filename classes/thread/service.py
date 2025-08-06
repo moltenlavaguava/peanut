@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import PySide6.QtAsyncio as QtAsyncio
+from PySide6.QtWidgets import QApplication
 import asyncio
 import threading
 import logging
 import multiprocessing
 from multiprocessing.synchronize import Event
+import sys
+import traceback
 
 # manages threads and async utilities
 class ThreadService():
@@ -36,6 +39,9 @@ class ThreadService():
         
         # program closing management
         self._programCloseEvent = self.createAsyncioEvent("Program Close Event")
+        
+        # whether or not it's safe to close the main window
+        self._closeWindowSafeEvent = self.createAsyncioEvent("Window Close Safe Event")
     
     # EVENTS (but not really)
     
@@ -82,7 +88,13 @@ class ThreadService():
             return self._threadEvents[eventName].is_set()
         else:
             self.logger.warning(f"Thread event not found for name {eventName}.")
-            
+    
+    def getThreadEvent(self, eventName:str):
+        if eventName in self._threadEvents:
+            return self._threadEvents[eventName]
+        else:
+            self.logger.warning(f"Thread event not found for name {eventName}.")
+       
     def setThreadEvent(self, eventName:str):
         if eventName in self._threadEvents:
             return self._threadEvents[eventName].set()
@@ -246,6 +258,19 @@ class ThreadService():
     
     # main loop
     
+    async def _shutdownOrchestrator(self):
+        # wait for the playlist manager to stop
+        playlistManagerTask = self.getTask("Playlist Manager")
+        if playlistManagerTask:
+            await playlistManagerTask
+            
+        # wait for the playlist download listener thread (and process) to finish
+        playlistDownloaderCloseEvent = self.getThreadEvent("Playlist Downloader Close")
+        if playlistDownloaderCloseEvent:
+            # wait for it to close
+            while not playlistDownloaderCloseEvent.is_set():
+                await asyncio.sleep(0.5)
+  
     # function for the main loop
     async def _mainLoop(self):
         self.logger.info("Booting up main loop.")
@@ -259,14 +284,17 @@ class ThreadService():
         self._mainLoopObject = asyncio.get_event_loop()
         
         # keep main loop alive
-        await self.getAsyncioEvent("Program Close Event").wait()
+        await self.getAsyncioEvent("Program Close Event").wait() 
         
-        # wait for the playlist manager to stop
-        await self.getTask("Playlist Manager")
+        # wait for everything to close
+        await self.createTask(self._shutdownOrchestrator(), "Shutdown Orchestrator")
+        
+        # marking window okay to be closed
+        self.setAsyncioEvent("Window Close Safe Event")
         
         self._mainLoopAlive = False
         self.logger.info("Closing main loop.")
     
     # starts the main async loop and sets up the necessary event handlers.
     def start(self):
-        QtAsyncio.run(self._mainLoop(), keep_running=True, quit_qapp=False)
+        QtAsyncio.run(self._mainLoop(), keep_running=False, quit_qapp=True, debug=True)

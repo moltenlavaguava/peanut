@@ -8,6 +8,7 @@ from classes.event.service import EventService
 from classes.playlist.playlist import Playlist
 from classes.playlist.track import PlaylistTrack
 from classes.config.service import ConfigService
+from classes.thread.service import ThreadService
 
 from .handler_mainwindow import Window
 
@@ -17,13 +18,14 @@ import resources_rc
 
 class GuiService():
     
-    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, configService:ConfigService):
+    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, configService:ConfigService, threadService:ThreadService):
         
         self.logger = logging.getLogger(__name__)
         
         self._mainWindow = mainWindow
         self.eventService = eventService
         self.configService = configService
+        self.threadService = threadService
         
         # caches all existing track widgets
         self._trackWidgets: list[QWidget] = []
@@ -41,12 +43,24 @@ class GuiService():
         box = self.getMainWindow().ui.info_playlistData
         box.setText(f"{playlistName} • {currentTrackIndex}/{totalTracks}")
     
+    def setArtistDataText(self, artist:str, albumName:str):
+        self._window.ui.info_artistAlbum.setText(f"{artist} • {albumName}")
+    
+    def setCurrentTrackTimeText(self, text:str):
+        self._window.ui.info_trackCurrentTime.setText(text)
+        
+    def setTotalTrackTimeText(self, text:str):
+        self._window.ui.info_trackTotalTime.setText(text)
+        
     def setTrackNameBoxText(self, text:str):
         self._window.ui.info_trackName.setText(text)
     
     def setProgressBarProgress(self, progress:float):
         bar = self.getMainWindow().ui.info_progressBar
         bar.setProgress(progress)
+    
+    def setAlbumCoverImage(self, imgPath:str):
+        self._window.ui.info_albumCover.setPixmap(QPixmap(imgPath))
     
     # generic method to set the main stack widget's page
     def setMainWindowPage(self, pageWidget:QWidget):
@@ -98,7 +112,7 @@ class GuiService():
         for index, track in enumerate(playlist.getTracks()):
             button = QPushButton(track.getDisplayName(), scrollArea)
             button.clicked.connect(lambda checked, i=index: buttonActivated(self, i)) # checked singal is always sent
-            layout.addWidget(button)
+            layout.insertWidget(index, button)
             self.addTrackWidgetToList(button)
     
     # button changing
@@ -126,6 +140,9 @@ class GuiService():
             button.setPaddingPercentage(0, 0, 0, 0.07142857142)
     
     # INTERIOR MANAGEMENT
+    
+    def getMainApplication(self):
+        return self._QApplication
     
     def getMainWindow(self):
         return self._window
@@ -157,20 +174,33 @@ class GuiService():
     def addTrackWidgetToList(self, widget:QWidget):
         self.getTrackWidgetList().append(widget)
     
-    # EVENTS
+    # resets all of the audio player widgets to their default settings
+    def resetAudioPlayerGUI(self):
+        # reset the album image
+        self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg"))
+        self.setPlaylistDataText("no playlist", 1, 0)
+        self.setArtistDataText("no artist", "no album")
+        self.setTrackNameBoxText("no track loaded")
+        self.setCurrentTrackTimeText("0:00")
+        self.setTotalTrackTimeText("0:00")
+        self.setProgressBarProgress(0)
+        self.removeTrackWidgets()
     
-    # runs when the program is closing
-    def _eventCloseProgram(self):
-        # close the application
-        self._QApplication.quit()
+    # EVENTS
     
     def _eventCurrentPlaylistChange(self, newPlaylist:Playlist|None):
         # update the playlist data text box
-        self.setPlaylistDataText(newPlaylist.getDisplayName(), 1, newPlaylist.getLength())
-        # populate the track list
+        currentPlaylist = newPlaylist
         self.removeTrackWidgets()
-        self.populateNextListScrollArea(newPlaylist)
-        
+        if currentPlaylist:
+            self.setPlaylistDataText(newPlaylist.getDisplayName(), 1, newPlaylist.getLength())
+            # populate the track list
+            self.populateNextListScrollArea(newPlaylist)
+            # signal the finish
+            self.eventService.triggerEvent("GUI_LOAD_AUDIO_PLAYER_FINISH")
+        else:
+            # cleanup everything
+            self.resetAudioPlayerGUI()
     
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
@@ -192,8 +222,22 @@ class GuiService():
         # add the conection
         self.addConnection(f"Playlist Select Request Connection: {name}", connection)
     
-    def _eventAudioTrackStart(self, track:PlaylistTrack):
+    def _eventAudioTrackStart(self, track:PlaylistTrack, playlist:Playlist, index:int):
+        # update the current track name box
         self.setTrackNameBoxText(track.getDisplayName())
+        # update the playlist data
+        self.setPlaylistDataText(playlist.getDisplayName(), index + 1, playlist.getLength())
+        # update the author / album data
+        self.setArtistDataText(track.getArtistName() or "unknown artist", track.getAlbumDisplayName() or "unknown album")
+        # set the total track time
+        m, s = divmod(int(track.getLength()), 60)
+        self.setTotalTrackTimeText(f"{m:02d}:{s:02d}")
+        # set the album cover image
+        albumName = track.getAlbumName()
+        if albumName:
+            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{albumName}.jpg"))
+        else:
+            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg"))
     
     def _eventAudioTrackPause(self, track:PlaylistTrack):
         # change the play button state
@@ -203,22 +247,26 @@ class GuiService():
         self.setPlayButtonState(True)
     
     def _eventAudioTrackEnd(self, track:PlaylistTrack):
-        self.setTrackNameBoxText("")
+        self.setTrackNameBoxText("(No Track loaded)")
     
     def _eventDownloadStartRequest(self):
         self.setDownloadButtonState(True)
     
-    def _eventDownloadStopRequest(self):
+    def _eventDownloadStop(self):
         self.setDownloadButtonState(False)
     
     # runs when the audio progress changes (updated ~2/sec)
-    def _eventAudioTrackProgress(self, progress:float):
+    def _eventAudioTrackProgress(self, progress:float, totalTime:float):
         self.setProgressBarProgress(progress)
+        
+        # update the seconds counter
+        seconds = int(progress * totalTime)
+        m, s = divmod(seconds, 60)
+        self.setCurrentTrackTimeText(f"{m:02d}:{s:02d}")
     
     def start(self):
         self.logger.info("Starting gui service.")
         # setup event listeners
-        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventCloseProgram)
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._eventPlaylistInitialized)
         self.eventService.subscribeToEvent("PLAYLIST_CURRENT_CHANGE", self._eventCurrentPlaylistChange)
         self.eventService.subscribeToEvent("AUDIO_TRACK_START", self._eventAudioTrackStart)
@@ -227,11 +275,11 @@ class GuiService():
         self.eventService.subscribeToEvent("AUDIO_TRACK_END", self._eventAudioTrackEnd)
         self.eventService.subscribeToEvent("AUDIO_TRACK_PROGRESS", self._eventAudioTrackProgress)
         self.eventService.subscribeToEvent("DOWNLOAD_START_REQUEST", self._eventDownloadStartRequest)
-        self.eventService.subscribeToEvent("DOWNLOAD_STOP_REQUEST", self._eventDownloadStopRequest)
+        self.eventService.subscribeToEvent("DOWNLOAD_STOP", self._eventDownloadStop)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
-        self._window = Window(self._mainWindow, self.eventService)
+        self._window = Window(self._mainWindow, self.eventService, self.threadService)
         
         # customizing buttons
         self.setPlayButtonState(True) # to center the play button
@@ -239,8 +287,8 @@ class GuiService():
         # set the default page on startup
         self.loadPagePlaylistSelector()
         
-        # set the default album cover iamge
-        self._window.ui.info_albumCover.setPixmap(QPixmap(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg")))
+        # set the audio player's default appearance
+        self.resetAudioPlayerGUI()
         
         # show the window
         self._window.show()

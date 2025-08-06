@@ -5,14 +5,19 @@ from PySide6.QtCore import Slot
 
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
 from classes.event.service import EventService
+from classes.thread.service import ThreadService
+
+import logging
+logger = logging.getLogger(__name__)
 
 class Window(QMainWindow):
-    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService):
+    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, threadService:ThreadService):
         super(Window, self).__init__()
         self.ui = mainWindow
         self.ui.setupUi(self)
         
         self.eventService = eventService
+        self.threadService = threadService
         
         # hooking up ui buttons
         self.ui.action_play.clicked.connect(self.buttonPlayActivated)
@@ -23,6 +28,7 @@ class Window(QMainWindow):
         self.ui.action_previous.clicked.connect(self.buttonPreviousActivated)
         self.ui.action_download.clicked.connect(self.buttonDownloadActivated)
         self.ui.action_home.clicked.connect(self.buttonHomeActivated)
+        self.ui.action_organize.clicked.connect(self.buttonOrganizeActivated)
         
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)
@@ -88,6 +94,9 @@ class Window(QMainWindow):
     
     # catch when the window closes
     def closeEvent(self, event):
-        # trigger program wide event
-        event.accept()
-        self.eventService.triggerEvent("PROGRAM_CLOSE")
+        if self.threadService.getAsyncioEvent("Window Close Safe Event").is_set():
+            event.accept()
+        else:
+            # trigger program wide event
+            event.ignore()
+            self.eventService.triggerEvent("PROGRAM_CLOSE")

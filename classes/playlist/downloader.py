@@ -85,12 +85,12 @@ class PlaylistDownloader():
         if results:
             mainResult = results[0]
             # if no album, return
-            if not mainResult["album"]: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': No album entry present"); return None, None, None
+            if not mainResult["album"]: self.logger.debug(f"Album Data Request failed for term '{searchTerm}': No album entry present"); return None, None, None, None
             # if this wasn't the artist's own upload, return
-            if not mainResult["videoType"] == "MUSIC_VIDEO_TYPE_ATV": self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no videoType entry present"); return None, None, None
+            if not mainResult["videoType"] == "MUSIC_VIDEO_TYPE_ATV": self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no videoType entry present"); return None, None, None, None, None
             # if the track length is more than <maxVariation> seconds different than the yt video, return
             if abs(mainResult["duration_seconds"] - trackLength) > maxVariation: 
-                self.logger.debug(f"Album Data Request failed for term '{searchTerm}': track lengths do not match up ({mainResult['duration_seconds']}s on yt music vs. {trackLength}, with max variation of {maxVariation}s)"); return None, None, None
+                self.logger.debug(f"Album Data Request failed for term '{searchTerm}': track lengths do not match up ({mainResult['duration_seconds']}s on yt music vs. {trackLength}, with max variation of {maxVariation}s)"); return None, None, None, None
             albumName = self._sanitizeFilename(mainResult["album"]["name"])
             albumDisplayName = mainResult["album"]["name"]
             albumID = mainResult["album"]["id"]
@@ -110,7 +110,7 @@ class PlaylistDownloader():
                 artistName = albums[albumName]["artist"]
             return albumName, albumDisplayName, artistName, mainResult["title"]
         else:
-            self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no results found with search term"); return None, None, None
+            self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no results found with search term"); return None, None, None, None
     
     # converts an audio file to the desired extension and gets the length of the file.
     def _processAudioFile(self, filePath:str, extension:str, track:PlaylistTrack, ffmpegPath:str):

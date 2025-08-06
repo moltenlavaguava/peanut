@@ -34,6 +34,7 @@ class AudioService():
         self._currentTrack: PlaylistTrack|None = None
         self._tempPause = False # primarly used with the scroll. meant to keep track of if the track was paused before the scroll was done
         self._stopAudioEvent = False # signals the stopping of the audio manager.
+        self._loop = False
         
         # options
         self.volume = 1
@@ -141,19 +142,27 @@ class AudioService():
                         self.logger.info(f"Skipping undownloaded track '{track.getDisplayName()}'.")
                         continue
                 self.logger.info(f"Now playing: {index + 1}. {track.getDisplayName()}")
+                self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, index)
                 # loading and playing audio
+                # if the current track is marked as paused, unpause it (occurs from manually selecting a track)
+                if self.getPaused():
+                    self.setPaused(False)
+                    self.eventService.triggerEvent("AUDIO_TRACK_RESUME", track)
                 playback = self.loadTrack(track, pause=firstTrack)
+                trackLength = playback.duration
                 firstTrack = False
                 # wait for it to finish
                 while (playback.active) and (not (skipEvent.is_set() or shuffleEvent.is_set() or previousEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
                     if not self.getPaused():
                         # set the progress bar progress
                         progress = playback.curr_pos / playback.duration
-                        self.eventService.triggerEvent("AUDIO_TRACK_PROGRESS", progress)
+                        self.eventService.triggerEvent("AUDIO_TRACK_PROGRESS", progress, trackLength)
                     await asyncio.sleep(0.1)
                 if self._stopAudioEvent:
                     break # stop the loop without doing anything else
                 self.logger.info(f"Track '{track.getDisplayName()}' finished.")
+                # reset the looping variable
+                self.setLoop(False)
                 self.unloadTrack()
                 self.eventService.triggerEvent("AUDIO_TRACK_END", track)
                 # if the request to shuffle was made, reset the playlist playing
@@ -183,6 +192,7 @@ class AudioService():
             self.logger.info(f"Playlist {playlist.getDisplayName()} done.")
         self.logger.info("Playlist manager stopping.")
         if self.getCurrentPlaylist(): self.unloadPlaylist()
+        self.eventService.triggerEvent("AUDIO_MANAGER_END")
                 
     # actual audio work
     
@@ -225,8 +235,6 @@ class AudioService():
         if pause: 
             self.pauseAudio()
             playback.seek(0)
-        else:
-            self.eventService.triggerEvent("AUDIO_TRACK_START", track)
         # set the track length bc it already does that (and is more accurate)
         track.setLength(playback.duration)
         # set necessary variables
@@ -263,6 +271,17 @@ class AudioService():
         self.threadService.createTask(self._managePlaylist(), "Playlist Manager")
     
     # getting / setting
+    
+    def getLoop(self):
+        return self._loop
+    
+    def setLoop(self, loop:bool):
+        playback = self.getCurrentPlayback()
+        if not playback:
+            self.logger.warning("Attempted to set loop when playback wasn't loaded")
+            return
+        playback.loop_at_end(loop)
+        self._loop = loop
     
     def setTempPause(self, pause:bool):
         self._tempPause = pause
