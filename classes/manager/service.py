@@ -71,6 +71,7 @@ class ManagerService():
             playlist.randomize()
             # if the playlist is downloading, restart the downloader
             if self.playlistService.getIsDownloading():
+                self.logger.debug("Restarting playlist download.")
                 self.playlistService.stopDownloadingPlaylist()
                 self.playlistService.downloadPlaylist(playlist.getName())
             # send the shuffle request
@@ -89,9 +90,6 @@ class ManagerService():
         else:
             self.logger.debug("Enabling looping.")
             self.audioService.setLoop(True)
-    
-    def _actionOrganize(self):
-        self.logger.info("Organize action recieved.")
         
     def _actionKill(self):
         self.logger.info("Kill action recieved.")
@@ -123,10 +121,12 @@ class ManagerService():
         downloading = self.playlistService.getIsDownloading()
         if downloading:
             # stop downloading the current playlist
+            self.logger.debug("Stopping playlist download.")
             self.playlistService.stopDownloadingPlaylist()
             # self.eventService.triggerEvent("DOWNLOAD_STOP_REQUEST")
         else:
             # start downloading the current playlist
+            self.logger.debug("Starting playlist download.")
             self.playlistService.downloadPlaylist(currentPlaylist.getName())
             self.eventService.triggerEvent("DOWNLOAD_START_REQUEST")
 
@@ -161,6 +161,9 @@ class ManagerService():
             # save the current playlist file
             self.playlistService.savePlaylistFile(currentPlaylist.getName())
             self.playlistService.setCurrentPlaylist(None)
+        # if a playlist is downloading, stop it
+        if self.playlistService.getIsDownloading():
+            self.playlistService.stopDownloadingPlaylist()
 
     def _actionOrganize(self):
         # if the shuffle event is set or the download queue is full, don't do anything
@@ -173,6 +176,7 @@ class ManagerService():
             playlist.getTracks().sort(key=lambda track: track.getIndex())
             # if the playlist is downloading, restart the downloader
             if self.playlistService.getIsDownloading():
+                self.logger.debug("Restarting playlist download.")
                 self.playlistService.stopDownloadingPlaylist()
                 self.playlistService.downloadPlaylist(playlist.getName())
             # send the shuffle request
@@ -182,8 +186,11 @@ class ManagerService():
             self.guiService.populateNextListScrollArea(playlist)
 
     def _actionSetVolume(self, volume:float):
+        muted = self.audioService.getMuted()
         if volume != self.audioService.getVolume():
             self.audioService.setVolume(volume)
+            if volume != 0 and muted:
+                self.eventService.triggerEvent("GUI_UNMUTE_AUDIO")
 
     def _actionMute(self):
         muted = self.audioService.getMuted()
@@ -241,6 +248,8 @@ class ManagerService():
     def _audioManagerEnd(self):
         # unload the playlist service's playlist
         self.playlistService.setCurrentPlaylist(None)
+        # unload the gui
+        # self.guiService.resetAudioPlayerGUI()
     
     # STARTING 
     
@@ -305,6 +314,7 @@ class ManagerService():
         self.eventService.addEvent("PLAYLIST_SELECT_REQUEST")
         self.eventService.subscribeToEvent("PLAYLIST_SELECT_REQUEST", self._playlistSelectRequest)
         self.eventService.addEvent("PLAYLIST_CURRENT_CHANGE")
+        self.eventService.addEvent("PLAYLIST_TRACK_DOWNLOAD")
         
         # audio events
         self.eventService.addEvent("AUDIO_TRACK_START")

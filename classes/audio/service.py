@@ -139,6 +139,8 @@ class AudioService():
                             continue
                         else:
                             self.logger.info(f"Download for track '{track.getDisplayName()}' complete.")
+                        # update the current track object just incase it changed
+                        track = tracks[index]
                     else:
                         # skip this track
                         self.logger.info(f"Skipping undownloaded track '{track.getDisplayName()}'.")

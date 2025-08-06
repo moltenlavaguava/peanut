@@ -126,7 +126,9 @@ class PlaylistDownloader():
         track.setDownloaded(True)
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
-    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, ffmpegPath:str, stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str, useYoutubeMusicAlbums:bool, maxVariation:int):
+    def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, 
+                         ffmpegPath:str, stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str, useYoutubeMusicAlbums:bool, maxVariation:int, 
+                         startIndex:int, maxDownloadAttempts:int):
         tracks = playlist.getTracks()
         name = playlist.getName()
         # make the images directory
@@ -137,7 +139,11 @@ class PlaylistDownloader():
             self._downloadThumbnail(playlist.getThumbnailURL(), playlistThumbnailLocation)
             playlist.setThumbnailDownloaded(True)
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
-            for track in tracks:
+            for index, track in enumerate(tracks):
+                
+                # if the index is not the requested start index, skip until it is
+                if index < startIndex: continue
+                
                 if stopEvent.is_set():
                     break
                 if track.getDownloaded():
@@ -145,7 +151,31 @@ class PlaylistDownloader():
                 
                 # download + processing
                 self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
-                info = self._downloadVideo(ydl, track.getVideoURL())
+                
+                # attempt to download video. will try multiple times. if max attempts is -1, then it will try indefinitely.
+                attemptCount = 0
+                info: dict|None = None
+                success = True
+                while True:
+                    if (attemptCount == maxDownloadAttempts) and (maxDownloadAttempts != 1):
+                        # ran out of attempts
+                        success = False
+                        break
+                    try:
+                        info = self._downloadVideo(ydl, track.getVideoURL())
+                        if not info:
+                            # attempt failed, try again
+                            attemptCount += 1
+                        else:
+                            # attempt succeeded, break
+                            break
+                    except Exception as e:
+                        self.logger.error(f"An unknown error occured while attempting to download the track '{track.getName()}': {e}")
+                        attemptCount += 1
+                if not success:
+                    self.logger.error(f"Failed to download track '{track.getName()}': ran out of attempts")
+                    continue        
+                
                 path = ydl.prepare_filename(info)
                 # convert file to specified format (not getting the track length atm)
                 self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
@@ -184,7 +214,7 @@ class PlaylistDownloader():
                         track.setDisplayName(trackName)
                 
                 # signal the completion of the track download
-                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name})
+                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index})
             if not stopEvent.is_set():
                 self.logger.info("Done downloading playlist.")
                 playlist.setDownloaded(True)

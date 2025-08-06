@@ -30,6 +30,9 @@ class GuiService():
         # caches all existing track widgets
         self._trackWidgets: list[QWidget] = []
         
+        # caches the currently playing track + playlist for album cover purposes
+        self._currentTrack: PlaylistTrack|None = None
+        
         # connect() connections
         self._connections: dict[str, QMetaObject.Connection] = {}
     
@@ -70,6 +73,16 @@ class GuiService():
     
     def setAlbumCoverImage(self, imgPath:str):
         self._window.ui.info_albumCover.setPixmap(QPixmap(imgPath))
+    
+    # updates the given track gui element from track data and index.
+    def updateTrackWidget(self, track:PlaylistTrack, index:int):
+        # retrieve the widget, if it exists
+        widgetList = self.getTrackWidgetList()
+        if index >= len(widgetList):
+            self.logger.warning(f"Attempted to update the track widget list with an index ({index}) out of bounds of the widget list.")
+            return
+        widget = widgetList[index]
+        widget.setText(track.getDisplayName())
     
     # generic method to set the main stack widget's page
     def setMainWindowPage(self, pageWidget:QWidget):
@@ -253,6 +266,8 @@ class GuiService():
             self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{albumName}.jpg"))
         else:
             self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg"))
+        # cache the current track
+        self._currentTrack = track
     
     def _eventAudioTrackPause(self, track:PlaylistTrack):
         # change the play button state
@@ -262,7 +277,7 @@ class GuiService():
         self.setPlayButtonState(True)
     
     def _eventAudioTrackEnd(self, track:PlaylistTrack):
-        pass
+        self._currentTrack = None
     
     def _eventDownloadStartRequest(self):
         self.setDownloadButtonState(True)
@@ -281,6 +296,11 @@ class GuiService():
     
     def _eventGuiUnmuteAudio(self):
         self.setMuteButtonState(False)
+    
+    def _eventPlaylistTrackDownload(self, playlist:Playlist, track:PlaylistTrack, trackIndex:int):
+        if self.getTrackWidgetList():
+            # update the track data for the specific gui element
+            self.updateTrackWidget(track, trackIndex)
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
@@ -306,6 +326,7 @@ class GuiService():
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventProgramClose)
         self.eventService.subscribeToEvent("GUI_MUTE_AUDIO", self._eventGuiMuteAudio)
         self.eventService.subscribeToEvent("GUI_UNMUTE_AUDIO", self._eventGuiUnmuteAudio)
+        self.eventService.subscribeToEvent("PLAYLIST_TRACK_DOWNLOAD", self._eventPlaylistTrackDownload)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
