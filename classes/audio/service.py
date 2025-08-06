@@ -35,6 +35,8 @@ class AudioService():
         self._tempPause = False # primarly used with the scroll. meant to keep track of if the track was paused before the scroll was done
         self._stopAudioEvent = False # signals the stopping of the audio manager.
         self._loop = False
+        self._volume = 1
+        self._muted = False
         
         # options
         self.volume = 1
@@ -149,6 +151,8 @@ class AudioService():
                     self.setPaused(False)
                     self.eventService.triggerEvent("AUDIO_TRACK_RESUME", track)
                 playback = self.loadTrack(track, pause=firstTrack)
+                # set the current volume
+                playback.set_volume(self.getVolume())
                 trackLength = playback.duration
                 firstTrack = False
                 # wait for it to finish
@@ -235,8 +239,6 @@ class AudioService():
         if pause: 
             self.pauseAudio()
             playback.seek(0)
-        # set the track length bc it already does that (and is more accurate)
-        track.setLength(playback.duration)
         # set necessary variables
         self.setTrackLoaded(True)
         return playback
@@ -283,9 +285,24 @@ class AudioService():
         playback.loop_at_end(loop)
         self._loop = loop
     
+        # sets the internal variable for volume and updates the current playback's volume if it is loaded.
+        
+    def getMuted(self):
+        return self._muted
+
+    def setVolume(self, volume:float):
+        self._muted = volume == 0
+        self._volume = volume
+        playback = self.getCurrentPlayback()
+        if playback:
+            playback.set_volume(volume)
+    
+    def getVolume(self):
+        return self._volume
+    
     def setTempPause(self, pause:bool):
         self._tempPause = pause
-        
+    
     def getTempPause(self):
         return self._tempPause
     

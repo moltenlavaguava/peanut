@@ -55,7 +55,8 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
                     # do the download. "data": necessary args for doing all the fun stuff
                     downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, responseQueue=responseQueue)
                     # signal finish (only give back name of playlist)
-                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums(), "queueEmpty": downloadQueue.empty()})
+                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), 
+                                       "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums(), "queueEmpty": downloadQueue.empty(), "thumbnailDownloaded": playlist.getThumbnailDownloaded()})
                 except Exception as e:
                     logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": None})
@@ -147,6 +148,7 @@ class PlaylistService():
                     self.logger.info("Playlist downloader stopped.")
                     # set the downloaded state
                     playlist.setDownloaded(response["downloaded"])
+                    playlist.setThumbnailDownloaded(response["thumbnailDownloaded"])
                     # set albums
                     playlist.setAlbums(response["albums"])
                     self.savePlaylistFile(playlist.getName())

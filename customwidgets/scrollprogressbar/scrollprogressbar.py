@@ -7,6 +7,7 @@ class ScrollProgressBar(QFrame):
     # fires when the progress is manually changed by the user (i.e. click and drag)
     manualProgressChangeStart = Signal(float)
     manualProgressChangeEnd = Signal(float)
+    manualProgressChange = Signal(float)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -105,6 +106,7 @@ class ScrollProgressBar(QFrame):
         newProgress = self._calculateProgress(pos)
         # make sure that new progress is no greater than one or less than zero
         self.setProgress(newProgress)
+        self.manualProgressChange.emit(newProgress)
     
     def paintEvent(self, event):
         # if the widget was resized, then redraw the progress bar

@@ -81,6 +81,8 @@ class PlaylistDownloader():
     # searches yt music for album data for the given track.
     def _getAlbumData(self, searchTerm:str, trackLength:float, maxVariation:float, playlist:Playlist, imageDownloadFolder:str):
         results = self.ytmusic.search(searchTerm, "songs", None, limit=1, ignore_spelling=True)
+        if trackLength == 0:
+            self.logger.warning("Track length is 0 seconds, this probably is not correct")
     
         if results:
             mainResult = results[0]
@@ -135,7 +137,7 @@ class PlaylistDownloader():
             self._downloadThumbnail(playlist.getThumbnailURL(), playlistThumbnailLocation)
             playlist.setThumbnailDownloaded(True)
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
-            for index, track in enumerate(tracks):
+            for track in tracks:
                 if stopEvent.is_set():
                     break
                 if track.getDownloaded():
@@ -171,7 +173,10 @@ class PlaylistDownloader():
                 if not autogenVideo:
                     # try to get an album cover from youtube music
                     # self.logger.debug(f"Info: {track.toDict()}")
-                    albumName, albumDisplayName, artistName, trackName = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=track.getLength(), maxVariation=maxVariation, playlist=playlist, imageDownloadFolder=thumbnailOutput)
+                    trackLength = track.getLength()
+                    if trackLength == 0:
+                        self.logger.warning(f"track length directly from track is 0. Why? Track dict: {track.toDict()}")
+                    albumName, albumDisplayName, artistName, trackName = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=trackLength, maxVariation=maxVariation, playlist=playlist, imageDownloadFolder=thumbnailOutput)
                     if albumName:
                         track.setAlbumName(albumName)
                         track.setAlbumDisplayName(albumDisplayName)
@@ -197,9 +202,11 @@ class PlaylistDownloader():
                 for track in info_dict['entries']:
                     if track and 'url' in track:
                         index += 1
-                        if track["duration"] == 0:
+                        duration = track["duration"]
+                        if duration == 0:
                             self.logger.warning(f"Track duration for {track['title']} is 0s which probably is not correct")
-                        tracks.append(PlaylistTrack(videoURL=track["url"], name=self._sanitizeFilename(track["title"]), displayName=track["title"], index=index, length=track["duration"]))
+                        playlistTrack = PlaylistTrack(videoURL=track["url"], name=self._sanitizeFilename(track["title"]), displayName=track["title"], index=index, length=duration)
+                        tracks.append(playlistTrack)
             playlist.setTracks(tracks)
             playlist.setLength(len(tracks))
             playlist.setDownloaded(False)

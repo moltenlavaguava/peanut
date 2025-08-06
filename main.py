@@ -48,7 +48,7 @@ if __name__ == "__main__":
     
     # get logger
     logger = logging.getLogger(__name__)
-    
+     
     logger.info("Starting main.py")
     
     # initalize dependency injector

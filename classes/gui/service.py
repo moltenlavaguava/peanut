@@ -59,6 +59,12 @@ class GuiService():
         bar = self.getMainWindow().ui.info_progressBar
         bar.setProgress(progress)
     
+    def setVolumeBarProgress(self, progress:float):
+        self.getMainWindow().ui.input_volumeBar.setProgress(progress)
+    
+    def getVolumeBarProgress(self):
+        return self.getMainWindow().ui.input_volumeBar.getProgress()
+    
     def setMainWindowTitle(self, title:str):
         self._window.setWindowTitle(title)
     
@@ -142,6 +148,15 @@ class GuiService():
             # change the button padding ratio
             button.setPaddingPercentage(0, 0, 0, 0.07142857142)
     
+    def setMuteButtonState(self, mutedState:bool):
+        button = self.getMainWindow().ui.action_mute
+        if mutedState:
+            # replace the button icon with a muted button
+            button.setIcon(QIcon(":/buttons/resources/mute.png"))
+        else:
+            # replace the button icon with an unmuted button
+            button.setIcon(QIcon(":/buttons/resources/volume.png"))
+    
     # INTERIOR MANAGEMENT
     
     def getMainApplication(self):
@@ -194,8 +209,8 @@ class GuiService():
     def _eventCurrentPlaylistChange(self, newPlaylist:Playlist|None):
         # update the playlist data text box
         currentPlaylist = newPlaylist
-        self.resetAudioPlayerGUI() # cleanup the menu
         if currentPlaylist:
+            self.resetAudioPlayerGUI() # cleanup the menu
             self.setPlaylistDataText(newPlaylist.getDisplayName(), 1, newPlaylist.getLength())
             # populate the track list
             self.populateNextListScrollArea(newPlaylist)
@@ -261,6 +276,12 @@ class GuiService():
         # set the title of the window
         self._window.setWindowTitle("peanut [Closing]")
     
+    def _eventGuiMuteAudio(self):
+        self.setMuteButtonState(True)
+    
+    def _eventGuiUnmuteAudio(self):
+        self.setMuteButtonState(False)
+    
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
         self.setProgressBarProgress(progress)
@@ -283,10 +304,15 @@ class GuiService():
         self.eventService.subscribeToEvent("DOWNLOAD_START_REQUEST", self._eventDownloadStartRequest)
         self.eventService.subscribeToEvent("DOWNLOAD_STOP", self._eventDownloadStop)
         self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventProgramClose)
+        self.eventService.subscribeToEvent("GUI_MUTE_AUDIO", self._eventGuiMuteAudio)
+        self.eventService.subscribeToEvent("GUI_UNMUTE_AUDIO", self._eventGuiUnmuteAudio)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService, self.threadService)
+
+        # setting default volume
+        self.setVolumeBarProgress(1)
 
         # customizing buttons
         self.setPlayButtonState(True) # to center the play button

@@ -45,6 +45,7 @@ class Playlist():
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
                                                   displayName=trackData["display name"], index=trackData["index"], 
                                                   downloaded=trackData["downloaded"], albumName=trackData["album name"],
+                                                  length=trackData["length"],
                                                   albumDisplayName=trackData["album display name"], 
                                                   artistName=trackData["artist name"]) for trackData in data["tracks"]]
                     self._name = data["name"]

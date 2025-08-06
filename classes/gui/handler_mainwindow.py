@@ -29,10 +29,13 @@ class Window(QMainWindow):
         self.ui.action_download.clicked.connect(self.buttonDownloadActivated)
         self.ui.action_home.clicked.connect(self.buttonHomeActivated)
         self.ui.action_organize.clicked.connect(self.buttonOrganizeActivated)
+        self.ui.action_mute.clicked.connect(self.buttonMuteActivated)
         
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)
         self.ui.info_progressBar.manualProgressChangeEnd.connect(self.progressBarChangeEnd)
+        self.ui.input_volumeBar.manualProgressChangeStart.connect(self.volumeBarChangeBegin)
+        self.ui.input_volumeBar.manualProgressChange.connect(self.volumeBarChange)
 
         # ui customization
         self.ui.action_mute.setImageRatio(1)
@@ -91,6 +94,18 @@ class Window(QMainWindow):
     @Slot()
     def buttonOrganizeActivated(self):
         self.eventService.triggerEvent("ACTION_ORGANIZE")
+    
+    @Slot()
+    def buttonMuteActivated(self):
+        self.eventService.triggerEvent("ACTION_MUTE")
+    
+    @Slot()
+    def volumeBarChange(self, progress:float):
+        self.eventService.triggerEvent("ACTION_SET_VOLUME", progress)
+    
+    @Slot()
+    def volumeBarChangeBegin(self, progress:float):
+        self.eventService.triggerEvent("ACTION_SET_VOLUME", progress)
     
     # catch when the window closes
     def closeEvent(self, event):

@@ -181,6 +181,21 @@ class ManagerService():
             self.guiService.removeTrackWidgets()
             self.guiService.populateNextListScrollArea(playlist)
 
+    def _actionSetVolume(self, volume:float):
+        if volume != self.audioService.getVolume():
+            self.audioService.setVolume(volume)
+
+    def _actionMute(self):
+        muted = self.audioService.getMuted()
+        if muted:
+            # unmute the audio
+            self.audioService.setVolume(self.guiService.getVolumeBarProgress())
+            self.eventService.triggerEvent("GUI_UNMUTE_AUDIO")
+        else:
+            self.audioService.setVolume(0)
+            self.eventService.triggerEvent("GUI_MUTE_AUDIO")
+            
+
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
         self.logger.info(f"Recieved event that playlist '{playlist.getDisplayName()}' finished initializing.")
@@ -280,6 +295,10 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_END_PROGRESS_SCROLL", self._actionEndProgressScroll)
         self.eventService.addEvent("ACTION_HOME")
         self.eventService.subscribeToEvent("ACTION_HOME", self._actionHome)
+        self.eventService.addEvent("ACTION_SET_VOLUME")
+        self.eventService.subscribeToEvent("ACTION_SET_VOLUME", self._actionSetVolume)
+        self.eventService.addEvent("ACTION_MUTE")
+        self.eventService.subscribeToEvent("ACTION_MUTE", self._actionMute)
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
@@ -307,6 +326,8 @@ class ManagerService():
         self.eventService.addEvent("GUI_LOAD_AUDIO_PLAYER_START")
         self.eventService.addEvent("GUI_LOAD_AUDIO_PLAYER_FINISH")
         self.eventService.subscribeToEvent("GUI_LOAD_AUDIO_PLAYER_FINISH", self._guiLoadAudioPlayerFinish)
+        self.eventService.addEvent("GUI_MUTE_AUDIO")
+        self.eventService.addEvent("GUI_UNMUTE_AUDIO")
         
         # general stop program event
         self.eventService.addEvent("PROGRAM_CLOSE")
