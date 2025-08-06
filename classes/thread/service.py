@@ -297,4 +297,5 @@ class ThreadService():
     
     # starts the main async loop and sets up the necessary event handlers.
     def start(self):
-        QtAsyncio.run(self._mainLoop(), keep_running=False, quit_qapp=True, debug=True)
+        QtAsyncio.run(self._mainLoop(), keep_running=False, quit_qapp=True, debug=False)
+        

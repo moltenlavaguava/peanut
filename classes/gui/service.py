@@ -59,6 +59,9 @@ class GuiService():
         bar = self.getMainWindow().ui.info_progressBar
         bar.setProgress(progress)
     
+    def setMainWindowTitle(self, title:str):
+        self._window.setWindowTitle(title)
+    
     def setAlbumCoverImage(self, imgPath:str):
         self._window.ui.info_albumCover.setPixmap(QPixmap(imgPath))
     
@@ -191,16 +194,13 @@ class GuiService():
     def _eventCurrentPlaylistChange(self, newPlaylist:Playlist|None):
         # update the playlist data text box
         currentPlaylist = newPlaylist
-        self.removeTrackWidgets()
+        self.resetAudioPlayerGUI() # cleanup the menu
         if currentPlaylist:
             self.setPlaylistDataText(newPlaylist.getDisplayName(), 1, newPlaylist.getLength())
             # populate the track list
             self.populateNextListScrollArea(newPlaylist)
             # signal the finish
             self.eventService.triggerEvent("GUI_LOAD_AUDIO_PLAYER_FINISH")
-        else:
-            # cleanup everything
-            self.resetAudioPlayerGUI()
     
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
@@ -247,13 +247,19 @@ class GuiService():
         self.setPlayButtonState(True)
     
     def _eventAudioTrackEnd(self, track:PlaylistTrack):
-        self.setTrackNameBoxText("(No Track loaded)")
+        pass
     
     def _eventDownloadStartRequest(self):
         self.setDownloadButtonState(True)
+        self.setMainWindowTitle("peanut [Downloading]")
     
     def _eventDownloadStop(self):
         self.setDownloadButtonState(False)
+        self.setMainWindowTitle("peanut")
+    
+    def _eventProgramClose(self):
+        # set the title of the window
+        self._window.setWindowTitle("peanut [Closing]")
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
@@ -276,11 +282,12 @@ class GuiService():
         self.eventService.subscribeToEvent("AUDIO_TRACK_PROGRESS", self._eventAudioTrackProgress)
         self.eventService.subscribeToEvent("DOWNLOAD_START_REQUEST", self._eventDownloadStartRequest)
         self.eventService.subscribeToEvent("DOWNLOAD_STOP", self._eventDownloadStop)
+        self.eventService.subscribeToEvent("PROGRAM_CLOSE", self._eventProgramClose)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window
         self._window = Window(self._mainWindow, self.eventService, self.threadService)
-        
+
         # customizing buttons
         self.setPlayButtonState(True) # to center the play button
         

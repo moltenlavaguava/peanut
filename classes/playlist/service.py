@@ -55,7 +55,7 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
                     # do the download. "data": necessary args for doing all the fun stuff
                     downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, responseQueue=responseQueue)
                     # signal finish (only give back name of playlist)
-                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums()})
+                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums(), "queueEmpty": downloadQueue.empty()})
                 except Exception as e:
                     logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": None})
@@ -150,9 +150,12 @@ class PlaylistService():
                     # set albums
                     playlist.setAlbums(response["albums"])
                     self.savePlaylistFile(playlist.getName())
-                    # mark the download as being complete
-                    self.setIsDownloading(False)
-                    self.eventService.triggerEvent("DOWNLOAD_STOP")
+                    # if the queue is empty, actually mark the downloader as being done
+                    if response["queueEmpty"]:
+                        # mark the download as being complete
+                        self.logger.info("Marking the downloader as stopping.")
+                        self.setIsDownloading(False)
+                        self.eventService.triggerEvent("DOWNLOAD_STOP")
         self.logger.info("Closing Playlist Download Listener.")
         # close the queues
         responseQueue.close()
@@ -242,7 +245,7 @@ class PlaylistService():
     # starts downloading a given playlist from its name. blocks the current thread/coroutine until it finishes.
     def downloadPlaylist(self, name:str, startIndex:int = None):
         if not startIndex: startIndex = 0
-        if self.getIsDownloading():
+        if self.getIsDownloading() and not self.getDownloadQueueEmpty():
             self.logger.warning(f"Attempted to download playlist '{name}' even though one is already downloading.")
             return
         if not self.getDownloadQueueEmpty():

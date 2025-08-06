@@ -155,8 +155,11 @@ class ManagerService():
         # unload the current audio player if it exists
         if self.audioService.getCurrentPlaylist():
             self.audioService.unloadPlaylist()
+        currentPlaylist = self.playlistService.getCurrentPlaylist()
         # unload the current playlist in the playlist service
-        if self.playlistService.getCurrentPlaylist():
+        if currentPlaylist:
+            # save the current playlist file
+            self.playlistService.savePlaylistFile(currentPlaylist.getName())
             self.playlistService.setCurrentPlaylist(None)
 
     def _actionOrganize(self):
@@ -174,6 +177,9 @@ class ManagerService():
                 self.playlistService.downloadPlaylist(playlist.getName())
             # send the shuffle request
             self.audioService.invokeShuffleEvent()
+            # cleanup the gui buttons so they're actually accurate
+            self.guiService.removeTrackWidgets()
+            self.guiService.populateNextListScrollArea(playlist)
 
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
