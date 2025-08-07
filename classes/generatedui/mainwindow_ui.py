@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout,
-    QLabel, QLayout, QLineEdit, QMainWindow,
-    QPushButton, QScrollArea, QSizePolicy, QSpacerItem,
-    QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
+    QLayout, QLineEdit, QMainWindow, QPushButton,
+    QScrollArea, QSizePolicy, QSpacerItem, QStackedWidget,
+    QVBoxLayout, QWidget)
 
 from customwidgets.circleimagebutton.circleimagebutton import CircleImageButton
 from customwidgets.scrollprogressbar.progresscirclebar import ProgressCircleBar
@@ -479,17 +479,27 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_6.addWidget(self.container_playlistLoader)
 
-        self.container_playlistSelector = QFrame(self.page_playlistSelector)
+        self.line = QFrame(self.page_playlistSelector)
+        self.line.setObjectName(u"line")
+        self.line.setFrameShape(QFrame.Shape.HLine)
+        self.line.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.verticalLayout_6.addWidget(self.line)
+
+        self.container_playlistSelector = QScrollArea(self.page_playlistSelector)
         self.container_playlistSelector.setObjectName(u"container_playlistSelector")
-        sizePolicy12 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy12 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy12.setHorizontalStretch(0)
         sizePolicy12.setVerticalStretch(90)
         sizePolicy12.setHeightForWidth(self.container_playlistSelector.sizePolicy().hasHeightForWidth())
         self.container_playlistSelector.setSizePolicy(sizePolicy12)
-        self.container_playlistSelector.setFrameShape(QFrame.Shape.StyledPanel)
-        self.container_playlistSelector.setFrameShadow(QFrame.Shadow.Raised)
-        self.gridLayout = QGridLayout(self.container_playlistSelector)
-        self.gridLayout.setObjectName(u"gridLayout")
+        self.container_playlistSelector.setWidgetResizable(True)
+        self.container_playlistSelectorScrollArea = QWidget()
+        self.container_playlistSelectorScrollArea.setObjectName(u"container_playlistSelectorScrollArea")
+        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 1062, 526))
+        self.verticalLayout_8 = QVBoxLayout(self.container_playlistSelectorScrollArea)
+        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
+        self.container_playlistSelector.setWidget(self.container_playlistSelectorScrollArea)
 
         self.verticalLayout_6.addWidget(self.container_playlistSelector)
 
@@ -501,7 +511,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.container_stackedWidget.setCurrentIndex(0)
+        self.container_stackedWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)

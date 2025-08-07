@@ -1,7 +1,7 @@
 from __future__ import annotations
 from PySide6.QtCore import Qt, Slot, QMetaObject
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QSizePolicy
 
 from classes.generatedui.mainwindow_ui import Ui_MainWindow
 from classes.event.service import EventService
@@ -116,7 +116,7 @@ class GuiService():
         
     # element that contains the playlist selection options
     def getPlaylistSelectorElement(self):
-        return self._window.ui.container_playlistSelector
+        return self._window.ui.container_playlistSelectorScrollArea
     
     # returns the widget that stores all of the upcoming widgets
     def getNextListScrollArea(self):
@@ -254,9 +254,10 @@ class GuiService():
         box = self.getPlaylistSelectorElement()
         layout = box.layout()
         name = playlist.getName()
-        layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
         # create a playlist selector
         button = QPushButton(playlist.getDisplayName(), box)
+        button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         # add to the layout
         layout.addWidget(button)
         # subscribe clicks to events

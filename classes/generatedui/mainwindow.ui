@@ -149,7 +149,7 @@ QFrame {
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="page_audioPlayer">
        <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -772,20 +772,34 @@ QFrame {
          </widget>
         </item>
         <item>
-         <widget class="QFrame" name="container_playlistSelector">
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QScrollArea" name="container_playlistSelector">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>
             <verstretch>90</verstretch>
            </sizepolicy>
           </property>
-          <property name="frameShape">
-           <enum>QFrame::Shape::StyledPanel</enum>
+          <property name="widgetResizable">
+           <bool>true</bool>
           </property>
-          <property name="frameShadow">
-           <enum>QFrame::Shadow::Raised</enum>
-          </property>
-          <layout class="QGridLayout" name="gridLayout"/>
+          <widget class="QWidget" name="container_playlistSelectorScrollArea">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>1062</width>
+             <height>526</height>
+            </rect>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_8"/>
+          </widget>
          </widget>
         </item>
        </layout>
