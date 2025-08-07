@@ -248,8 +248,8 @@ class ManagerService():
     def _audioManagerEnd(self):
         # unload the playlist service's playlist
         self.playlistService.setCurrentPlaylist(None)
-        # unload the gui
-        # self.guiService.resetAudioPlayerGUI()
+        # go home
+        self.eventService.triggerEvent("ACTION_HOME")
     
     # STARTING 
     

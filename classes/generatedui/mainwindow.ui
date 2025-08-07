@@ -281,6 +281,9 @@ QFrame {
                    <height>330</height>
                   </rect>
                  </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::LeftToRight</enum>
+                 </property>
                  <layout class="QVBoxLayout" name="verticalLayout_7">
                   <property name="sizeConstraint">
                    <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>

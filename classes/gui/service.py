@@ -10,6 +10,8 @@ from classes.playlist.track import PlaylistTrack
 from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
 
+from customwidgets.trackframe.trackframe import TrackFrame
+
 from .handler_mainwindow import Window
 
 import os
@@ -74,6 +76,12 @@ class GuiService():
     def setAlbumCoverImage(self, imgPath:str):
         self._window.ui.info_albumCover.setPixmap(QPixmap(imgPath))
     
+    # scrolls the track scroll area to position the current widget at the top, if possible.
+    def scrollToWidget(self, widget):
+        scrollArea = self.getMainWindow().ui.container_nextList
+        scrollBar = scrollArea.verticalScrollBar()
+        scrollBar.setValue(widget.pos().y())
+    
     # updates the given track gui element from track data and index.
     def updateTrackWidget(self, track:PlaylistTrack, index:int):
         # retrieve the widget, if it exists
@@ -132,7 +140,12 @@ class GuiService():
             self.eventService.triggerEvent("AUDIO_SELECT", buttonIndex)
         
         for index, track in enumerate(playlist.getTracks()):
-            button = QPushButton(track.getDisplayName(), scrollArea)
+            button = TrackFrame(scrollArea)
+            
+            # customizing button
+            button.setTitleText(track.getDisplayName())
+            button.setArtistText(track.getArtistName())
+            
             button.clicked.connect(lambda checked, i=index: buttonActivated(self, i)) # checked singal is always sent
             layout.insertWidget(index, button)
             self.addTrackWidgetToList(button)
@@ -268,6 +281,11 @@ class GuiService():
             self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg"))
         # cache the current track
         self._currentTrack = track
+        # set the scroll
+        widgetList = self.getTrackWidgetList()
+        if widgetList:
+            trackWidget = widgetList[index]
+            self.scrollToWidget(trackWidget)
     
     def _eventAudioTrackPause(self, track:PlaylistTrack):
         # change the play button state

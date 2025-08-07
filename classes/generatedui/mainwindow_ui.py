@@ -183,6 +183,7 @@ class Ui_MainWindow(object):
         self.container_nextListScrollArea = QWidget()
         self.container_nextListScrollArea.setObjectName(u"container_nextListScrollArea")
         self.container_nextListScrollArea.setGeometry(QRect(0, 0, 712, 330))
+        self.container_nextListScrollArea.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.verticalLayout_7 = QVBoxLayout(self.container_nextListScrollArea)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.verticalLayout_7.setSizeConstraint(QLayout.SizeConstraint.SetDefaultConstraint)
