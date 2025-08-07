@@ -81,9 +81,10 @@ class ManagerService():
             self.guiService.populateNextListScrollArea(playlist)
     
     def _actionLoop(self):
-        self.logger.info("Loop action recieved.")
+        self.logger.debug("Loop action recieved.")
         # loop the loop
         looping = self.audioService.getLoop()
+        self.guiService.setLoopButtonActivated(not looping)
         if looping:
             self.logger.debug("Disabling looping.")
             self.audioService.setLoop(False)
@@ -127,7 +128,10 @@ class ManagerService():
         else:
             # start downloading the current playlist
             self.logger.debug("Starting playlist download.")
-            self.playlistService.downloadPlaylist(currentPlaylist.getName())
+            # if the audio player is loaded, get the current index
+            currentIndex = self.audioService.getCurrentIndex()
+            if currentIndex == -1: currentIndex = 0
+            self.playlistService.downloadPlaylist(currentPlaylist.getName(), currentIndex)
             self.eventService.triggerEvent("DOWNLOAD_START_REQUEST")
 
     def _actionStartProgressScroll(self, progress:float):

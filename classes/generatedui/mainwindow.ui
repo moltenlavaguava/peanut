@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1080</width>
-    <height>675</height>
+    <width>950</width>
+    <height>630</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,57 +18,107 @@
     <normaloff>:/icon/resources/windowicon.png</normaloff>:/icon/resources/windowicon.png</iconset>
   </property>
   <property name="styleSheet">
-   <string notr="true">/* unsorted */
+   <string notr="true">/* General */
 
-ScrollProgressBar #backgroundFrame {
-	background-color: gray;
+/* all widgets */
+* {
+	
 }
 
-ScrollProgressBar #progressFrame {
-	background-color: red;
+CircleImageButton[activatedState=&quot;true&quot;] {
+	border: 2px solid rgb(0, 255, 0);
 }
 
-ProgressCircleBar &gt; #knobFrame {
-	background-color: red;
-}
-
-ScrollProgressBar #progressFrame {
-	background-color: red;
-}
-
-#info_playlistSelector {
-	border: 1px solid white;
-}
-
-TrackFrame {
-	background-color: rgb(66, 66, 66);
-}
-
-TrackFrame[selectedState=&quot;true&quot;] {
-	background-color: rgb(0, 170, 255);
-}
-
-TrackFrame[downloadedState=&quot;false&quot;] {
-	background-color: rgb(103, 103, 103);
-}
-
-TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
-	background-color: rgb(255, 85, 0);
-}
-
-/* curve buttons */
-
-CircleImageButton {
-	background-color: rgb(85, 255, 127);
+#info_pageTitle {
+	font: 20px;
 }
 
 #centralwidget {
 	background-color:  #121212;
 }
-
 QFrame {
 	background: transparent;
 	border: none;
+}
+
+/* Progress Bars */
+
+ScrollProgressBar #backgroundFrame {
+	background-color: gray;
+}
+ScrollProgressBar #progressFrame {
+	background-color: red;
+}
+ProgressCircleBar &gt; #knobFrame {
+	background-color: red;
+}
+ScrollProgressBar #progressFrame {
+	background-color: red;
+}
+
+/* Playlist Selector Page */
+
+#action_loadFromURL {
+	background-color: rgb(60, 60, 60);
+	padding: 2px 16px 2px 16px;
+	border: 1px solid rgb(80, 80, 80);
+	border-radius: 6px;
+}
+#action_loadFromURL:hover {
+	background-color: rgb(70, 70, 70);
+}
+#action_loadFromURL:pressed {
+	background-color: transparent;
+}
+#input_playlistURL {
+	background-color: rgb(45, 45, 45);
+	border-radius: 4px;
+	border: 1px solid rgb(80, 80, 80);
+	padding: 2px 2px 2px 2px;
+}
+#container_playlistSelector QPushButton {
+	text-align: left;
+	border-radius: 0px;
+	background-color: rgb(0, 133, 200);
+	padding: 4px;
+}
+#container_playlistSelector QPushButton:hover {
+	background-color: rgb(0, 170, 255);
+}
+#container_playlistSelector QPushButton:pressed {
+	background-color: transparent;
+}
+
+/* Audio Player Page */
+
+TrackFrame {
+	background-color: rgb(66, 66, 66);
+}
+TrackFrame[selectedState=&quot;true&quot;] {
+	background-color: rgb(0, 170, 255);
+}
+TrackFrame[downloadedState=&quot;false&quot;] {
+	background-color: rgb(103, 103, 103);
+}
+TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
+	background-color: rgb(255, 85, 0);
+}
+#container_nextListScrollArea QPushButton {
+	border-radius: 0px;
+}
+QScrollArea {
+	border-radius: 4px;
+	border: 4px solid rgb(66, 66, 66);
+}
+#container_nextList QPushButton #TitleLabel {
+	font: 14px;
+}
+#container_nextList QPushButton #ArtistLabel {
+	font: 12px;
+	color: rgb(199, 199, 199);
+}
+#container_middleFrame QLabel {
+	font: 12px;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -89,13 +139,13 @@ QFrame {
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0">
        <property name="leftMargin">
-        <number>0</number>
+        <number>15</number>
        </property>
        <property name="topMargin">
         <number>0</number>
        </property>
        <property name="rightMargin">
-        <number>0</number>
+        <number>15</number>
        </property>
        <property name="bottomMargin">
         <number>0</number>
@@ -110,7 +160,7 @@ QFrame {
          </property>
          <property name="icon">
           <iconset resource="../../resources.qrc">
-           <normaloff>:/buttons/resources/home.png</normaloff>:/buttons/resources/home.png</iconset>
+           <normaloff>:/buttons/resources/white/home.png</normaloff>:/buttons/resources/white/home.png</iconset>
          </property>
         </widget>
        </item>
@@ -149,7 +199,7 @@ QFrame {
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="page_audioPlayer">
        <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -179,82 +229,43 @@ QFrame {
           <property name="frameShadow">
            <enum>QFrame::Shadow::Raised</enum>
           </property>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1,0">
            <property name="spacing">
-            <number>20</number>
+            <number>0</number>
            </property>
            <property name="leftMargin">
-            <number>0</number>
+            <number>40</number>
+           </property>
+           <property name="topMargin">
+            <number>9</number>
            </property>
            <property name="rightMargin">
-            <number>0</number>
+            <number>40</number>
            </property>
            <item>
-            <widget class="SquareFrame" name="container_albumCover">
-             <property name="minimumSize">
+            <spacer name="horizontalSpacer_5">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
               <size>
-               <width>330</width>
+               <width>0</width>
                <height>0</height>
               </size>
              </property>
-             <property name="maximumSize">
-              <size>
-               <width>330</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="frameShape">
-              <enum>QFrame::Shape::StyledPanel</enum>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_4">
-              <property name="spacing">
-               <number>0</number>
-              </property>
-              <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>0</number>
-              </property>
-              <property name="rightMargin">
-               <number>0</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="info_albumCover">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="scaledContents">
-                 <bool>true</bool>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignCenter</set>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
+            </spacer>
            </item>
            <item>
-            <widget class="QFrame" name="container_nextListFrame">
+            <widget class="QFrame" name="container_upperMiddleMiddleFrame">
              <property name="frameShape">
               <enum>QFrame::Shape::StyledPanel</enum>
              </property>
              <property name="frameShadow">
               <enum>QFrame::Shadow::Raised</enum>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_3">
+             <layout class="QHBoxLayout" name="horizontalLayout_9">
               <property name="spacing">
-               <number>0</number>
+               <number>20</number>
               </property>
               <property name="leftMargin">
                <number>0</number>
@@ -269,60 +280,164 @@ QFrame {
                <number>0</number>
               </property>
               <item>
-               <widget class="QScrollArea" name="container_nextList">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <widget class="SquareFrame" name="container_albumCover">
+                <property name="minimumSize">
+                 <size>
+                  <width>317</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <property name="verticalScrollBarPolicy">
-                 <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                <property name="maximumSize">
+                 <size>
+                  <width>317</width>
+                  <height>16777215</height>
+                 </size>
                 </property>
-                <property name="horizontalScrollBarPolicy">
-                 <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                <property name="frameShape">
+                 <enum>QFrame::Shape::StyledPanel</enum>
                 </property>
-                <property name="widgetResizable">
-                 <bool>true</bool>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-                </property>
-                <widget class="QWidget" name="container_nextListScrollArea">
-                 <property name="geometry">
-                  <rect>
-                   <x>0</x>
-                   <y>0</y>
-                   <width>712</width>
-                   <height>330</height>
-                  </rect>
+                <layout class="QVBoxLayout" name="verticalLayout_4">
+                 <property name="spacing">
+                  <number>0</number>
                  </property>
-                 <property name="layoutDirection">
-                  <enum>Qt::LayoutDirection::LeftToRight</enum>
+                 <property name="leftMargin">
+                  <number>0</number>
                  </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_7">
-                  <property name="sizeConstraint">
-                   <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
-                  </property>
-                  <item>
-                   <spacer name="verticalSpacer">
-                    <property name="orientation">
-                     <enum>Qt::Orientation::Vertical</enum>
+                 <property name="topMargin">
+                  <number>10</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="info_albumCover">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="scaledContents">
+                    <bool>true</bool>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="container_nextListFrame">
+                <property name="frameShape">
+                 <enum>QFrame::Shape::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Shadow::Raised</enum>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_3">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>10</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QScrollArea" name="container_nextList">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="verticalScrollBarPolicy">
+                    <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                   </property>
+                   <property name="horizontalScrollBarPolicy">
+                    <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                   </property>
+                   <property name="widgetResizable">
+                    <bool>true</bool>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+                   </property>
+                   <widget class="QWidget" name="container_nextListScrollArea">
+                    <property name="geometry">
+                     <rect>
+                      <x>0</x>
+                      <y>0</y>
+                      <width>507</width>
+                      <height>299</height>
+                     </rect>
                     </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>40</height>
-                     </size>
+                    <property name="layoutDirection">
+                     <enum>Qt::LayoutDirection::LeftToRight</enum>
                     </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </widget>
+                    <layout class="QVBoxLayout" name="verticalLayout_7">
+                     <property name="spacing">
+                      <number>9</number>
+                     </property>
+                     <property name="sizeConstraint">
+                      <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+                     </property>
+                     <property name="leftMargin">
+                      <number>2</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>2</number>
+                     </property>
+                     <item>
+                      <spacer name="verticalSpacer">
+                       <property name="orientation">
+                        <enum>Qt::Orientation::Vertical</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>20</width>
+                         <height>40</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
                </widget>
               </item>
              </layout>
             </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_6">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>
@@ -332,7 +447,7 @@ QFrame {
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
-            <verstretch>10</verstretch>
+            <verstretch>12</verstretch>
            </sizepolicy>
           </property>
           <property name="frameShape">
@@ -380,7 +495,7 @@ QFrame {
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
-            <verstretch>5</verstretch>
+            <verstretch>2</verstretch>
            </sizepolicy>
           </property>
           <property name="frameShape">
@@ -394,9 +509,15 @@ QFrame {
             <number>15</number>
            </property>
            <property name="leftMargin">
-            <number>0</number>
+            <number>15</number>
+           </property>
+           <property name="topMargin">
+            <number>9</number>
            </property>
            <property name="rightMargin">
+            <number>15</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -428,7 +549,7 @@ QFrame {
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
-            <verstretch>15</verstretch>
+            <verstretch>10</verstretch>
            </sizepolicy>
           </property>
           <property name="frameShape">
@@ -439,13 +560,13 @@ QFrame {
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_4">
            <property name="leftMargin">
-            <number>0</number>
+            <number>15</number>
            </property>
            <property name="topMargin">
             <number>0</number>
            </property>
            <property name="rightMargin">
-            <number>0</number>
+            <number>15</number>
            </property>
            <property name="bottomMargin">
             <number>0</number>
@@ -464,7 +585,7 @@ QFrame {
              <property name="frameShadow">
               <enum>QFrame::Shadow::Raised</enum>
              </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,1">
+             <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="3,2">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -517,7 +638,7 @@ QFrame {
                    </property>
                    <property name="icon">
                     <iconset resource="../../resources.qrc">
-                     <normaloff>:/buttons/resources/volume.png</normaloff>:/buttons/resources/volume.png</iconset>
+                     <normaloff>:/buttons/resources/white/volume.png</normaloff>:/buttons/resources/white/volume.png</iconset>
                    </property>
                   </widget>
                  </item>
@@ -563,7 +684,7 @@ QFrame {
              </property>
              <layout class="QHBoxLayout" name="horizontalLayout_5">
               <property name="spacing">
-               <number>0</number>
+               <number>4</number>
               </property>
               <property name="leftMargin">
                <number>0</number>
@@ -587,7 +708,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/download.png</normaloff>:/buttons/resources/download.png</iconset>
+                  <normaloff>:/buttons/resources/white/download.png</normaloff>:/buttons/resources/white/download.png</iconset>
                 </property>
                </widget>
               </item>
@@ -601,7 +722,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/organize.png</normaloff>:/buttons/resources/organize.png</iconset>
+                  <normaloff>:/buttons/resources/white/organize.png</normaloff>:/buttons/resources/white/organize.png</iconset>
                 </property>
                </widget>
               </item>
@@ -615,7 +736,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/reverse.png</normaloff>:/buttons/resources/reverse.png</iconset>
+                  <normaloff>:/buttons/resources/white/reverse.png</normaloff>:/buttons/resources/white/reverse.png</iconset>
                 </property>
                </widget>
               </item>
@@ -629,7 +750,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/play.png</normaloff>:/buttons/resources/play.png</iconset>
+                  <normaloff>:/buttons/resources/white/play.png</normaloff>:/buttons/resources/white/play.png</iconset>
                 </property>
                </widget>
               </item>
@@ -643,7 +764,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/skip.png</normaloff>:/buttons/resources/skip.png</iconset>
+                  <normaloff>:/buttons/resources/white/skip.png</normaloff>:/buttons/resources/white/skip.png</iconset>
                 </property>
                </widget>
               </item>
@@ -657,7 +778,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/shuffle.png</normaloff>:/buttons/resources/shuffle.png</iconset>
+                  <normaloff>:/buttons/resources/white/shuffle.png</normaloff>:/buttons/resources/white/shuffle.png</iconset>
                 </property>
                </widget>
               </item>
@@ -671,7 +792,7 @@ QFrame {
                 </property>
                 <property name="icon">
                  <iconset resource="../../resources.qrc">
-                  <normaloff>:/buttons/resources/loop.png</normaloff>:/buttons/resources/loop.png</iconset>
+                  <normaloff>:/buttons/resources/white/loop.png</normaloff>:/buttons/resources/white/loop.png</iconset>
                 </property>
                </widget>
               </item>
@@ -772,13 +893,6 @@ QFrame {
          </widget>
         </item>
         <item>
-         <widget class="Line" name="line">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="QScrollArea" name="container_playlistSelector">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -794,8 +908,8 @@ QFrame {
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>1062</width>
-             <height>526</height>
+             <width>92</width>
+             <height>22</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_8"/>

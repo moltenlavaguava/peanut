@@ -10,6 +10,7 @@ class TrackFrame(QPushButton):
         
         # layout creation + management
         self._layout = QVBoxLayout(self)
+        self._layout.setSpacing(0)
         
         # child widget creation
         self._titleLabel = QLabel(text="", parent=self)

@@ -37,6 +37,7 @@ class AudioService():
         self._loop = False
         self._volume = 1
         self._muted = False
+        self._currentIndex: int = -1 # used in the audio manager
         
         # options
         self.volume = 1
@@ -110,15 +111,15 @@ class AudioService():
         selectEvent = self._selectTrackEvent
         while True:
             # iterate through each track in the playlist n play it (imitating a for loop, but not doing one b/c no previous abilities)
-            index = -1
+            self._currentIndex = -1
             while True:
-                index += 1
+                self._currentIndex += 1
                 # if the index is out of bounds, signal the finish of the playlist
-                if index == length:
+                if self._currentIndex == length:
                     break
                 # clamp index
-                if index < 0: index = 0
-                track = tracks[index]
+                if self._currentIndex < 0: self._currentIndex = 0
+                track = tracks[self._currentIndex]
                 self.setCurrentTrack(track)
                 # check to see if anything's downloading
                 if not track.getDownloaded():
@@ -126,8 +127,8 @@ class AudioService():
                     if self.playlistService.getIsDownloading() or firstTrack:
                         # wait for the download
                         self.logger.info(f"Track '{track.getDisplayName()}' isn't downloaded yet. Waiting for finish.")
-                        self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, index)
-                        while (not tracks[index].getDownloaded()) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
+                        self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, self._currentIndex)
+                        while (not tracks[self._currentIndex].getDownloaded()) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
                             await asyncio.sleep(0.5)
                         if (shuffleEvent.is_set() or self._stopAudioEvent):
                             # break and restart the playlist
@@ -135,20 +136,20 @@ class AudioService():
                         elif selectEvent.is_set():
                             # if the select event was set, change the index
                             self.threadService.resetAsyncioEvent("AUDIO_SELECT")
-                            index = self._selectedTrackIndex - 1
-                            self.logger.debug(f"Selecting track with index {index + 1} in the audio manager.")
+                            self._currentIndex = self._selectedTrackIndex - 1
+                            self.logger.debug(f"Selecting track with index {self._currentIndex + 1} in the audio manager.")
                             continue
                         else:
                             self.logger.info(f"Download for track '{track.getDisplayName()}' complete.")
                         # update the current track object just incase it changed
-                        track = tracks[index]
+                        track = tracks[self._currentIndex]
                     else:
                         # skip this track
                         self.logger.info(f"Skipping undownloaded track '{track.getDisplayName()}'.")
                         continue
                 else:
-                    self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, index)
-                self.logger.info(f"Now playing: {index + 1}. {track.getDisplayName()}")
+                    self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, self._currentIndex)
+                self.logger.info(f"Now playing: {self._currentIndex + 1}. {track.getDisplayName()}")
                 # loading and playing audio
                 # if the current track is marked as paused, unpause it (occurs from manually selecting a track)
                 if self.getPaused():
@@ -172,7 +173,7 @@ class AudioService():
                 # reset the looping variable
                 self.setLoop(False)
                 self.unloadTrack()
-                self.eventService.triggerEvent("AUDIO_TRACK_END", track, index)
+                self.eventService.triggerEvent("AUDIO_TRACK_END", track, self._currentIndex)
                 # if the request to shuffle was made, reset the playlist playing
                 if shuffleEvent.is_set():
                     self.logger.info(f"Restarting (shuffled) playlist from beginning.")
@@ -181,7 +182,7 @@ class AudioService():
                 if previousEvent.is_set():
                     self.logger.info(f"Going to previous track.")
                     self.threadService.resetAsyncioEvent("AUDIO_PREVIOUS")
-                    index -= 2 # go back 2 b/c every new track index increases by one
+                    self._currentIndex -= 2 # go back 2 b/c every new track index increases by one
                 # reset the skip event if it was set
                 if skipEvent.is_set():
                     self.threadService.resetAsyncioEvent("AUDIO_SKIP")
@@ -190,7 +191,7 @@ class AudioService():
                 # if the select event was set, change the index
                 if selectEvent.is_set():
                     self.threadService.resetAsyncioEvent("AUDIO_SELECT")
-                    index = self._selectedTrackIndex - 1
+                    self._currentIndex = self._selectedTrackIndex - 1
             # if the request to shuffle was made, restart the playlist
             if shuffleEvent.is_set():
                 self.threadService.resetAsyncioEvent("AUDIO_SHUFFLE")
@@ -200,6 +201,7 @@ class AudioService():
             self.logger.info(f"Playlist {playlist.getDisplayName()} done.")
         self.logger.info("Playlist manager stopping.")
         if self.getCurrentPlaylist(): self.unloadPlaylist()
+        self._currentIndex = -1
         self.eventService.triggerEvent("AUDIO_MANAGER_END")
                 
     # actual audio work
@@ -277,6 +279,9 @@ class AudioService():
         self.threadService.createTask(self._managePlaylist(), "Playlist Manager")
     
     # getting / setting
+    
+    def getCurrentIndex(self):
+        return self._currentIndex
     
     def getLoop(self):
         return self._loop

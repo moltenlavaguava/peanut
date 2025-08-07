@@ -8,6 +8,18 @@ class CircleImageButton(QPushButton):
         self._imageRatio = .6
         # controls the padding as a percentage. functions as: top, right, bottom, left
         self._padding = {"top": 0, "right": 0, "bottom": 0, "left": 0}
+        self.setActivatedState(False)
+
+    def getActivatedState(self):
+        return self.property("activatedState")
+    
+    def setActivatedState(self, state:bool):
+        if state == self.property("activatedState"): return
+        # redraw
+        self.setProperty("activatedState", state)
+        self.style().polish(self)
+        self.update()
+        return
 
     def getImageRatio(self):
         return self._imageRatio

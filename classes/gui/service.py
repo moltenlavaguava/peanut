@@ -70,6 +70,10 @@ class GuiService():
     def getVolumeBarProgress(self):
         return self.getMainWindow().ui.input_volumeBar.getProgress()
     
+    def setLoopButtonActivated(self, activated:bool):
+        loopbutton = self.getMainWindow().ui.action_loop
+        loopbutton.setActivatedState(activated)
+    
     def setMainWindowTitle(self, title:str):
         self._window.setWindowTitle(title)
     
@@ -161,21 +165,21 @@ class GuiService():
         button = self._window.ui.action_download
         if downloadState:
             # replace the button icon with a stop button
-            button.setIcon(QIcon(":/buttons/resources/stop.png"))
+            button.setIcon(QIcon(":/buttons/resources/white/stop.png"))
         else:
             # replace the button icon with a download button
-            button.setIcon(QIcon(":/buttons/resources/download.png"))
+            button.setIcon(QIcon(":/buttons/resources/white/download.png"))
             
     def setPlayButtonState(self, playingState:bool):
         button = self._window.ui.action_play
         if playingState:
             # replace the button icon with a pause button
-            button.setIcon(QIcon(":/buttons/resources/pause.png"))
+            button.setIcon(QIcon(":/buttons/resources/white/pause.png"))
             # change the button padding ratio
             button.setPaddingPercentage(0, 0, 0, 0)
         else:
             # replace the button icon with a play button
-            button.setIcon(QIcon(":/buttons/resources/play.png"))
+            button.setIcon(QIcon(":/buttons/resources/white/play.png"))
             # change the button padding ratio
             button.setPaddingPercentage(0, 0, 0, 0.07142857142)
     
@@ -183,10 +187,10 @@ class GuiService():
         button = self.getMainWindow().ui.action_mute
         if mutedState:
             # replace the button icon with a muted button
-            button.setIcon(QIcon(":/buttons/resources/mute.png"))
+            button.setIcon(QIcon(":/buttons/resources/white/mute.png"))
         else:
             # replace the button icon with an unmuted button
-            button.setIcon(QIcon(":/buttons/resources/volume.png"))
+            button.setIcon(QIcon(":/buttons/resources/white/volume.png"))
     
     # INTERIOR MANAGEMENT
     
@@ -234,6 +238,7 @@ class GuiService():
         self.setTotalTrackTimeText("0:00")
         self.setProgressBarProgress(0)
         self.removeTrackWidgets()
+        self.setLoopButtonActivated(False)
     
     # EVENTS
     
@@ -310,6 +315,8 @@ class GuiService():
             self.scrollToWidget(trackWidget)
             # set the status
             trackWidget.setSelectedState(False)
+        # disable the looping
+        self.setLoopButtonActivated(False)
     
     def _eventDownloadStartRequest(self):
         self.setDownloadButtonState(True)

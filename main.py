@@ -11,10 +11,13 @@ from classes.hotkey.hotkeyoptions import HotkeyOptions
 
 # OPTIONS
 
+mainDirectory = os.path.dirname(os.path.abspath(__file__))
+
 options = {
     "playlistURL": "https://www.youtube.com/playlist?list=PLKXdyINOQYsbroHtsNBW6OJaNZKLh8lf6",
-    "outputFolder": os.path.join(os.getcwd(), "output"),
-    "resourceFolder": os.path.join(os.getcwd(), "resources"),
+    "mainDirectory": mainDirectory,
+    "outputFolder": os.path.join(mainDirectory, "output"),
+    "resourceFolder": os.path.join(mainDirectory, "resources"),
     "outputConversionExtension": ".ogg",
     "binariesFolder": "binaries",
     "ffmpegPath": "ffmpeg/bin/ffmpeg.exe",
@@ -50,6 +53,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
      
     logger.info("Starting main.py")
+    logger.debug(f"Main directory: {mainDirectory}")
     
     # initalize dependency injector
     container = Container()
