@@ -26,18 +26,30 @@ class TrackFrame(QPushButton):
         # self._layout.addWidget(self._artistLabel)
         
         # custom stylesheet properties
-        self._playingState: str = "idle"
+        self.setSelectedState(False)
+        self.setDownloadedState(False)
         
         self._artistFramePresent = False
     
-    def setPlayingState(self, state:str):
-        self._playingState = state
+    def setSelectedState(self, state:bool):
+        if state == self.property("selectedState"): return
         # redraw
+        self.setProperty("selectedState", state)
         self.style().polish(self)
         return
     
-    def getPlayingState(self):
-        return self._playingState
+    def getSelectedState(self):
+        return self.property("selectedState")
+    
+    def setDownloadedState(self, state:bool):
+        if state == self.property("downloadedState"): return
+        # rewdraw
+        self.setProperty("downloadedState", state)
+        self.style().polish(self)
+        return
+    
+    def getDownloadedState(self):
+        return self.property("downloadedState")
     
     def setArtistFramePresent(self, present:bool):
         if present and not self._artistFramePresent:

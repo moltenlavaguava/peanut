@@ -30,7 +30,7 @@ class GuiService():
         self.threadService = threadService
         
         # caches all existing track widgets
-        self._trackWidgets: list[QWidget] = []
+        self._trackWidgets: list[TrackFrame] = []
         
         # caches the currently playing track + playlist for album cover purposes
         self._currentTrack: PlaylistTrack|None = None
@@ -79,8 +79,9 @@ class GuiService():
     # scrolls the track scroll area to position the current widget at the top, if possible.
     def scrollToWidget(self, widget):
         scrollArea = self.getMainWindow().ui.container_nextList
+        childWidget = scrollArea.widget()
         scrollBar = scrollArea.verticalScrollBar()
-        scrollBar.setValue(widget.pos().y())
+        scrollBar.setValue(widget.pos().y() - childWidget.layout().spacing())
     
     # updates the given track gui element from track data and index.
     def updateTrackWidget(self, track:PlaylistTrack, index:int):
@@ -90,7 +91,10 @@ class GuiService():
             self.logger.warning(f"Attempted to update the track widget list with an index ({index}) out of bounds of the widget list.")
             return
         widget = widgetList[index]
-        widget.setText(track.getDisplayName())
+        # set the text
+        widget.setTitleText(track.getDisplayName())
+        widget.setArtistText(track.getArtistName())
+        widget.setDownloadedState(track.getDownloaded())
     
     # generic method to set the main stack widget's page
     def setMainWindowPage(self, pageWidget:QWidget):
@@ -145,6 +149,7 @@ class GuiService():
             # customizing button
             button.setTitleText(track.getDisplayName())
             button.setArtistText(track.getArtistName())
+            button.setDownloadedState(track.getDownloaded())
             
             button.clicked.connect(lambda checked, i=index: buttonActivated(self, i)) # checked singal is always sent
             layout.insertWidget(index, button)
@@ -286,6 +291,8 @@ class GuiService():
         if widgetList:
             trackWidget = widgetList[index]
             self.scrollToWidget(trackWidget)
+            # set the status
+            trackWidget.setSelectedState(True)
     
     def _eventAudioTrackPause(self, track:PlaylistTrack):
         # change the play button state
@@ -294,8 +301,14 @@ class GuiService():
     def _eventAudioTrackResume(self, track:PlaylistTrack):
         self.setPlayButtonState(True)
     
-    def _eventAudioTrackEnd(self, track:PlaylistTrack):
+    def _eventAudioTrackEnd(self, track:PlaylistTrack, index:int):
         self._currentTrack = None
+        widgetList = self.getTrackWidgetList()
+        if widgetList:
+            trackWidget = widgetList[index]
+            self.scrollToWidget(trackWidget)
+            # set the status
+            trackWidget.setSelectedState(False)
     
     def _eventDownloadStartRequest(self):
         self.setDownloadButtonState(True)

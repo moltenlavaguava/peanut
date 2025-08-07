@@ -40,6 +40,22 @@ ScrollProgressBar #progressFrame {
 	border: 1px solid white;
 }
 
+TrackFrame {
+	background-color: rgb(66, 66, 66);
+}
+
+TrackFrame[selectedState=&quot;true&quot;] {
+	background-color: rgb(0, 170, 255);
+}
+
+TrackFrame[downloadedState=&quot;false&quot;] {
+	background-color: rgb(103, 103, 103);
+}
+
+TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
+	background-color: rgb(255, 85, 0);
+}
+
 /* curve buttons */
 
 CircleImageButton {

@@ -126,6 +126,7 @@ class AudioService():
                     if self.playlistService.getIsDownloading() or firstTrack:
                         # wait for the download
                         self.logger.info(f"Track '{track.getDisplayName()}' isn't downloaded yet. Waiting for finish.")
+                        self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, index)
                         while (not tracks[index].getDownloaded()) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
                             await asyncio.sleep(0.5)
                         if (shuffleEvent.is_set() or self._stopAudioEvent):
@@ -145,8 +146,9 @@ class AudioService():
                         # skip this track
                         self.logger.info(f"Skipping undownloaded track '{track.getDisplayName()}'.")
                         continue
+                else:
+                    self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, index)
                 self.logger.info(f"Now playing: {index + 1}. {track.getDisplayName()}")
-                self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, index)
                 # loading and playing audio
                 # if the current track is marked as paused, unpause it (occurs from manually selecting a track)
                 if self.getPaused():
@@ -170,7 +172,7 @@ class AudioService():
                 # reset the looping variable
                 self.setLoop(False)
                 self.unloadTrack()
-                self.eventService.triggerEvent("AUDIO_TRACK_END", track)
+                self.eventService.triggerEvent("AUDIO_TRACK_END", track, index)
                 # if the request to shuffle was made, reset the playlist playing
                 if shuffleEvent.is_set():
                     self.logger.info(f"Restarting (shuffled) playlist from beginning.")

@@ -290,7 +290,7 @@ class PlaylistService():
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": 
             ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
             "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), 
-            "useYoutubeMusicAlbums": True, "maxVariation": 45, "startIndex": startIndex, "maxDownloadAttempts": 3}
+            "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex, "maxDownloadAttempts": 3}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)
