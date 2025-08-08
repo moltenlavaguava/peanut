@@ -8,7 +8,6 @@ import multiprocessing
 
 from classes.hotkey.hotkeyoptions import HotkeyOptions
 
-
 # OPTIONS
 
 mainDirectory = os.path.dirname(os.path.abspath(__file__))
