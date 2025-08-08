@@ -15,7 +15,7 @@ The main features of peanut currently are:
 
 **Example usage:**
 
-[Screenshot of program in use with a playlist loaded](/resources/example.png)
+![Screenshot of program in use with a playlist loaded](/resources/example.png)
 
 ## Installation
 
