@@ -4,7 +4,7 @@ Peanut is a youtube-based video archiver and streamer. It supports the download 
 
 Peanut itself is developed with Python, and has an interactive GUI.
 
-## Features
+# Features
 
 The main features of peanut currently are:
 - Video downloading with conversion to audio (.ogg) files
@@ -15,11 +15,11 @@ The main features of peanut currently are:
 
 ## Installation
 
-# From Release
+**From Release**
 
 Currently no releases exist. Stay tuned! :)
 
-# From Source
+**From Source**
 
 Requirements:
 - Python installation (recommended to be Python >=3.11)
@@ -49,7 +49,7 @@ Currently ffmpeg in its entirety is present in the binaries folder. If at some p
 
 In order to use custom widgets in PySide Designer, you'll need to add the "register" folder to the enviornment variable `PYSIDE_DESIGNER_PLUGINS`. If you don't have interest in gui development with designer, then don't worry about this.
 
-## Usage
+# Usage
 
 *From Release*
 
@@ -59,13 +59,13 @@ To run the program from a release, locate and run the `main.exe` file located in
 
 To run the program from source, first ensure you have all of the dependencies installed. Then, run `python main.py`.
 
-## Contributing
+# Contributing
 
 Currently, all contributors for this repository are added on an invite-only basis. If you wish to be added to the contributing team, just let me know. However, any pull requests to add features or fix bugs present in the main repository are welcome as well.
 
 If you are working in your own fork of the repository, you can update your version of the `requirements.txt` file by simply running `pip freeze > requirements.txt`.
 
-## Credits
+# Credits
 
 Just like any project, this one has its own list of contributors, credits, and libraries that were used.
 
@@ -82,6 +82,6 @@ The following public libraries were used in this project:
 
 The majority of the icons in this project are from https://www.flaticon.com/.
 
-## License
+# License
 
 This project uses the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
