@@ -285,7 +285,7 @@ class PlaylistService():
         downloadOptions = options["downloadOptions"]
         outputExtension = options["outputConversionExtension"]
         # get the ffmpeg path
-        ffmpegPath = os.path.join(self.configService.getOtherOptions["mainDirectory"], options["binariesFolder"], options["ffmpegPath"])
+        ffmpegPath = os.path.join(self.configService.getOtherOptions()["mainDirectory"], options["binariesFolder"], options["ffmpegPath"])
         # package the data together
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": 
             ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 

@@ -13,6 +13,10 @@ The main features of peanut currently are:
 - System wide hotkeys to control playback without interacting with the GUI
 - Artist and Album data for most YouTube videos via YouTube Music
 
+**Example usage:**
+
+[Screenshot of program in use with a playlist loaded](/resources/example.png)
+
 ## Installation
 
 **From Release**
@@ -89,3 +93,7 @@ This project uses the [GNU General Public License v3.0](https://www.gnu.org/lice
 # Privacy
 
 This program does not collect any data on those who use it. The only data stored on the device that the program runs on is that which is necessary to save the playlists that are loaded, as well as any preferences. No information is sent to any remote servers except for YouTube and YouTube Music, and those requests are only made to provide functionality. 
+
+# Disclaimer
+
+This program is intended for personal and/or educational use only. The developers of this project do not support or endorse using this program to download content that is protected by copyright laws or is not rightfully theirs, and are not responsible for the actions of the users of this program.
