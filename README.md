@@ -1,6 +1,6 @@
 # peanut 🥜
 
-Peanut is a youtube-based video archiver and streamer. It supports the download of most youtube videos, with support planned for other online services. 
+Peanut is a YouTube-based video archiver and streamer. It supports the download of most YouTube videos, with support planned for other online services. 
 
 Peanut itself is developed with Python, and has an interactive GUI.
 
@@ -11,7 +11,7 @@ The main features of peanut currently are:
 - Offline audio playback with playlist controls
 - User friendly GUI
 - System wide hotkeys to control playback without interacting with the GUI
-- Artist and Album data for most youtube videos via Youtube Music
+- Artist and Album data for most YouTube videos via YouTube Music
 
 ## Installation
 
@@ -85,3 +85,7 @@ The majority of the icons in this project are from https://www.flaticon.com/.
 # License
 
 This project uses the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
+
+# Privacy
+
+This program does not collect any data on those who use it. The only data stored on the device that the program runs on is that which is necessary to save the playlists that are loaded, as well as any preferences. No information is sent to any remote servers except for YouTube and YouTube Music, and those requests are only made to provide functionality. 
