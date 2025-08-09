@@ -79,7 +79,8 @@ class GuiService():
         self._window.setWindowTitle(title)
     
     def setAlbumCoverImage(self, imgPath:str):
-        self._window.ui.info_albumCover.setPixmap(QPixmap(imgPath))
+        pixmap = QPixmap(imgPath)
+        self._window.ui.info_albumCover.setPixmap(pixmap)
     
     # scrolls the track scroll area to position the current widget at the top, if possible.
     def scrollToWidget(self, widget):
@@ -304,10 +305,7 @@ class GuiService():
             # if a current track is already selected, then deselect it (primarly happens when the previous track was not downloaded)
             previousTrackWidget = self._currentTrackWidget
             if previousTrackWidget and (not previousTrackWidget is trackWidget):
-                self.logger.debug("deselecting previous")
                 previousTrackWidget.setSelectedState(False)
-            else:
-                self.logger.debug(f"Previous: {previousTrackWidget}, current: {trackWidget}")
             self._currentTrackWidget = trackWidget
             
             self.scrollToWidget(trackWidget)
@@ -356,10 +354,7 @@ class GuiService():
             self.updateTrackWidget(track, trackIndex)
         if (track.getName() == self._currentTrack.getName()) and (track.getAlbumName()):
             # update the album image
-            self.logger.info("Updating album cover")
             self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{track.getAlbumName()}.jpg"))
-        else:
-            self.logger.debug("Not updating album cover")
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
@@ -399,9 +394,6 @@ class GuiService():
         
         # set the default page on startup
         self.loadPagePlaylistSelector()
-        
-        # set the audio player's default appearance
-        self.resetAudioPlayerGUI()
         
         # show the window
         self._window.show()

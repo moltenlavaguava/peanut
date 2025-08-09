@@ -65,6 +65,7 @@ if __name__ == "__main__":
      
     logger.info("Starting main.py")
     logger.debug(f"Main directory: {mainDirectory}")
+    logger.debug(f"ffmpeg path: {options['ffmpegPath']}")
     
     # initalize dependency injector
     container = Container()

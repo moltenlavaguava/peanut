@@ -1,14 +1,16 @@
-from PySide6.QtWidgets import QFrame
+from PySide6.QtWidgets import QFrame, QSizePolicy, QLabel
 
 class SquareFrame(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
     def resizeEvent(self, event):
-        """
-        This is the only logic needed. It runs when the application is live
-        and forces the widget to be square.
-        """
+        # Force the frame to be square.
+        self.setMinimumWidth(self.height())
+        
         super().resizeEvent(event)
-        new_width = self.height()
-        self.setFixedWidth(new_width)
+
+        label = self.findChild(QLabel)
+        if label:
+            label.setGeometry(self.rect())

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QMainWindow, QSizePolicy
 from PySide6.QtCore import Slot
 
 from classes.generatedui.mainwindow_ui import Ui_MainWindow

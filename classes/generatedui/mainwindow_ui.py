@@ -123,10 +123,13 @@ class Ui_MainWindow(object):
 "#container_nextListScrollArea QPushButton {\n"
 "	border-radius: 0px;\n"
 "}\n"
-"QScrollArea "
-                        "{\n"
+"QScrollArea,"
+                        " SquareFrame {\n"
 "	border-radius: 4px;\n"
 "	border: 4px solid rgb(66, 66, 66);\n"
+"}\n"
+"SquareFrame {\n"
+"	background-color: rgb(30, 30, 30);\n"
 "}\n"
 "#container_nextList QPushButton #TitleLabel {\n"
 "	font: 14px;\n"
@@ -189,6 +192,8 @@ class Ui_MainWindow(object):
         self.container_stackedWidget.setSizePolicy(sizePolicy2)
         self.page_audioPlayer = QWidget()
         self.page_audioPlayer.setObjectName(u"page_audioPlayer")
+        sizePolicy2.setHeightForWidth(self.page_audioPlayer.sizePolicy().hasHeightForWidth())
+        self.page_audioPlayer.setSizePolicy(sizePolicy2)
         self.verticalLayout_5 = QVBoxLayout(self.page_audioPlayer)
         self.verticalLayout_5.setObjectName(u"verticalLayout_5")
         self.verticalLayout_5.setContentsMargins(0, 0, 0, 0)
@@ -219,25 +224,23 @@ class Ui_MainWindow(object):
         self.horizontalLayout_9.setContentsMargins(0, 0, 0, 0)
         self.container_albumCover = SquareFrame(self.container_upperMiddleMiddleFrame)
         self.container_albumCover.setObjectName(u"container_albumCover")
-        self.container_albumCover.setMinimumSize(QSize(317, 0))
-        self.container_albumCover.setMaximumSize(QSize(317, 16777215))
-        self.container_albumCover.setFrameShape(QFrame.Shape.StyledPanel)
-        self.verticalLayout_4 = QVBoxLayout(self.container_albumCover)
-        self.verticalLayout_4.setSpacing(0)
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
-        self.info_albumCover = QLabel(self.container_albumCover)
-        self.info_albumCover.setObjectName(u"info_albumCover")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         sizePolicy4.setHorizontalStretch(0)
         sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.info_albumCover.sizePolicy().hasHeightForWidth())
-        self.info_albumCover.setSizePolicy(sizePolicy4)
+        sizePolicy4.setHeightForWidth(self.container_albumCover.sizePolicy().hasHeightForWidth())
+        self.container_albumCover.setSizePolicy(sizePolicy4)
+        self.container_albumCover.setFrameShape(QFrame.Shape.StyledPanel)
+        self.info_albumCover = QLabel(self.container_albumCover)
+        self.info_albumCover.setObjectName(u"info_albumCover")
+        self.info_albumCover.setGeometry(QRect(50, 40, 201, 241))
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.info_albumCover.sizePolicy().hasHeightForWidth())
+        self.info_albumCover.setSizePolicy(sizePolicy5)
+        self.info_albumCover.setMinimumSize(QSize(0, 0))
         self.info_albumCover.setScaledContents(True)
         self.info_albumCover.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.verticalLayout_4.addWidget(self.info_albumCover)
-
 
         self.horizontalLayout_9.addWidget(self.container_albumCover)
 
@@ -251,11 +254,8 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.container_nextList = QScrollArea(self.container_nextListFrame)
         self.container_nextList.setObjectName(u"container_nextList")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.container_nextList.sizePolicy().hasHeightForWidth())
-        self.container_nextList.setSizePolicy(sizePolicy5)
+        sizePolicy1.setHeightForWidth(self.container_nextList.sizePolicy().hasHeightForWidth())
+        self.container_nextList.setSizePolicy(sizePolicy1)
         self.container_nextList.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.container_nextList.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.container_nextList.setWidgetResizable(True)
@@ -529,6 +529,8 @@ class Ui_MainWindow(object):
         self.container_stackedWidget.addWidget(self.page_audioPlayer)
         self.page_playlistSelector = QWidget()
         self.page_playlistSelector.setObjectName(u"page_playlistSelector")
+        sizePolicy2.setHeightForWidth(self.page_playlistSelector.sizePolicy().hasHeightForWidth())
+        self.page_playlistSelector.setSizePolicy(sizePolicy2)
         self.verticalLayout_6 = QVBoxLayout(self.page_playlistSelector)
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
         self.verticalLayout_6.setContentsMargins(0, 0, 0, 0)
@@ -563,7 +565,7 @@ class Ui_MainWindow(object):
         self.container_playlistSelector.setWidgetResizable(True)
         self.container_playlistSelectorScrollArea = QWidget()
         self.container_playlistSelectorScrollArea.setObjectName(u"container_playlistSelectorScrollArea")
-        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 92, 22))
+        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 80, 18))
         self.verticalLayout_8 = QVBoxLayout(self.container_playlistSelectorScrollArea)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.container_playlistSelector.setWidget(self.container_playlistSelectorScrollArea)

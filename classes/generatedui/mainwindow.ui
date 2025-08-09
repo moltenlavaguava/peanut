@@ -106,9 +106,12 @@ TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
 #container_nextListScrollArea QPushButton {
 	border-radius: 0px;
 }
-QScrollArea {
+QScrollArea, SquareFrame {
 	border-radius: 4px;
 	border: 4px solid rgb(66, 66, 66);
+}
+SquareFrame {
+	background-color: rgb(30, 30, 30);
 }
 #container_nextList QPushButton #TitleLabel {
 	font: 14px;
@@ -202,6 +205,12 @@ QScrollArea {
        <number>0</number>
       </property>
       <widget class="QWidget" name="page_audioPlayer">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>92</verstretch>
+        </sizepolicy>
+       </property>
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <property name="leftMargin">
          <number>0</number>
@@ -281,57 +290,46 @@ QScrollArea {
               </property>
               <item>
                <widget class="SquareFrame" name="container_albumCover">
-                <property name="minimumSize">
-                 <size>
-                  <width>317</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>317</width>
-                  <height>16777215</height>
-                 </size>
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
                 </property>
                 <property name="frameShape">
                  <enum>QFrame::Shape::StyledPanel</enum>
                 </property>
-                <layout class="QVBoxLayout" name="verticalLayout_4">
-                 <property name="spacing">
-                  <number>0</number>
+                <widget class="QLabel" name="info_albumCover">
+                 <property name="geometry">
+                  <rect>
+                   <x>50</x>
+                   <y>40</y>
+                   <width>201</width>
+                   <height>241</height>
+                  </rect>
                  </property>
-                 <property name="leftMargin">
-                  <number>0</number>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
                  </property>
-                 <property name="topMargin">
-                  <number>0</number>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
                  </property>
-                 <property name="rightMargin">
-                  <number>0</number>
+                 <property name="text">
+                  <string/>
                  </property>
-                 <property name="bottomMargin">
-                  <number>0</number>
+                 <property name="scaledContents">
+                  <bool>true</bool>
                  </property>
-                 <item>
-                  <widget class="QLabel" name="info_albumCover">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                   <property name="scaledContents">
-                    <bool>true</bool>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignmentFlag::AlignCenter</set>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignCenter</set>
+                 </property>
+                </widget>
                </widget>
               </item>
               <item>
@@ -361,7 +359,7 @@ QScrollArea {
                  <item>
                   <widget class="QScrollArea" name="container_nextList">
                    <property name="sizePolicy">
-                    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                      <horstretch>0</horstretch>
                      <verstretch>0</verstretch>
                     </sizepolicy>
@@ -847,6 +845,12 @@ QScrollArea {
        </layout>
       </widget>
       <widget class="QWidget" name="page_playlistSelector">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>92</verstretch>
+        </sizepolicy>
+       </property>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <property name="leftMargin">
          <number>0</number>
@@ -908,8 +912,8 @@ QScrollArea {
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>92</width>
-             <height>22</height>
+             <width>80</width>
+             <height>18</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_8"/>
