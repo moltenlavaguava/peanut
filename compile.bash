@@ -14,7 +14,7 @@ venvName=".venv"
 compileFile="main.py"
 ytmusicapiLocalesFolder="$venvName\Lib\site-packages\ytmusicapi\locales"
 
-showConsole=1
+showConsole=0
 
 if [ "$showConsole" -eq 1 ]; then
     consoleFlag="force"

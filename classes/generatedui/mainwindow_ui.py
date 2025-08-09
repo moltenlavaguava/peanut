@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
 "\n"
 "/* all widgets */\n"
 "* {\n"
-"	\n"
+"	color: white;\n"
 "}\n"
 "\n"
 "CircleImageButton[activatedState=\"true\"] {\n"
@@ -84,8 +84,8 @@ class Ui_MainWindow(object):
 "	background-color: rgb(70, 70, 70);\n"
 "}\n"
 "#action_loadFromURL:pressed {\n"
-"	background-color: transpa"
-                        "rent;\n"
+"	background-c"
+                        "olor: transparent;\n"
 "}\n"
 "#input_playlistURL {\n"
 "	background-color: rgb(45, 45, 45);\n"
@@ -123,12 +123,13 @@ class Ui_MainWindow(object):
 "#container_nextListScrollArea QPushButton {\n"
 "	border-radius: 0px;\n"
 "}\n"
-"QScrollArea,"
-                        " SquareFrame {\n"
+""
+                        "QScrollArea, SquareFrame {\n"
 "	border-radius: 4px;\n"
 "	border: 4px solid rgb(66, 66, 66);\n"
+"	background-color: rgb(30, 30, 30);\n"
 "}\n"
-"SquareFrame {\n"
+"#container_nextListScrollArea, #container_playlistSelectorScrollArea {\n"
 "	background-color: rgb(30, 30, 30);\n"
 "}\n"
 "#container_nextList QPushButton #TitleLabel {\n"
@@ -232,7 +233,7 @@ class Ui_MainWindow(object):
         self.container_albumCover.setFrameShape(QFrame.Shape.StyledPanel)
         self.info_albumCover = QLabel(self.container_albumCover)
         self.info_albumCover.setObjectName(u"info_albumCover")
-        self.info_albumCover.setGeometry(QRect(50, 40, 201, 241))
+        self.info_albumCover.setGeometry(QRect(0, 0, 317, 317))
         sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         sizePolicy5.setHorizontalStretch(0)
         sizePolicy5.setVerticalStretch(0)
@@ -565,7 +566,7 @@ class Ui_MainWindow(object):
         self.container_playlistSelector.setWidgetResizable(True)
         self.container_playlistSelectorScrollArea = QWidget()
         self.container_playlistSelectorScrollArea.setObjectName(u"container_playlistSelectorScrollArea")
-        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 80, 18))
+        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 92, 22))
         self.verticalLayout_8 = QVBoxLayout(self.container_playlistSelectorScrollArea)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.container_playlistSelector.setWidget(self.container_playlistSelectorScrollArea)

@@ -22,7 +22,7 @@
 
 /* all widgets */
 * {
-	
+	color: white;
 }
 
 CircleImageButton[activatedState=&quot;true&quot;] {
@@ -109,8 +109,9 @@ TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
 QScrollArea, SquareFrame {
 	border-radius: 4px;
 	border: 4px solid rgb(66, 66, 66);
+	background-color: rgb(30, 30, 30);
 }
-SquareFrame {
+#container_nextListScrollArea, #container_playlistSelectorScrollArea {
 	background-color: rgb(30, 30, 30);
 }
 #container_nextList QPushButton #TitleLabel {
@@ -302,10 +303,10 @@ SquareFrame {
                 <widget class="QLabel" name="info_albumCover">
                  <property name="geometry">
                   <rect>
-                   <x>50</x>
-                   <y>40</y>
-                   <width>201</width>
-                   <height>241</height>
+                   <x>0</x>
+                   <y>0</y>
+                   <width>317</width>
+                   <height>317</height>
                   </rect>
                  </property>
                  <property name="sizePolicy">
@@ -912,8 +913,8 @@ SquareFrame {
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>80</width>
-             <height>18</height>
+             <width>92</width>
+             <height>22</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_8"/>
