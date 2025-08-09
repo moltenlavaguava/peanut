@@ -33,6 +33,6 @@
     <file>resources/windowicon.png</file>
   </qresource>
   <qresource prefix="unsorted">
-    <file>resources/placeholder.jpg</file>
+    <file>resources/placeholder.png</file>
   </qresource>
 </RCC>

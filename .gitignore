@@ -7,3 +7,5 @@
 /output.txt
 /main.build
 /main.dist
+/test.dist
+/test.build

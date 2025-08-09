@@ -304,7 +304,7 @@ QScrollArea {
                   <number>0</number>
                  </property>
                  <property name="topMargin">
-                  <number>10</number>
+                  <number>0</number>
                  </property>
                  <property name="rightMargin">
                   <number>0</number>
@@ -350,7 +350,7 @@ QScrollArea {
                   <number>0</number>
                  </property>
                  <property name="topMargin">
-                  <number>10</number>
+                  <number>0</number>
                  </property>
                  <property name="rightMargin">
                   <number>0</number>
@@ -384,7 +384,7 @@ QScrollArea {
                       <x>0</x>
                       <y>0</y>
                       <width>507</width>
-                      <height>299</height>
+                      <height>309</height>
                      </rect>
                     </property>
                     <property name="layoutDirection">

@@ -70,13 +70,13 @@ class PlaylistDownloader():
         info = ydl.extract_info(url, download=True)
         return info
     
-    # converts an audio file to the desired extension
-    def _convertAudioFile(self, filePath:str, newPath:str, ffmpegPath:str):
-        # making new path with extension. extension must have dot
-        args = [ffmpegPath, "-i", filePath, "-vn", "-y", "-ar", str(44100), "-ac", str(2), "-b:a", "192k", newPath]
-        result = subprocess.run(args, text=True, check=True, capture_output=True)
-        # delete old file
-        os.remove(filePath)
+    # converts an audio file to the desired extension (unused, handled by yt-dlp)
+    # def _convertAudioFile(self, filePath:str, newPath:str, ffmpegPath:str):
+    #     # making new path with extension. extension must have dot
+    #     args = [ffmpegPath, "-i", filePath, "-vn", "-y", "-ar", str(44100), "-ac", str(2), "-b:a", "192k", newPath]
+    #     result = subprocess.run(args, text=True, check=True, capture_output=True)
+    #     # delete old file
+    #     os.remove(filePath)
     
     # searches yt music for album data for the given track.
     def _getAlbumData(self, searchTerm:str, trackLength:float, maxVariation:float, playlist:Playlist, imageDownloadFolder:str):
@@ -114,16 +114,16 @@ class PlaylistDownloader():
         else:
             self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no results found with search term"); return None, None, None, None
     
-    # converts an audio file to the desired extension and gets the length of the file.
-    def _processAudioFile(self, filePath:str, extension:str, track:PlaylistTrack, ffmpegPath:str):
-        self.logger.info(f"Processing {filePath}...")
-        # get new path
-        newPath = str(Path(filePath).with_suffix(extension))
-        # convert
-        self._convertAudioFile(filePath, newPath, ffmpegPath)
-        self.logger.info(f"Finished processing {filePath}")
-        # mark entry as finished
-        track.setDownloaded(True)
+    # converts an audio file to the desired extension and gets the length of the file. (unused)
+    # def _processAudioFile(self, filePath:str, extension:str, track:PlaylistTrack, ffmpegPath:str):
+    #     self.logger.info(f"Processing {filePath}...")
+    #     # get new path
+    #     newPath = str(Path(filePath).with_suffix(extension))
+    #     # convert
+    #     self._convertAudioFile(filePath, newPath, ffmpegPath)
+    #     self.logger.info(f"Finished processing {filePath}")
+    #     # mark entry as finished
+    #     track.setDownloaded(True)
     
     # downloads the given playlist. should be run in a thread as to not block the main gui.
     def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, 
@@ -176,9 +176,9 @@ class PlaylistDownloader():
                     self.logger.error(f"Failed to download track '{track.getName()}': ran out of attempts")
                     continue        
                 
-                path = ydl.prepare_filename(info)
+                # path = ydl.prepare_filename(info)
                 # convert file to specified format (not getting the track length atm)
-                self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
+                # self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
                 
                 # attempt to get music data
                 autogenVideo = True # whether or not the album data was handled via auto-generated video
@@ -213,6 +213,8 @@ class PlaylistDownloader():
                         track.setArtistName(artistName)
                         track.setDisplayName(trackName)
                 
+                # mark the track as being downloaded
+                track.setDownloaded(True)
                 # signal the completion of the track download
                 responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index})
             if not stopEvent.is_set():

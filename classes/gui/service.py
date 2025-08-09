@@ -34,6 +34,7 @@ class GuiService():
         
         # caches the currently playing track + playlist for album cover purposes
         self._currentTrack: PlaylistTrack|None = None
+        self._currentTrackWidget: TrackFrame|None = None
         
         # connect() connections
         self._connections: dict[str, QMetaObject.Connection] = {}
@@ -230,7 +231,7 @@ class GuiService():
     # resets all of the audio player widgets to their default settings
     def resetAudioPlayerGUI(self):
         # reset the album image
-        self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg"))
+        self.setAlbumCoverImage(":/unsorted/resources/placeholder.png")
         self.setPlaylistDataText("no playlist", 1, 0)
         self.setArtistDataText("no artist", "no album")
         self.setTrackNameBoxText("no track loaded")
@@ -252,6 +253,10 @@ class GuiService():
             self.populateNextListScrollArea(newPlaylist)
             # signal the finish
             self.eventService.triggerEvent("GUI_LOAD_AUDIO_PLAYER_FINISH")
+        else:
+            # reset the cache
+            self._currentTrackWidget = None
+            self._currentTrack = None
     
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
@@ -289,13 +294,22 @@ class GuiService():
         if albumName:
             self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{albumName}.jpg"))
         else:
-            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["resourceFolder"], "placeholder.jpg"))
+            self.setAlbumCoverImage(":/unsorted/resources/placeholder.png")
         # cache the current track
         self._currentTrack = track
         # set the scroll
         widgetList = self.getTrackWidgetList()
         if widgetList:
             trackWidget = widgetList[index]
+            # if a current track is already selected, then deselect it (primarly happens when the previous track was not downloaded)
+            previousTrackWidget = self._currentTrackWidget
+            if previousTrackWidget and (not previousTrackWidget is trackWidget):
+                self.logger.debug("deselecting previous")
+                previousTrackWidget.setSelectedState(False)
+            else:
+                self.logger.debug(f"Previous: {previousTrackWidget}, current: {trackWidget}")
+            self._currentTrackWidget = trackWidget
+            
             self.scrollToWidget(trackWidget)
             # set the status
             trackWidget.setSelectedState(True)
@@ -340,6 +354,12 @@ class GuiService():
         if self.getTrackWidgetList():
             # update the track data for the specific gui element
             self.updateTrackWidget(track, trackIndex)
+        if (track.getName() == self._currentTrack.getName()) and (track.getAlbumName()):
+            # update the album image
+            self.logger.info("Updating album cover")
+            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{track.getAlbumName()}.jpg"))
+        else:
+            self.logger.debug("Not updating album cover")
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
