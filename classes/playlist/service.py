@@ -15,6 +15,7 @@ import logging
 import os
 import time
 import sys
+import queue
 
 # run in different process. handles downloading logic.
 def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, responseQueue:multiprocessing.Queue, stopEvent:Event, cancelEvent:Event):
@@ -169,7 +170,6 @@ class PlaylistService():
                         self.setIsDownloading(False)
                         self.eventService.triggerEvent("DOWNLOAD_STOP")
                 case "CANCEL":
-                    self.logger.debug(f"Cancelling playlist download. Queue empty: {response['queueEmpty']}")
                     if response["queueEmpty"]:
                         self.logger.debug(f"Marking download as done via cancellation.")
                         self.setIsDownloading(False)
@@ -215,11 +215,13 @@ class PlaylistService():
         self._downloadQueue.put(None) # singal stop
     
     # signals to stop downloading the current playlist.
-    def stopDownloadingPlaylist(self):
+    def stopDownloadingPlaylist(self, cancelNext:bool=None):
+        if cancelNext is None: cancelNext = True
         self._stopEvent.set()
         # if there is stuff in the queue, clear it
         if not self.getDownloadQueueEmpty():
-            self._cancelEvent.set()
+            self.logger.debug("Setting downloader cancel event.")
+            if cancelNext: self._cancelEvent.set()
     
     def getIsDownloading(self):
         return self._isDownloading
@@ -263,6 +265,18 @@ class PlaylistService():
         if not self.getCurrentPlaylist() is playlist: 
             self.eventService.triggerEvent("PLAYLIST_CURRENT_CHANGE", playlist)
         self._currentPlaylist = playlist
+    
+    # bandaid solution for emptying the download queue.
+    def emptyDownloadQueue(self):
+        q = self._downloadQueue
+        count = 0
+        try:
+            while q.get_nowait():
+                count += 1
+        except queue.Empty:
+            pass
+        self.logger.debug(f"Download queue emptied. Cleared {count} entries.")
+        self.setDownloadQueueEmpty(True)
     
     # starts downloading a given playlist from its name. blocks the current thread/coroutine until it finishes.
     def downloadPlaylist(self, name:str, startIndex:int = None):

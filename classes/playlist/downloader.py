@@ -131,6 +131,8 @@ class PlaylistDownloader():
                          startIndex:int, maxDownloadAttempts:int):
         tracks = playlist.getTracks()
         name = playlist.getName()
+        # cache if this download was successful or not
+        downloadPlaylistSuccess = True
         # make the images directory
         os.makedirs(thumbnailOutput, exist_ok=True)
         # replace playlist name with actual name
@@ -171,6 +173,7 @@ class PlaylistDownloader():
                             break
                     except Exception as e:
                         self.logger.error(f"An unknown error occured while attempting to download the track '{track.getName()}': {e}")
+                        downloadPlaylistSuccess = False # mark the playlist as not being fully downloaded
                         attemptCount += 1
                 if not success:
                     self.logger.error(f"Failed to download track '{track.getName()}': ran out of attempts")

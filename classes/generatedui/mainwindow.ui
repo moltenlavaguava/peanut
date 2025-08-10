@@ -106,7 +106,7 @@ TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
 #container_nextListScrollArea QPushButton {
 	border-radius: 0px;
 }
-QScrollArea, SquareFrame {
+QScrollArea, #container_albumCover {
 	border-radius: 4px;
 	border: 4px solid rgb(66, 66, 66);
 	background-color: rgb(30, 30, 30);
@@ -141,7 +141,7 @@ QScrollArea, SquareFrame {
       <property name="frameShadow">
        <enum>QFrame::Shadow::Raised</enum>
       </property>
-      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0">
+      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0">
        <property name="leftMargin">
         <number>15</number>
        </property>
@@ -190,6 +190,23 @@ QScrollArea, SquareFrame {
           </size>
          </property>
         </spacer>
+       </item>
+       <item>
+        <widget class="SquareFrame" name="container_loadFrame">
+         <widget class="LoadWidget" name="info_loading">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>10</y>
+            <width>31</width>
+            <height>31</height>
+           </rect>
+          </property>
+          <property name="svgFilePath" stdset="0">
+           <string>:/unsorted/resources/loading.svg</string>
+          </property>
+         </widget>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -247,7 +264,7 @@ QScrollArea, SquareFrame {
             <number>40</number>
            </property>
            <property name="topMargin">
-            <number>9</number>
+            <number>0</number>
            </property>
            <property name="rightMargin">
             <number>40</number>
@@ -305,8 +322,8 @@ QScrollArea, SquareFrame {
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>317</width>
-                   <height>317</height>
+                   <width>326</width>
+                   <height>326</height>
                   </rect>
                  </property>
                  <property name="sizePolicy">
@@ -382,8 +399,8 @@ QScrollArea, SquareFrame {
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>507</width>
-                      <height>309</height>
+                      <width>498</width>
+                      <height>318</height>
                      </rect>
                     </property>
                     <property name="layoutDirection">
@@ -880,6 +897,12 @@ QScrollArea, SquareFrame {
            <enum>QFrame::Shadow::Raised</enum>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
            <item>
             <widget class="QLineEdit" name="input_playlistURL">
              <property name="placeholderText">
@@ -913,8 +936,8 @@ QScrollArea, SquareFrame {
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>92</width>
-             <height>22</height>
+             <width>924</width>
+             <height>489</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_8"/>
@@ -933,6 +956,11 @@ QScrollArea, SquareFrame {
    <class>CircleImageButton</class>
    <extends>QPushButton</extends>
    <header>customwidgets.circleimagebutton.circleimagebutton</header>
+  </customwidget>
+  <customwidget>
+   <class>LoadWidget</class>
+   <extends>QWidget</extends>
+   <header>customwidgets.loadwidget.loadwidget</header>
   </customwidget>
   <customwidget>
    <class>ProgressCircleBar</class>

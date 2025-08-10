@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
     QVBoxLayout, QWidget)
 
 from customwidgets.circleimagebutton.circleimagebutton import CircleImageButton
+from customwidgets.loadwidget.loadwidget import LoadWidget
 from customwidgets.scrollprogressbar.progresscirclebar import ProgressCircleBar
 from customwidgets.scrollprogressbar.scrollprogressbar import ScrollProgressBar
 from customwidgets.squareframe.squareframe import SquareFrame
@@ -124,7 +125,7 @@ class Ui_MainWindow(object):
 "	border-radius: 0px;\n"
 "}\n"
 ""
-                        "QScrollArea, SquareFrame {\n"
+                        "QScrollArea, #container_albumCover {\n"
 "	border-radius: 4px;\n"
 "	border: 4px solid rgb(66, 66, 66);\n"
 "	background-color: rgb(30, 30, 30);\n"
@@ -181,6 +182,14 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
 
+        self.container_loadFrame = SquareFrame(self.container_topFrame)
+        self.container_loadFrame.setObjectName(u"container_loadFrame")
+        self.info_loading = LoadWidget(self.container_loadFrame)
+        self.info_loading.setObjectName(u"info_loading")
+        self.info_loading.setGeometry(QRect(10, 10, 31, 31))
+
+        self.horizontalLayout.addWidget(self.container_loadFrame)
+
 
         self.verticalLayout_2.addWidget(self.container_topFrame)
 
@@ -210,7 +219,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2 = QHBoxLayout(self.container_upperMiddleFrame)
         self.horizontalLayout_2.setSpacing(0)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.horizontalLayout_2.setContentsMargins(40, 9, 40, -1)
+        self.horizontalLayout_2.setContentsMargins(40, 0, 40, -1)
         self.horizontalSpacer_5 = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer_5)
@@ -233,7 +242,7 @@ class Ui_MainWindow(object):
         self.container_albumCover.setFrameShape(QFrame.Shape.StyledPanel)
         self.info_albumCover = QLabel(self.container_albumCover)
         self.info_albumCover.setObjectName(u"info_albumCover")
-        self.info_albumCover.setGeometry(QRect(0, 0, 317, 317))
+        self.info_albumCover.setGeometry(QRect(0, 0, 326, 326))
         sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         sizePolicy5.setHorizontalStretch(0)
         sizePolicy5.setVerticalStretch(0)
@@ -263,7 +272,7 @@ class Ui_MainWindow(object):
         self.container_nextList.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.container_nextListScrollArea = QWidget()
         self.container_nextListScrollArea.setObjectName(u"container_nextListScrollArea")
-        self.container_nextListScrollArea.setGeometry(QRect(0, 0, 507, 309))
+        self.container_nextListScrollArea.setGeometry(QRect(0, 0, 498, 318))
         self.container_nextListScrollArea.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.verticalLayout_7 = QVBoxLayout(self.container_nextListScrollArea)
         self.verticalLayout_7.setSpacing(9)
@@ -543,6 +552,7 @@ class Ui_MainWindow(object):
         self.container_playlistLoader.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_7 = QHBoxLayout(self.container_playlistLoader)
         self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.horizontalLayout_7.setContentsMargins(-1, 0, -1, 0)
         self.input_playlistURL = QLineEdit(self.container_playlistLoader)
         self.input_playlistURL.setObjectName(u"input_playlistURL")
 
@@ -566,7 +576,7 @@ class Ui_MainWindow(object):
         self.container_playlistSelector.setWidgetResizable(True)
         self.container_playlistSelectorScrollArea = QWidget()
         self.container_playlistSelectorScrollArea.setObjectName(u"container_playlistSelectorScrollArea")
-        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 92, 22))
+        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 924, 489))
         self.verticalLayout_8 = QVBoxLayout(self.container_playlistSelectorScrollArea)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.container_playlistSelector.setWidget(self.container_playlistSelectorScrollArea)
@@ -590,6 +600,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"peanut", None))
         self.info_pageTitle.setText(QCoreApplication.translate("MainWindow", u"filler text", None))
+        self.info_loading.setProperty(u"svgFilePath", QCoreApplication.translate("MainWindow", u":/unsorted/resources/loading.svg", None))
         self.info_albumCover.setText("")
         self.info_trackName.setText(QCoreApplication.translate("MainWindow", u"now playing:", None))
         self.info_artistAlbum.setText(QCoreApplication.translate("MainWindow", u"artist \u2022 album", None))

@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QFrame, QSizePolicy, QLabel
+from PySide6.QtWidgets import QFrame, QSizePolicy, QWidget
 
 class SquareFrame(QFrame):
     def __init__(self, *args, **kwargs):
@@ -11,6 +11,7 @@ class SquareFrame(QFrame):
         
         super().resizeEvent(event)
 
-        label = self.findChild(QLabel)
-        if label:
-            label.setGeometry(self.rect())
+        # manually resize any child widget
+        widget = self.findChild(QWidget)
+        if widget:
+            widget.setGeometry(self.rect())

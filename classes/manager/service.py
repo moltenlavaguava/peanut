@@ -72,7 +72,9 @@ class ManagerService():
             # if the playlist is downloading, restart the downloader
             if self.playlistService.getIsDownloading():
                 self.logger.debug("Restarting playlist download.")
-                self.playlistService.stopDownloadingPlaylist()
+                self.playlistService.stopDownloadingPlaylist(False)
+                # empty the data queue
+                self.playlistService.emptyDownloadQueue()
                 self.playlistService.downloadPlaylist(playlist.getName())
             # send the shuffle request
             self.audioService.invokeShuffleEvent()
@@ -112,6 +114,7 @@ class ManagerService():
         if playlistName:
             self.logger.info(f"Attempted to download playlist '{playlistName}' from url '{url}' even though it already exists.")
         else:
+            self.eventService.triggerEvent("PLAYLIST_INITIALIZATION_START")
             self.playlistService.createPlaylistFromURL(url)
     
     def _actionDownload(self):
@@ -181,7 +184,9 @@ class ManagerService():
             # if the playlist is downloading, restart the downloader
             if self.playlistService.getIsDownloading():
                 self.logger.debug("Restarting playlist download.")
-                self.playlistService.stopDownloadingPlaylist()
+                self.playlistService.stopDownloadingPlaylist(False)
+                # empty the data queue
+                self.playlistService.emptyDownloadQueue()
                 self.playlistService.downloadPlaylist(playlist.getName())
             # send the shuffle request
             self.audioService.invokeShuffleEvent()
@@ -232,6 +237,7 @@ class ManagerService():
     # Program
     
     def _programClose(self):
+        self.guiService.setLoadingState(True)
         # close the audio manager
         self.eventService.triggerEvent("AUDIO_STOP")
         # pass on event
@@ -242,9 +248,9 @@ class ManagerService():
     def _audioSelect(self, selectIndex:int):
         # if the playlist is downloading, restart the downloader
         if self.playlistService.getIsDownloading():
-            if not self.playlistService.getDownloadQueueEmpty():
-                self.logger.warning("Failed to restart download with audio select event b/c download queue was not empty. how did this happen?")
-            self.playlistService.stopDownloadingPlaylist()
+            self.playlistService.stopDownloadingPlaylist(False)
+            # empty the data queue
+            self.playlistService.emptyDownloadQueue()
             self.playlistService.downloadPlaylist(self.playlistService.getCurrentPlaylist().getName(), selectIndex)
         self.logger.debug(f"Audio select event fired. select index: {selectIndex}")
         self.audioService.invokeSelectEvent(selectIndex)
@@ -313,6 +319,7 @@ class ManagerService():
         self.eventService.addEvent("ACTION_MUTE")
         self.eventService.subscribeToEvent("ACTION_MUTE", self._actionMute)
         # playlist events
+        self.eventService.addEvent("PLAYLIST_INITIALIZATION_START")
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._playlistInitalizationFinish)
         self.eventService.addEvent("PLAYLIST_SELECT_REQUEST")

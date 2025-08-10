@@ -11,6 +11,7 @@ from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
 
 from customwidgets.trackframe.trackframe import TrackFrame
+from customwidgets.loadwidget.loadwidget import LoadWidget
 
 from .handler_mainwindow import Window
 
@@ -44,6 +45,15 @@ class GuiService():
         # retrieve the box
         textBox = self.getMainWindow().ui.input_playlistURL
         textBox.setText(text)
+    
+    def setLoadingState(self, loading:bool):
+        widget: LoadWidget = self.getMainWindow().ui.info_loading
+        if loading:
+            widget.startAnimation()
+            widget.showWidget()
+        else:
+            widget.stopAnimation()
+            widget.hideWidget()
     
     def setPlaylistDataText(self, playlistName:str, currentTrackIndex:int, totalTracks:int):
         box = self.getMainWindow().ui.info_playlistData
@@ -137,6 +147,7 @@ class GuiService():
             widget.deleteLater()
         # removes the cache for all the track widgets
         self._trackWidgets = []
+        self._currentTrackWidget = None
     
     # populates the next list scroll area with the current playlist's track widgets.
     def populateNextListScrollArea(self, playlist:Playlist):
@@ -248,16 +259,22 @@ class GuiService():
         # update the playlist data text box
         currentPlaylist = newPlaylist
         if currentPlaylist:
+            self.setLoadingState(True)
             self.resetAudioPlayerGUI() # cleanup the menu
             self.setPlaylistDataText(newPlaylist.getDisplayName(), 1, newPlaylist.getLength())
             # populate the track list
             self.populateNextListScrollArea(newPlaylist)
             # signal the finish
             self.eventService.triggerEvent("GUI_LOAD_AUDIO_PLAYER_FINISH")
+            self.setLoadingState(False) # reset the loading state
         else:
             # reset the cache
             self._currentTrackWidget = None
             self._currentTrack = None
+    
+    # runs when an initialization process starts.
+    def _eventPlalyistInitializationStart(self):
+        self.setLoadingState(True)
     
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
@@ -279,6 +296,7 @@ class GuiService():
         connection = button.clicked.connect(onButtonPress)
         # add the conection
         self.addConnection(f"Playlist Select Request Connection: {name}", connection)
+        self.setLoadingState(False)
     
     def _eventAudioTrackStart(self, track:PlaylistTrack, playlist:Playlist, index:int):
         # update the current track name box
@@ -333,10 +351,12 @@ class GuiService():
     def _eventDownloadStartRequest(self):
         self.setDownloadButtonState(True)
         self.setMainWindowTitle("peanut [Downloading]")
+        self.setLoadingState(True)
     
     def _eventDownloadStop(self):
         self.setDownloadButtonState(False)
         self.setMainWindowTitle("peanut")
+        self.setLoadingState(False)
     
     def _eventProgramClose(self):
         # set the title of the window
@@ -355,6 +375,10 @@ class GuiService():
         if (track.getName() == self._currentTrack.getName()) and (track.getAlbumName()):
             # update the album image
             self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{track.getAlbumName()}.jpg"))
+            # update the relevant information
+            self.setTrackNameBoxText(track.getDisplayName())
+            # update the author / album data
+            self.setArtistDataText(track.getArtistName() or "unknown artist", track.getAlbumDisplayName() or "unknown album")
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
@@ -368,6 +392,7 @@ class GuiService():
     def start(self):
         self.logger.info("Starting gui service.")
         # setup event listeners
+        self.eventService.subscribeToEvent("PLAYLIST_INITIALIZATION_START", self._eventPlalyistInitializationStart)
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._eventPlaylistInitialized)
         self.eventService.subscribeToEvent("PLAYLIST_CURRENT_CHANGE", self._eventCurrentPlaylistChange)
         self.eventService.subscribeToEvent("AUDIO_TRACK_START", self._eventAudioTrackStart)
@@ -388,9 +413,12 @@ class GuiService():
 
         # setting default volume
         self.setVolumeBarProgress(1)
+        
+        # stop the loading widget
+        self.setLoadingState(False)
 
         # customizing buttons
-        self.setPlayButtonState(True) # to center the play button
+        self.setPlayButtonState(True)
         
         # set the default page on startup
         self.loadPagePlaylistSelector()

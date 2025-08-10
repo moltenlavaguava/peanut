@@ -156,6 +156,10 @@ class AudioService():
                     self.setPaused(False)
                     self.eventService.triggerEvent("AUDIO_TRACK_RESUME", track)
                 playback = self.loadTrack(track, pause=firstTrack)
+                # if the playback did not load, then continue
+                if not playback:
+                    self.logger.warning(f"Skipping track with name '{track.getName()}' due to an unexpected error")
+                    continue
                 # set the current volume
                 playback.set_volume(self.getVolume())
                 trackLength = playback.duration
@@ -240,7 +244,13 @@ class AudioService():
         playback = Playback()
         # cache the playback
         self.setCurrentPlayback(playback)
-        playback.load_file(path)
+        # attempt to load the file
+        try:
+            playback.load_file(path)
+        except Exception as e:
+            self.logger.error(f"An unexpected error occured while loading the track '{track.getName()}': {e}")
+            self.setCurrentPlayback(None)
+            return None
         playback.play() # actually make it so it can be played
         if pause: 
             self.pauseAudio()

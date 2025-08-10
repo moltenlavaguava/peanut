@@ -50,7 +50,7 @@ options["downloadOptions"] = {
     "outtmpl": os.path.join(options["outputFolder"], "%(playlist_title)s\music\%(title).200s.%(ext)s"),
     'quiet': True,
     "verbose": False,
-    'ignoreerrors': True,
+    'ignoreerrors': False,
     "restrictfilenames": True,
     "ffmpeg_location": options["ffmpegPath"],
     "postprocessors": [{
