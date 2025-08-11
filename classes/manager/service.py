@@ -326,6 +326,7 @@ class ManagerService():
         self.eventService.subscribeToEvent("PLAYLIST_SELECT_REQUEST", self._playlistSelectRequest)
         self.eventService.addEvent("PLAYLIST_CURRENT_CHANGE")
         self.eventService.addEvent("PLAYLIST_TRACK_DOWNLOAD")
+        self.eventService.addEvent("PLAYLIST_TRACK_DOWNLOAD_START")
         
         # audio events
         self.eventService.addEvent("AUDIO_TRACK_START")

@@ -170,7 +170,7 @@ class AudioService():
                         # set the progress bar progress
                         progress = playback.curr_pos / playback.duration
                         self.eventService.triggerEvent("AUDIO_TRACK_PROGRESS", progress, trackLength)
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.05)
                 if self._stopAudioEvent:
                     break # stop the loop without doing anything else
                 self.logger.info(f"Track '{track.getDisplayName()}' finished.")

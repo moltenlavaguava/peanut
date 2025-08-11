@@ -30,6 +30,8 @@ class GuiService():
         self.configService = configService
         self.threadService = threadService
         
+        self._closing = False
+        
         # caches all existing track widgets
         self._trackWidgets: list[TrackFrame] = []
         
@@ -168,7 +170,7 @@ class GuiService():
             button.setArtistText(track.getArtistName())
             button.setDownloadedState(track.getDownloaded())
             
-            button.clicked.connect(lambda checked, i=index: buttonActivated(self, i)) # checked singal is always sent
+            button.clicked.connect(lambda i=index: buttonActivated(self, i)) # checked singal is always sent
             layout.insertWidget(index, button)
             self.addTrackWidgetToList(button)
     
@@ -273,11 +275,12 @@ class GuiService():
             self._currentTrack = None
     
     # runs when an initialization process starts.
-    def _eventPlalyistInitializationStart(self):
+    def _eventPlaylistInitializationStart(self):
         self.setLoadingState(True)
     
     # runs when a playlist finishes initalizing and gets its data
     def _eventPlaylistInitialized(self, playlist:Playlist):
+        if self._closing: return
         # get data
         box = self.getPlaylistSelectorElement()
         layout = box.layout()
@@ -361,6 +364,7 @@ class GuiService():
     def _eventProgramClose(self):
         # set the title of the window
         self._window.setWindowTitle("peanut [Closing]")
+        self._closing = True
     
     def _eventGuiMuteAudio(self):
         self.setMuteButtonState(True)
@@ -368,17 +372,34 @@ class GuiService():
     def _eventGuiUnmuteAudio(self):
         self.setMuteButtonState(False)
     
-    def _eventPlaylistTrackDownload(self, playlist:Playlist, track:PlaylistTrack, trackIndex:int):
-        if self.getTrackWidgetList():
-            # update the track data for the specific gui element
-            self.updateTrackWidget(track, trackIndex)
-        if (track.getName() == self._currentTrack.getName()) and (track.getAlbumName()):
-            # update the album image
-            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{track.getAlbumName()}.jpg"))
-            # update the relevant information
-            self.setTrackNameBoxText(track.getDisplayName())
-            # update the author / album data
-            self.setArtistDataText(track.getArtistName() or "unknown artist", track.getAlbumDisplayName() or "unknown album")
+    def _eventPlaylistTrackDownload(self, playlist:Playlist, track:PlaylistTrack, trackIndex:int, success:bool):
+        if self._closing: return
+        trackList = self.getTrackWidgetList()
+        if trackList:
+            if success:
+                # update the track data for the specific gui element
+                trackWidget = trackList[trackIndex]
+                self.updateTrackWidget(track, trackIndex)
+                if (track.getName() == self._currentTrack.getName()) and (track.getAlbumName()):
+                    # update the album image
+                    self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{track.getAlbumName()}.jpg"))
+                    # update the relevant information
+                    self.setTrackNameBoxText(track.getDisplayName())
+                    # update the author / album data
+                    self.setArtistDataText(track.getArtistName() or "unknown artist", track.getAlbumDisplayName() or "unknown album")
+        # set the track as no longer downloading
+        trackWidget.setDownloading(False)
+            
+    
+    # runs when a playlist track starts downloading
+    def _eventPlaylistTrackDownloadStart(self, track:PlaylistTrack, playlist:Playlist, trackIndex:int):
+        # get the current track widget
+        trackList = self.getTrackWidgetList()
+        self.logger.debug("recieved event")
+        if trackList:
+            trackWidget = trackList[trackIndex]
+            self.logger.debug("Marking downloading as true")
+            trackWidget.setDownloading(True)
     
     # runs when the audio progress changes (updated ~2/sec)
     def _eventAudioTrackProgress(self, progress:float, totalTime:float):
@@ -392,7 +413,7 @@ class GuiService():
     def start(self):
         self.logger.info("Starting gui service.")
         # setup event listeners
-        self.eventService.subscribeToEvent("PLAYLIST_INITIALIZATION_START", self._eventPlalyistInitializationStart)
+        self.eventService.subscribeToEvent("PLAYLIST_INITIALIZATION_START", self._eventPlaylistInitializationStart)
         self.eventService.subscribeToEvent("PLAYLIST_INITALIZATION_FINISH", self._eventPlaylistInitialized)
         self.eventService.subscribeToEvent("PLAYLIST_CURRENT_CHANGE", self._eventCurrentPlaylistChange)
         self.eventService.subscribeToEvent("AUDIO_TRACK_START", self._eventAudioTrackStart)
@@ -406,6 +427,7 @@ class GuiService():
         self.eventService.subscribeToEvent("GUI_MUTE_AUDIO", self._eventGuiMuteAudio)
         self.eventService.subscribeToEvent("GUI_UNMUTE_AUDIO", self._eventGuiUnmuteAudio)
         self.eventService.subscribeToEvent("PLAYLIST_TRACK_DOWNLOAD", self._eventPlaylistTrackDownload)
+        self.eventService.subscribeToEvent("PLAYLIST_TRACK_DOWNLOAD_START", self._eventPlaylistTrackDownloadStart)
         # starting up QApplication
         self._QApplication = QApplication([])
         # booting up main window

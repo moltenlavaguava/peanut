@@ -91,18 +91,43 @@ ScrollProgressBar #progressFrame {
 
 /* Audio Player Page */
 
-TrackFrame {
+TrackFrame  {
 	background-color: rgb(66, 66, 66);
 }
+TrackFrame[hoverState=&quot;true&quot;] {
+	background-color: rgb(76, 76, 76);
+}
+TrackFrame[pressedState=&quot;true&quot;] {
+	background-color: rgb(46, 46, 46);
+}
 TrackFrame[selectedState=&quot;true&quot;] {
+	background-color: rgb(0, 160, 245);
+}
+TrackFrame[selectedState=&quot;true&quot;][hoverState=&quot;true&quot;] {
 	background-color: rgb(0, 170, 255);
 }
-TrackFrame[downloadedState=&quot;false&quot;] {
+TrackFrame[selectedState=&quot;true&quot;][pressedState=&quot;true&quot;]  {
+	background-color: rgb(0, 140, 225);
+}
+TrackFrame[downloadedState=&quot;false&quot;]  {
 	background-color: rgb(103, 103, 103);
 }
-TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;] {
+TrackFrame[downloadedState=&quot;false&quot;][hoverState=&quot;true&quot;] {
+	background-color: rgb(113, 113, 113);
+}
+TrackFrame[downloadedState=&quot;false&quot;][pressedState=&quot;true&quot;]  {
+	background-color: rgb(83, 83, 83);
+}
+TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;]  {
+	background-color: rgb(245, 75, 0);
+}
+TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;][hoverState=&quot;true&quot;] {
 	background-color: rgb(255, 85, 0);
 }
+TrackFrame[downloadedState=&quot;false&quot;][selectedState=&quot;true&quot;][pressedState=&quot;true&quot;]  {
+	background-color: rgb(225, 55, 0);
+}
+
 #container_nextListScrollArea QPushButton {
 	border-radius: 0px;
 }
@@ -196,10 +221,10 @@ QScrollArea, #container_albumCover {
          <widget class="LoadWidget" name="info_loading">
           <property name="geometry">
            <rect>
-            <x>10</x>
-            <y>10</y>
-            <width>31</width>
-            <height>31</height>
+            <x>0</x>
+            <y>0</y>
+            <width>48</width>
+            <height>48</height>
            </rect>
           </property>
           <property name="svgFilePath" stdset="0">

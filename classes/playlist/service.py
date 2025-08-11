@@ -139,18 +139,19 @@ class PlaylistService():
                     # mark the download as being complete
                     self.setIsDownloading(False)
                     self.eventService.triggerEvent("DOWNLOAD_STOP")
-                case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading
+                case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading (or failed downloading)
                     playlistName = response["playlistName"]
                     # mark it as downloaded
                     track = response["track"]
-                    playlist = self.getPlaylist(playlistName)
-                    playlist.updateTrack(track)
-                    self.logger.debug(f"Marking track '{track.getDisplayName()}' as finished in the playlist service.")
-                    # save the file. if this gets to be too cpu intensive, then stop doing this
-                    self.savePlaylistFile(playlistName)
-                    # trigger the download finish event for gui purposes
-                    # sends the track itself plus the index the track is in the playlist
-                    self.eventService.triggerEvent("PLAYLIST_TRACK_DOWNLOAD", playlist, track, response["downloadIndex"])
+                    if response["success"]:
+                        playlist = self.getPlaylist(playlistName)
+                        playlist.updateTrack(track)
+                        self.logger.debug(f"Marking track '{track.getDisplayName()}' as finished in the playlist service.")
+                        # save the file. if this gets to be too cpu intensive, then stop doing this
+                        self.savePlaylistFile(playlistName)
+                        # trigger the download finish event for gui purposes
+                        # sends the track itself plus the index the track is in the playlist
+                    self.eventService.triggerEvent("PLAYLIST_TRACK_DOWNLOAD", playlist, track, response["downloadIndex"], response["success"])
                 case "PLAYLIST_DOWNLOAD_DONE": # playlist download finished (or stopped)
                     playlistName = response["playlistName"]
                     if not playlistName: continue
@@ -175,6 +176,9 @@ class PlaylistService():
                         self.setIsDownloading(False)
                         self.eventService.triggerEvent("DOWNLOAD_STOP")
                         self.setDownloadQueueEmpty(True)
+                case "TRACK_DOWNLOAD_START":
+                    # signal the start of the track download for the current playlist. mainly for gui updating
+                    self.eventService.triggerEvent("PLAYLIST_TRACK_DOWNLOAD_START", response["track"], self.getPlaylist(response["playlistName"]), response["downloadIndex"])
         self.logger.info("Closing Playlist Download Listener.")
         # close the queues
         responseQueue.close()
@@ -298,11 +302,9 @@ class PlaylistService():
         options = self.configService.getOtherOptions()
         downloadOptions = options["downloadOptions"]
         outputExtension = options["outputConversionExtension"]
-        # get the ffmpeg path
-        ffmpegPath = os.path.join(self.configService.getOtherOptions()["mainDirectory"], options["binariesFolder"], options["ffmpegPath"])
         # package the data together
-        data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, "ffmpegPath": 
-            ffmpegPath, "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
+        data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, 
+                "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
             "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), 
             "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex, "maxDownloadAttempts": 3}
         # request the download
