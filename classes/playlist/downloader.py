@@ -128,7 +128,7 @@ class PlaylistDownloader():
     # downloads the given playlist. should be run in a thread as to not block the main gui.
     def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, 
                          stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str, useYoutubeMusicAlbums:bool, maxVariation:int, 
-                         startIndex:int, maxDownloadAttempts:int):
+                         startIndex:int, maxDownloadAttempts:int, selectIndex, selectLock):
         name = playlist.getName()
         self.logger.debug(f"Start index: {startIndex}")
         # cache if this download was successful or not
@@ -144,13 +144,20 @@ class PlaylistDownloader():
         with yt_dlp.YoutubeDL(downloadOptions) as ydl:
             while not stopDownloading:
                 self.logger.debug("Starting loop")
-                for index, track in enumerate(playlist.getTracks()):
-                    # if the index is not the requested start index, skip until it is
-                    if index < startIndex: continue
+                tracks = playlist.getTracks()
+                for index in range(startIndex, len(tracks)):
+                    track = tracks[index]
                     
                     if stopEvent.is_set():
                         stopDownloading = True
                         break
+
+                    # select index things: check to see if the value actually changed
+                    with selectLock:
+                        if selectIndex.value != -1:
+                            # break out of the loop and restart the download
+                            break
+
                     if track.getDownloaded():
                         continue
                     
@@ -226,22 +233,32 @@ class PlaylistDownloader():
                     # signal the completion of the track download
                     responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": True})
                 if not stopEvent.is_set():
-                    if downloadPlaylistSuccess:
-                        # verify download
-                        undownloaded = False
-                        for track in playlist.getTracks():
-                            if not track.getDownloaded():
-                                undownloaded = True
-                                break
-                        if not undownloaded:
-                            self.logger.info("Done downloading playlist.")
-                            playlist.setDownloaded(True)
-                            stopDownloading = True
+
+                    # check to see if a selection was made
+                    with selectLock:
+                        self.logger.debug(f"Select index value: {selectIndex.value}")
+                        if selectIndex.value != -1:
+                            # restart the download at the specified index
+                            startIndex = selectIndex.value
+                            downloadPlaylistSuccess = True
+                            self.logger.debug(f"Restarting the playlist downloader at index {selectIndex.value}.")
+                            selectIndex.value = -1
+                        elif downloadPlaylistSuccess:
+                            # verify download
+                            undownloaded = False
+                            for track in playlist.getTracks():
+                                if not track.getDownloaded():
+                                    undownloaded = True
+                                    break
+                            if not undownloaded:
+                                self.logger.info("Done downloading playlist.")
+                                playlist.setDownloaded(True)
+                                stopDownloading = True
+                            else:
+                                startIndex = 0
                         else:
-                            startIndex = 0
-                    else:
-                        # restart the playlist download process
-                        downloadPlaylistSuccess = True
+                            # restart the playlist download process
+                            downloadPlaylistSuccess = True
     
     # downloads the information for each track in the playlist. NOT supported by async functions.
     def initalizePlaylist(self, playlist:Playlist):
@@ -265,4 +282,3 @@ class PlaylistDownloader():
             playlist.setLength(len(tracks))
             playlist.setDownloaded(False)
             playlist.setThumbnailURL(info_dict["thumbnails"][-1]["url"])
-            self.logger.info(f"Successfully finished initalizing playlist '{playlist.getDisplayName()}'")

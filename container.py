@@ -10,6 +10,7 @@ from classes.event.service import EventService
 from classes.playlist.service import PlaylistService
 from classes.log.service import LoggingService
 from classes.audio.service import AudioService
+from classes.id.service import IDService
 
 # Notes:
 # Singleton: one shared instance of the dependency
@@ -17,13 +18,16 @@ from classes.audio.service import AudioService
 
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(packages=["classes"])
-    
+
     threadService = providers.Singleton(ThreadService)
     configService = providers.Singleton(ConfigService)
+    idService = providers.Singleton(IDService, configService=configService)
     eventService = providers.Singleton(EventService, threadService=threadService)
     
     loggingService = providers.Singleton(LoggingService, configService=configService, threadService=threadService, eventService=eventService)
-    playlistService = providers.Singleton(PlaylistService, eventService=eventService, configService=configService, threadService=threadService, loggingService=loggingService)
+    playlistService = providers.Singleton(PlaylistService, eventService=eventService, configService=configService, 
+                                          threadService=threadService, loggingService=loggingService,
+                                          idService=idService)
     hotkeyService = providers.Singleton(HotkeyService, threadService=threadService, configService=configService, eventService=eventService)
     
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
@@ -39,4 +43,5 @@ class Container(containers.DeclarativeContainer):
                                   playlistService=playlistService,
                                   loggingService=loggingService,
                                   audioService=audioService,
+                                  idService=idService,
                                   )

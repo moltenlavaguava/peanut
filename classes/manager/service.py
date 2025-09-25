@@ -9,6 +9,7 @@ from classes.playlist.service import PlaylistService
 from classes.playlist.playlist import Playlist
 from classes.log.service import LoggingService
 from classes.audio.service import AudioService
+from classes.id.service import IDService
 
 import PySide6.QtAsyncio as QtAsyncio
 
@@ -19,7 +20,7 @@ import os
 
 class ManagerService():
     
-    def __init__(self, guiService:GuiService, threadService:ThreadService, hotkeyService:HotkeyService, configService:ConfigService, eventService:EventService, playlistService:PlaylistService, loggingService:LoggingService, audioService:AudioService):
+    def __init__(self, guiService:GuiService, threadService:ThreadService, hotkeyService:HotkeyService, configService:ConfigService, eventService:EventService, playlistService:PlaylistService, loggingService:LoggingService, audioService:AudioService, idService:IDService):
         self.guiService = guiService
         self.threadService = threadService
         self.hotkeyService = hotkeyService
@@ -28,6 +29,7 @@ class ManagerService():
         self.playlistService = playlistService
         self.loggingService = loggingService
         self.audioService = audioService
+        self.idService = idService
         self.logger = logging.getLogger(__name__)
         
         # temporary
@@ -248,10 +250,7 @@ class ManagerService():
     def _audioSelect(self, selectIndex:int):
         # if the playlist is downloading, restart the downloader
         if self.playlistService.getIsDownloading():
-            self.playlistService.stopDownloadingPlaylist(False)
-            # empty the data queue
-            self.playlistService.emptyDownloadQueue()
-            self.playlistService.downloadPlaylist(self.playlistService.getCurrentPlaylist().getName(), selectIndex)
+            self.playlistService.setDownloadTrackIndex(selectIndex)
         self.logger.debug(f"Audio select event fired. select index: {selectIndex}")
         self.audioService.invokeSelectEvent(selectIndex)
     
@@ -361,6 +360,9 @@ class ManagerService():
         # start the logging service
         self.loggingService.start()
         
+        # startup the id service
+        self.idService.start()
+
         # startup the gui service
         self.guiService.start()
         

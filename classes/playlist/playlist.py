@@ -43,7 +43,8 @@ class Playlist():
                 data = json.loads(file.read())
                 try:
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
-                                                  displayName=trackData["display name"], index=trackData["index"], 
+                                                  displayName=trackData["display name"], 
+                                                  id=trackData["pid"], index=trackData["index"], 
                                                   downloaded=trackData["downloaded"], albumName=trackData["album name"],
                                                   length=trackData["length"],
                                                   albumDisplayName=trackData["album display name"], 
