@@ -47,7 +47,7 @@ options = {
 
 options["downloadOptions"] = {
     "format": "bestaudio/best",
-    "outtmpl": os.path.join(options["outputFolder"], "%(playlist_title)s\music\%(title).200s.%(ext)s"),
+    "outtmpl": os.path.join(options["outputFolder"], "music\%(id)s.%(ext)s"),
     'quiet': True,
     "verbose": False,
     'ignoreerrors': False,

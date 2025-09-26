@@ -264,19 +264,18 @@ class ManagerService():
     
     # get the existing playlists based on the files in the output folder.
     def loadExistingPlaylists(self):
-        outputFolder = self.configService.getOtherOptions()["outputFolder"]
-        if not os.path.isdir(outputFolder): return
-        playlistFolders = os.listdir(outputFolder)
-        for folder in playlistFolders:
-            # if this isn't a folder, continue
-            if not os.path.isdir(os.path.join(outputFolder, folder)): continue
-            destPath = os.path.join(outputFolder, folder, "data.peanut")
-            if os.path.isfile(destPath):
-                try:
-                    self.playlistService.importPlaylistFromFile(destPath)
-                except Exception as e:
-                    self.logger.error(f"An error occured while importing the playlist file at '{destPath}': {e}")
-    
+        dataFolder = os.path.join(self.configService.getOtherOptions()["outputFolder"], "data")
+        if not os.path.isdir(dataFolder): return
+        dataFiles = os.listdir(dataFolder)
+        for dataFile in dataFiles:
+            destPath = os.path.join(dataFolder, dataFile)
+            # if this isn't a file, continue
+            if not os.path.isfile(destPath): continue
+            try:
+                self.playlistService.importPlaylistFromFile(destPath)
+            except Exception as e:
+                self.logger.error(f"An error occured while importing the playlist file at '{destPath}': {e}")
+
     # start the program.
     def startProgram(self):
         logging.info("Starting program.")

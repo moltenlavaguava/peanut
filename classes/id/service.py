@@ -16,7 +16,9 @@ class IDService():
         self._iddigits = 16
 
         # storing id data in memory for quick access
-        self._iddict: dict[str, int] = {}
+        self._trackIDs: dict[str, int] = {}
+        self._alubmCoverIDs: dict[str, int] = {}
+        self._thumbnailIDs: dict[str, int] = {}
 
     def start(self):
         # read the file and load the current id and dict if it exists
@@ -32,20 +34,29 @@ class IDService():
         else:
             self.logger.debug("ID data file not found; starting fresh")
 
+    def _generateID(self, txt:str, category:str):
+        # creates a new id for the track name if it doesn't already have one, and returns the existing id if it does exist
+        if txt in self[category]:
+            return self._iddict[txt]
+        else:
+            # generate (hash) an id from the given string
+            encodedString = txt.encode("utf-8")
+            hexdigest = hashlib.sha256(encodedString).hexdigest()
+            id = int(hexdigest, 16) % (10**self._iddigits)
+            self[category][txt] = id
+            return id
+
     def saveToFile(self):
         # save the current data to file.
         path = os.path.join(self.configService.getOtherOptions()["outputFolder"], "iddata.peanut")
         with open(path, "W") as file:
             file.write(json.dumps({"ids": self._iddict, "currentid": self._currentid}))
 
-    def generateID(self, trackName:str):
-        # creates a new id for the track name if it doesn't already have one, and returns the existing id if it does exist
-        if trackName in self._iddict:
-            return self._iddict[trackName]
-        else:
-            # generate (hash) an id from the given string
-            encodedString = trackName.encode("utf-8")
-            hexdigest = hashlib.sha256(encodedString).hexdigest()
-            id = int(hexdigest, 16) % (10**self._iddigits)
-            self._iddict[trackName] = id
-            return id
+    def generateTrackID(self, trackName:str):
+        return self._generateID(trackName, "_trackIDs")
+    
+    def generateAlbumCoverID(self, albumName:str):
+        return self._generateID(albumName, "_alubmCoverIDs")
+    
+    def generateThumbnailID(self, thumbnailName:str):
+        return self._generateID(thumbnailName, "_thumbnailIDs")

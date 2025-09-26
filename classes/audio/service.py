@@ -68,13 +68,9 @@ class AudioService():
         self.eventService.subscribeToEvent("AUDIO_STOP", self._eventAudioStop)
 
     # File Management
-    def getFilePathFromName(self, name:str):
+    def getFilePathFromID(self, id:int):
         outputDir = self._currentOutputDirectory
-        playlist = self.getCurrentPlaylist()
-        if not playlist:
-            self.logger.warning(f"Failed to get file from name '{name}': no playlist is loaded into the AudioService")
-            return ""
-        return os.path.join(outputDir, playlist.getName(), "music", name + self._outputExtension)
+        return os.path.join(outputDir, "music", str(id) + self._outputExtension)
     
     # Event Management
     
@@ -236,7 +232,7 @@ class AudioService():
         if not pause: pause = False
         name = track.getName()
         # get the file path
-        path = self.getFilePathFromName(name)
+        path = self.getFilePathFromID(track.getID())
         if self.getTrackLoaded():
             self.logger.warning(f"Track was already loaded when loading track '{name}'. Loading anyway")
             self.unloadTrack()

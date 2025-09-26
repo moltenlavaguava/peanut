@@ -136,7 +136,7 @@ class PlaylistService():
 
                     # assign ids
                     for track in playlist.getTracks():
-                        track.setID(self.idService.generateID(track.getName()))
+                        track.setID(self.idService.generateTrackID(track.getName()))
 
                     name = playlist.getName()
                     self.addPlaylist(playlist)
@@ -203,7 +203,7 @@ class PlaylistService():
     # FILE HANDLING
     def savePlaylistFile(self, name:str):
         outputDirectory = self.configService.getOtherOptions()["outputFolder"]
-        self.getPlaylist(name).dumpToFile(os.path.join(outputDirectory, name, "data.peanut"))
+        self.getPlaylist(name).dumpToFile(os.path.join(outputDirectory, "data", f"{name}.peanut"))
     
     # loads a playlist object from a given file path.
     def importPlaylistFromFile(self, filePath:str):
@@ -321,7 +321,7 @@ class PlaylistService():
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, 
                 "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
             "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), 
-            "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex, "maxDownloadAttempts": 3}
+            "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)

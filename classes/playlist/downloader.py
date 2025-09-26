@@ -128,7 +128,7 @@ class PlaylistDownloader():
     # downloads the given playlist. should be run in a thread as to not block the main gui.
     def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, 
                          stopEvent:Event, responseQueue:Queue, thumbnailOutput:str, playlistThumbnailLocation:str, useYoutubeMusicAlbums:bool, maxVariation:int, 
-                         startIndex:int, maxDownloadAttempts:int, selectIndex, selectLock):
+                         startIndex:int, selectIndex, selectLock):
         name = playlist.getName()
         self.logger.debug(f"Start index: {startIndex}")
         # cache if this download was successful or not
@@ -137,128 +137,138 @@ class PlaylistDownloader():
         # make the images directory
         os.makedirs(thumbnailOutput, exist_ok=True)
         # replace playlist name with actual name
-        downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", name)
+        # downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", name)
         if not playlist.getThumbnailDownloaded():
             self._downloadThumbnail(playlist.getThumbnailURL(), playlistThumbnailLocation)
             playlist.setThumbnailDownloaded(True)
-        with yt_dlp.YoutubeDL(downloadOptions) as ydl:
-            while not stopDownloading:
-                self.logger.debug("Starting loop")
-                tracks = playlist.getTracks()
-                for index in range(startIndex, len(tracks)):
-                    track = tracks[index]
-                    
-                    if stopEvent.is_set():
-                        stopDownloading = True
+        # with yt_dlp.YoutubeDL(downloadOptions) as ydl:
+        while not stopDownloading:
+            self.logger.debug("Starting loop")
+            tracks = playlist.getTracks()
+            for index in range(startIndex, len(tracks)):
+                track = tracks[index]
+                
+                if stopEvent.is_set():
+                    stopDownloading = True
+                    break
+
+                # select index things: check to see if the value actually changed
+                with selectLock:
+                    if selectIndex.value != -1:
+                        # break out of the loop and restart the download
                         break
 
-                    # select index things: check to see if the value actually changed
-                    with selectLock:
-                        if selectIndex.value != -1:
-                            # break out of the loop and restart the download
-                            break
+                if track.getDownloaded():
+                    continue
+                
+                # download + processing
+                self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
+                responseQueue.put({"action": "TRACK_DOWNLOAD_START", "track": track, "playlistName": playlist.getName(), "downloadIndex": index})
+                
+                # download options for only this track
+                localDownloadOptions = downloadOptions.copy()
+                localDownloadOptions["outtmpl"] = localDownloadOptions["outtmpl"].replace("%(id)s", str(track.getID()))
+                with yt_dlp.YoutubeDL(localDownloadOptions) as ydl:
+                    info = self._downloadVideo(ydl, track.getVideoURL())
+                    if not info:
+                        # at least one track failed to download; restart at the end of the playlist and try agin
+                        self.logger.warning(f"Failed to download track '{track.getDisplayName()}': yt_dlp didn't work?")
+                        downloadPlaylistSuccess = False 
 
-                    if track.getDownloaded():
-                        continue
-                    
-                    # download + processing
-                    self.logger.info(f"Downloading video '{track.getDisplayName()}'.")
-                    responseQueue.put({"action": "TRACK_DOWNLOAD_START", "track": track, "playlistName": playlist.getName(), "downloadIndex": index})
-                    
-                    # attempt to download video. will try multiple times. if max attempts is -1, then it will try indefinitely.
-                    attemptCount = 0
-                    info: dict|None = None
-                    success = True
-                    while True:
-                        if (attemptCount == maxDownloadAttempts) and (maxDownloadAttempts != 1):
-                            # ran out of attempts
-                            success = False
-                            break
-                        try:
-                            info = self._downloadVideo(ydl, track.getVideoURL())
-                            if not info:
-                                # attempt failed, try again
-                                attemptCount += 1
-                            else:
-                                # attempt succeeded, break
-                                break
-                        except Exception as e:
-                            self.logger.error(f"An unknown error occured while attempting to download the track '{track.getName()}': {e}")
-                            downloadPlaylistSuccess = False # mark the playlist as not being fully downloaded
-                            attemptCount += 1
-                    if not success:
-                        self.logger.error(f"Failed to download track '{track.getName()}': ran out of attempts")
-                        responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": False})
-                        continue        
-                    
-                    # path = ydl.prepare_filename(info)
-                    # convert file to specified format (not getting the track length atm)
-                    # self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
-                    
-                    # attempt to get music data
-                    autogenVideo = True # whether or not the album data was handled via auto-generated video
-                    try:
-                        albumName = self._sanitizeFilename(info["album"])
-                        albumDisplayName = info["album"]
-                        artistName = ", ".join(info["artists"])
-                        # check to see if the album was already downloaded
-                        if not albumName in playlist.getAlbums():
-                            albumImageURL = info["thumbnails"][-1]["url"]
-                            self.logger.debug(f"Downloading album image for track '{albumDisplayName}' via auto-generated video.")
-                            imgPath = os.path.join(thumbnailOutput, f"album_{albumName}.jpg")
-                            self._downloadThumbnail(albumImageURL, imgPath)
-                            self._squareImage(imgPath)
-                            # square the image
+                # # attempt to download video. will try multiple times. if max attempts is -1, then it will try indefinitely.
+                # attemptCount = 0
+                # info: dict|None = None
+                # success = True
+                # while True:
+                #     if (attemptCount == maxDownloadAttempts) and (maxDownloadAttempts != 1):
+                #         # ran out of attempts
+                #         success = False
+                #         break
+                #     try:
+                #         info = self._downloadVideo(ydl, track.getVideoURL())
+                #         if not info:
+                #             # attempt failed, try again
+                #             attemptCount += 1
+                #         else:
+                #             # attempt succeeded, break
+                #             break
+                #     except Exception as e:
+                #         self.logger.error(f"An unknown error occured while attempting to download the track '{track.getName()}': {e}")
+                #         downloadPlaylistSuccess = False # mark the playlist as not being fully downloaded
+                #         attemptCount += 1
+                # if not success:
+                #     self.logger.error(f"Failed to download track '{track.getName()}': ran out of attempts")
+                #     responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": False})
+                #     continue        
+                
+                # path = ydl.prepare_filename(info)
+                # convert file to specified format (not getting the track length atm)
+                # self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
+                
+                # attempt to get music data
+                autogenVideo = True # whether or not the album data was handled via auto-generated video
+                try:
+                    albumName = self._sanitizeFilename(info["album"])
+                    albumDisplayName = info["album"]
+                    artistName = ", ".join(info["artists"])
+                    # check to see if the album was already downloaded
+                    if not albumName in playlist.getAlbums():
+                        albumImageURL = info["thumbnails"][-1]["url"]
+                        self.logger.debug(f"Downloading album image for track '{albumDisplayName}' via auto-generated video.")
+                        imgPath = os.path.join(thumbnailOutput, f"album_{albumName}.jpg")
+                        self._downloadThumbnail(albumImageURL, imgPath)
+                        self._squareImage(imgPath)
+                        # square the image
+                    track.setAlbumName(albumName)
+                    track.setAlbumDisplayName(albumDisplayName)
+                    track.setArtistName(artistName)
+                except KeyError:
+                    autogenVideo = False
+                
+                if not autogenVideo:
+                    # try to get an album cover from youtube music
+                    # self.logger.debug(f"Info: {track.toDict()}")
+                    trackLength = track.getLength()
+                    if trackLength == 0:
+                        self.logger.warning(f"track length directly from track is 0. Why? Track dict: {track.toDict()}")
+                    albumName, albumDisplayName, artistName, trackName = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=trackLength, maxVariation=maxVariation, playlist=playlist, imageDownloadFolder=thumbnailOutput)
+                    if albumName:
                         track.setAlbumName(albumName)
                         track.setAlbumDisplayName(albumDisplayName)
                         track.setArtistName(artistName)
-                    except KeyError:
-                        autogenVideo = False
-                    
-                    if not autogenVideo:
-                        # try to get an album cover from youtube music
-                        # self.logger.debug(f"Info: {track.toDict()}")
-                        trackLength = track.getLength()
-                        if trackLength == 0:
-                            self.logger.warning(f"track length directly from track is 0. Why? Track dict: {track.toDict()}")
-                        albumName, albumDisplayName, artistName, trackName = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=trackLength, maxVariation=maxVariation, playlist=playlist, imageDownloadFolder=thumbnailOutput)
-                        if albumName:
-                            track.setAlbumName(albumName)
-                            track.setAlbumDisplayName(albumDisplayName)
-                            track.setArtistName(artistName)
-                            track.setDisplayName(trackName)
-                    
-                    # mark the track as being downloaded
-                    track.setDownloaded(True)
-                    # signal the completion of the track download
-                    responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": True})
-                if not stopEvent.is_set():
+                        track.setDisplayName(trackName)
+                
+                # mark the track as being downloaded
+                track.setDownloaded(True)
+                # signal the completion of the track download
+                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": True})
+            if not stopEvent.is_set():
 
-                    # check to see if a selection was made
-                    with selectLock:
-                        self.logger.debug(f"Select index value: {selectIndex.value}")
-                        if selectIndex.value != -1:
-                            # restart the download at the specified index
-                            startIndex = selectIndex.value
-                            downloadPlaylistSuccess = True
-                            self.logger.debug(f"Restarting the playlist downloader at index {selectIndex.value}.")
-                            selectIndex.value = -1
-                        elif downloadPlaylistSuccess:
-                            # verify download
-                            undownloaded = False
-                            for track in playlist.getTracks():
-                                if not track.getDownloaded():
-                                    undownloaded = True
-                                    break
-                            if not undownloaded:
-                                self.logger.info("Done downloading playlist.")
-                                playlist.setDownloaded(True)
-                                stopDownloading = True
-                            else:
-                                startIndex = 0
+                # check to see if a selection was made
+                with selectLock:
+                    self.logger.debug(f"Select index value: {selectIndex.value}")
+                    if selectIndex.value != -1:
+                        # restart the download at the specified index
+                        startIndex = selectIndex.value
+                        downloadPlaylistSuccess = True
+                        self.logger.debug(f"Restarting the playlist downloader at index {selectIndex.value}.")
+                        selectIndex.value = -1
+                    elif downloadPlaylistSuccess:
+                        # verify download
+                        undownloaded = False
+                        for track in playlist.getTracks():
+                            if not track.getDownloaded():
+                                undownloaded = True
+                                break
+                        if not undownloaded:
+                            self.logger.info("Done downloading playlist.")
+                            playlist.setDownloaded(True)
+                            stopDownloading = True
                         else:
-                            # restart the playlist download process
-                            downloadPlaylistSuccess = True
+                            startIndex = 0
+                    else:
+                        # restart the playlist download process
+                        downloadPlaylistSuccess = True
     
     # downloads the information for each track in the playlist. NOT supported by async functions.
     def initalizePlaylist(self, playlist:Playlist):
