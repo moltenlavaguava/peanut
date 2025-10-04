@@ -11,6 +11,7 @@ from classes.id.service import IDService
 
 import multiprocessing
 from multiprocessing.synchronize import Event
+from multiprocessing.connection import Connection
 
 import logging
 import os
@@ -19,7 +20,9 @@ import sys
 import queue
 
 # run in different process. handles downloading logic.
-def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, responseQueue:multiprocessing.Queue, stopEvent:Event, selectIndexLock, selectIndexSharedValue):
+def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, 
+                              responseQueue:multiprocessing.Queue, stopEvent:Event, selectIndexLock, 
+                              selectIndexSharedValue, idRequestConnection:Connection):
     logger = logging.getLogger(f"{multiprocessing.current_process().name}")
     # clear any existing queue handlers
     logger.handlers.clear()
@@ -36,6 +39,7 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
         data = downloadQueue.get()
         if not data:
             # request to close this process
+            idRequestConnection.send(None)
             responseQueue.put(None)
             break
         # send information communicating that the data was recieved
@@ -53,10 +57,13 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
             case "DOWNLOAD":
                 try:
                     # do the download. "data": necessary args for doing all the fun stuff
-                    downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, responseQueue=responseQueue, selectIndex = selectIndexSharedValue, selectLock = selectIndexLock)
+                    downloader.downloadPlaylist(playlist=data["playlist"], **data["data"], stopEvent=stopEvent, 
+                                                responseQueue=responseQueue, selectIndex = selectIndexSharedValue, 
+                                                selectLock = selectIndexLock,idRequestConnection=idRequestConnection)
                     # signal finish (only give back name of playlist)
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), 
-                                       "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums(), "queueEmpty": downloadQueue.empty(), "thumbnailDownloaded": playlist.getThumbnailDownloaded()})
+                                       "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums(), 
+                                       "queueEmpty": downloadQueue.empty(), "thumbnailDownloaded": playlist.getThumbnailDownloaded()})
                 except Exception as e:
                     logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": None})
@@ -103,14 +110,19 @@ class PlaylistService():
         self._selectIndexSharedValue = multiprocessing.Value("i", -1)
         self._selectIndexLock = multiprocessing.Lock()
         
+        # used to request id data for albums + thumbnails
+        self._idRequestConnection, downloaderPipeConnection = multiprocessing.Pipe()
+
         # create the playlist downloader process
         self._downloaderProcess = self.threadService.createProcess(_downloaderProcessManager, "Playlist Downloader", start=True, 
                                                                    loggingQueue=self.loggingService.getLoggingQueue(), downloadQueue=self._downloadQueue, 
                                                                    responseQueue=self._responseQueue, stopEvent=self._stopEvent,
                                                                    selectIndexSharedValue=self._selectIndexSharedValue, 
-                                                                   selectIndexLock=self._selectIndexLock)
-        # create the response listener thread
-        self.threadService.createThread(self._playlistDownloadListener, "Playlist Download Listener")
+                                                                   selectIndexLock=self._selectIndexLock, idRequestConnection=downloaderPipeConnection)
+        # response threads to downloader process
+        self.threadService.createThread(self._playlistDownloadListener, "PLAYLIST_DOWNLOAD_LISTENER")
+        self.threadService.createThread(self._idRequestListener, "ID_REQUEST_LISTENER")
+
         self.threadService.createThreadEvent("Playlist Downloader Close")
         
         # listen for the program close event
@@ -118,13 +130,38 @@ class PlaylistService():
         
     # LISTENERS
     
+    # listens for id requests from the playlist downloader process.
+    def _idRequestListener(self):
+        self.logger.debug("Starting id request listener")
+        # get the id request connection
+        requestConnection = self._idRequestConnection
+        while True:
+            # data should always be a list of tuples (string and type, aka album/track/etc) or none
+            data:str = requestConnection.recv()
+            if data is None:
+                # close the listener
+                break
+            ids = []
+            for tup in data:
+                txt, t = tup
+                match t:
+                    case "ALBUM":
+                        ids.append(self.idService.generateAlbumCoverID(txt))
+                    case "THUMBNAIL":
+                        ids.append(self.idService.generateThumbnailID(txt))
+                    case "TRACK":
+                        ids.append(self.idService.generateTrackID(txt))
+            requestConnection.send(ids)
+        requestConnection.close()
+        self.logger.debug("Closing ID Request Listener.")
+
     # listens for responses from the playlist downloader process.
     def _playlistDownloadListener(self):
         # get the response queue
         responseQueue = self._responseQueue
         while True:
             response = responseQueue.get()
-            if not response:
+            if response is None:
                 # request to close this thread
                 break
             match response["action"]:
@@ -150,6 +187,7 @@ class PlaylistService():
                     playlistName = response["playlistName"]
                     # mark it as downloaded
                     track = response["track"]
+                    playlist = None
                     if response["success"]:
                         playlist = self.getPlaylist(playlistName)
                         playlist.updateTrack(track)
@@ -319,9 +357,9 @@ class PlaylistService():
         outputExtension = options["outputConversionExtension"]
         # package the data together
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, 
-                "thumbnailOutput": os.path.join(options["outputFolder"], name, "images"), 
-            "playlistThumbnailLocation": os.path.join(options["outputFolder"], name, "thumbnail.jpg"), 
-            "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex}
+                "albumCoverOutput": os.path.join(options["outputFolder"], "album"), 
+            "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex, 
+            "thumbnailOutput": os.path.join(options["outputFolder"], "thumbnail")}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)

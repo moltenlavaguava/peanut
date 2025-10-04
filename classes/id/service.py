@@ -34,17 +34,12 @@ class IDService():
         else:
             self.logger.debug("ID data file not found; starting fresh")
 
-    def _generateID(self, txt:str, category:str):
-        # creates a new id for the track name if it doesn't already have one, and returns the existing id if it does exist
-        if txt in self[category]:
-            return self._iddict[txt]
-        else:
-            # generate (hash) an id from the given string
-            encodedString = txt.encode("utf-8")
-            hexdigest = hashlib.sha256(encodedString).hexdigest()
-            id = int(hexdigest, 16) % (10**self._iddigits)
-            self[category][txt] = id
-            return id
+    def _generateID(self, txt:str):
+        # generate (hash) an id from the given string
+        encodedString = txt.encode("utf-8")
+        hexdigest = hashlib.sha256(encodedString).hexdigest()
+        id = int(hexdigest, 16) % (10**self._iddigits)
+        return id
 
     def saveToFile(self):
         # save the current data to file.
@@ -53,10 +48,22 @@ class IDService():
             file.write(json.dumps({"ids": self._iddict, "currentid": self._currentid}))
 
     def generateTrackID(self, trackName:str):
-        return self._generateID(trackName, "_trackIDs")
+        if trackName in self._trackIDs:
+            return self._trackIDs[trackName]
+        id = self._generateID(trackName)
+        self._trackIDs[trackName] = id
+        return id
     
     def generateAlbumCoverID(self, albumName:str):
-        return self._generateID(albumName, "_alubmCoverIDs")
+        if albumName in self._alubmCoverIDs:
+            return self._trackIDs[albumName]
+        id = self._generateID(albumName)
+        self._trackIDs[albumName] = id
+        return id
     
     def generateThumbnailID(self, thumbnailName:str):
-        return self._generateID(thumbnailName, "_thumbnailIDs")
+        if thumbnailName in self._thumbnailIDs:
+            return self._trackIDs[thumbnailName]
+        id = self._generateID(thumbnailName)
+        self._trackIDs[thumbnailName] = id
+        return id
