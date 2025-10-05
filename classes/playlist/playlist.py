@@ -32,7 +32,6 @@ class Playlist():
             self._displayName: str = "Untitled"
             self._length: int = 0
             self._playlistURL: str = playlistURL
-            self._downloaded = False
             self._thumbnailURL = ""
             self._thumbnailDownloaded = False
             self._albums: dict[str, list[str]] = {} 
@@ -45,7 +44,7 @@ class Playlist():
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
                                                   displayName=trackData["display name"], 
                                                   id=trackData["pid"], index=trackData["index"], 
-                                                  downloaded=trackData["downloaded"], albumName=trackData["album name"],
+                                                  albumName=trackData["album name"],
                                                   length=trackData["length"],
                                                   albumDisplayName=trackData["album display name"], 
                                                   albumID=trackData["album id"],
@@ -54,7 +53,6 @@ class Playlist():
                     self._length = data["length"]
                     self._playlistURL = data["playlistURL"]
                     self._displayName = data["displayName"]
-                    self._downloaded = data["downloaded"]
                     self._thumbnailURL = data["thumbnailURL"]
                     self._thumbnailDownloaded = data["thumbnailDownloaded"]
                     self._albums = data["albums"]
@@ -98,7 +96,6 @@ class Playlist():
             "displayName": self._displayName, 
             "playlistURL": self._playlistURL, 
             "length": self._length, 
-            "downloaded": self._downloaded,
             "thumbnailURL": self._thumbnailURL,
             "thumbnailDownloaded": self._thumbnailDownloaded,
             "albums": self._albums,
@@ -113,9 +110,6 @@ class Playlist():
     def setDownloaded(self, downloaded:bool):
         logger.debug("Downloaded marked as true")
         self._downloaded = downloaded
-        
-    def getDownloaded(self):
-        return self._downloaded
     
     def setDisplayName(self, name:str):
         self._displayName = name

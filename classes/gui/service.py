@@ -9,6 +9,7 @@ from classes.playlist.playlist import Playlist
 from classes.playlist.track import PlaylistTrack
 from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
+from classes.file.service import FileService
 
 from customwidgets.trackframe.trackframe import TrackFrame
 from customwidgets.loadwidget.loadwidget import LoadWidget
@@ -21,7 +22,8 @@ import resources_rc
 
 class GuiService():
     
-    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, configService:ConfigService, threadService:ThreadService):
+    def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, configService:ConfigService, 
+                 threadService:ThreadService, fileService:FileService):
         
         self.logger = logging.getLogger(__name__)
         
@@ -29,6 +31,7 @@ class GuiService():
         self.eventService = eventService
         self.configService = configService
         self.threadService = threadService
+        self.fileService = fileService
         
         self._closing = False
         
@@ -112,7 +115,7 @@ class GuiService():
         # set the text
         widget.setTitleText(track.getDisplayName())
         widget.setArtistText(track.getArtistName())
-        widget.setDownloadedState(track.getDownloaded())
+        widget.setDownloadedState(self.fileService.getTrackDownloaded(track.getID()))
     
     # generic method to set the main stack widget's page
     def setMainWindowPage(self, pageWidget:QWidget):
@@ -156,6 +159,7 @@ class GuiService():
         # collecting information
         scrollArea = self.getNextListScrollArea()
         layout = scrollArea.layout()
+        downloadData = self.fileService.getDownloadedTracksFromPlaylist(playlist)
         
         # defining function to run when the buttons are clicked
         @Slot(GuiService, int)
@@ -168,7 +172,7 @@ class GuiService():
             # customizing button
             button.setTitleText(track.getDisplayName())
             button.setArtistText(track.getArtistName())
-            button.setDownloadedState(track.getDownloaded())
+            button.setDownloadedState(downloadData[track.getID()])
             
             button.clicked.connect(lambda i=index: buttonActivated(self, i)) # checked singal is always sent
             layout.insertWidget(index, button)
@@ -312,9 +316,9 @@ class GuiService():
         m, s = divmod(int(track.getLength()), 60)
         self.setTotalTrackTimeText(f"{m:02d}:{s:02d}")
         # set the album cover image
-        albumName = track.getAlbumName()
-        if albumName:
-            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{albumName}.jpg"))
+        albumID = track.getAlbumID()
+        if albumID:
+            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], "album", f"{albumID}.jpg"))
         else:
             self.setAlbumCoverImage(":/unsorted/resources/placeholder.png")
         # cache the current track

@@ -8,6 +8,7 @@ from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
 from classes.log.service import LoggingService
 from classes.id.service import IDService
+from classes.file.service import FileService
 
 import multiprocessing
 from multiprocessing.synchronize import Event
@@ -62,8 +63,8 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
                                                 selectLock = selectIndexLock,idRequestConnection=idRequestConnection)
                     # signal finish (only give back name of playlist)
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), 
-                                       "downloaded": playlist.getDownloaded(), "albums": playlist.getAlbums(), 
-                                       "queueEmpty": downloadQueue.empty(), "thumbnailDownloaded": playlist.getThumbnailDownloaded()})
+                                       "albums": playlist.getAlbums(), "queueEmpty": downloadQueue.empty(), 
+                                       "thumbnailDownloaded": playlist.getThumbnailDownloaded()})
                 except Exception as e:
                     logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
                     responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": None})
@@ -74,7 +75,8 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
 # playlist service class
 class PlaylistService():
     
-    def __init__(self, eventService:EventService, configService:ConfigService, threadService:ThreadService, loggingService:LoggingService, idService:IDService):
+    def __init__(self, eventService:EventService, configService:ConfigService, threadService:ThreadService, 
+                 loggingService:LoggingService, idService:IDService, fileService:FileService):
         # setup logger
         self.logger = logging.getLogger(__name__)
         self.logger.info("Starting playlist service.")
@@ -85,7 +87,8 @@ class PlaylistService():
         self.threadService = threadService
         self.loggingService = loggingService
         self.idService = idService
-        
+        self.fileService = fileService
+
         # keep track of all the current playlists
         self._playlists: dict[str, Playlist] = {}
         
@@ -146,11 +149,14 @@ class PlaylistService():
                 txt, t = tup
                 match t:
                     case "ALBUM":
-                        ids.append(self.idService.generateAlbumCoverID(txt))
+                        id = self.idService.generateAlbumCoverID(txt)
+                        ids.append({"id": id, "downloaded": self.fileService.getAlbumDownloaded(id)})
                     case "THUMBNAIL":
-                        ids.append(self.idService.generateThumbnailID(txt))
+                        id = self.idService.generateThumbnailID(txt)
+                        ids.append({"id": id})
                     case "TRACK":
-                        ids.append(self.idService.generateTrackID(txt))
+                        id = self.idService.generateTrackID(txt)
+                        ids.append({"id": id, "downloaded": self.fileService.getTrackDownloaded(id)})
             requestConnection.send(ids)
         requestConnection.close()
         self.logger.debug("Closing ID Request Listener.")
@@ -194,6 +200,7 @@ class PlaylistService():
                         self.logger.debug(f"Marking track '{track.getDisplayName()}' as finished in the playlist service.")
                         # save the file. if this gets to be too cpu intensive, then stop doing this
                         self.savePlaylistFile(playlistName)
+                        self.fileService.addDownloadedTrack(track.getID())
                         # trigger the download finish event for gui purposes
                         # sends the track itself plus the index the track is in the playlist
                     self.eventService.triggerEvent("PLAYLIST_TRACK_DOWNLOAD", playlist, track, response["downloadIndex"], response["success"])
@@ -359,7 +366,8 @@ class PlaylistService():
         data = {"downloadOptions": downloadOptions, "outputExtension": outputExtension, 
                 "albumCoverOutput": os.path.join(options["outputFolder"], "album"), 
             "useYoutubeMusicAlbums": True, "maxVariation": 600, "startIndex": startIndex, 
-            "thumbnailOutput": os.path.join(options["outputFolder"], "thumbnail")}
+            "thumbnailOutput": os.path.join(options["outputFolder"], "thumbnail"), 
+            "downloadedData": self.fileService.getDownloadedTracksFromPlaylist(playlist)}
         # request the download
         # self.logger.info(f"Size of playlist '{playlist.getDisplayName()}': {sys.getsizeof(playlist)} bytes; size of data: {sys.getsizeof(data)}")
         self.setIsDownloading(True)

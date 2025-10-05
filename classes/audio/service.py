@@ -7,6 +7,7 @@ from classes.config.service import ConfigService
 from classes.playlist.playlist import Playlist
 from classes.playlist.track import PlaylistTrack
 from classes.thread.service import ThreadService
+from classes.file.service import FileService
 
 from just_playback import Playback
 
@@ -17,7 +18,8 @@ import asyncio
 
 # manages various audio functions.
 class AudioService():
-    def __init__(self, eventService:EventService, playlistService:PlaylistService, configService:ConfigService, threadService:ThreadService):
+    def __init__(self, eventService:EventService, playlistService:PlaylistService, configService:ConfigService, 
+                 threadService:ThreadService, fileService:FileService):
         
         # logging
         self.logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class AudioService():
         self.playlistService = playlistService
         self.configService = configService
         self.threadService = threadService
+        self.fileService = fileService
         
         # status vars
         self._paused = False
@@ -118,13 +121,13 @@ class AudioService():
                 track = tracks[self._currentIndex]
                 self.setCurrentTrack(track)
                 # check to see if anything's downloading
-                if not track.getDownloaded():
+                if not self.fileService.getTrackDownloaded(track.getID()):
                     # track isn't downloaded, either skip it or wait
                     if self.playlistService.getIsDownloading() or firstTrack:
                         # wait for the download
                         self.logger.info(f"Track '{track.getDisplayName()}' isn't downloaded yet. Waiting for finish.")
                         self.eventService.triggerEvent("AUDIO_TRACK_START", track, playlist, self._currentIndex)
-                        while (not tracks[self._currentIndex].getDownloaded()) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
+                        while (not self.fileService.getTrackDownloaded(tracks[self._currentIndex].getID())) and (not (shuffleEvent.is_set() or self._stopAudioEvent or selectEvent.is_set())):
                             await asyncio.sleep(0.5)
                         if (shuffleEvent.is_set() or self._stopAudioEvent):
                             # break and restart the playlist

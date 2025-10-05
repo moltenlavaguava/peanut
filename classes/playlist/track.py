@@ -8,8 +8,7 @@ logger = logging.getLogger(__name__)
 # stores all data for a playlist track
 class PlaylistTrack():
     
-    def __init__(self, videoURL:str, name:str, displayName:str, index:int, id:int = None, length:float = None, downloaded:bool = None, albumName:str = None, albumDisplayName:str = None, artistName:str = None, albumID:int = None):
-        if not downloaded: downloaded = False
+    def __init__(self, videoURL:str, name:str, displayName:str, index:int, id:int = None, length:float = None, albumName:str = None, albumDisplayName:str = None, artistName:str = None, albumID:int = None):
         if not length: length = 0
         if not albumName: albumName = ""
         if not albumDisplayName: albumDisplayName = ""
@@ -22,7 +21,6 @@ class PlaylistTrack():
         self._displayName = displayName
         self._index = index
         self._length = length
-        self._downloaded = downloaded
         self._albumName = albumName
         self._albumDisplayName = albumDisplayName
         self._artistName = artistName
@@ -49,12 +47,6 @@ class PlaylistTrack():
     
     def getLength(self):
         return self._length
-    
-    def getDownloaded(self):
-        return self._downloaded
-    
-    def setDownloaded(self, downloaded:bool):
-        self._downloaded = downloaded
 
     def setAlbumName(self, name:str):
         self._albumName = name
@@ -95,7 +87,6 @@ class PlaylistTrack():
             "pid": self._id,
             "index": self._index,
             "length": self._length,
-            "downloaded": self._downloaded,
             "album name": self._albumName,
             "album display name": self._albumDisplayName,
             "artist name": self._artistName,

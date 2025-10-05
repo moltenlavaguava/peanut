@@ -128,15 +128,13 @@ class PlaylistDownloader():
     # downloads the given playlist. should be run in a thread as to not block the main gui.
     def downloadPlaylist(self, playlist:Playlist, downloadOptions, outputExtension:str, 
                          stopEvent:Event, responseQueue:Queue, albumCoverOutput:str, useYoutubeMusicAlbums:bool, maxVariation:int, 
-                         startIndex:int, selectIndex, selectLock, idRequestConnection, thumbnailOutput:str):
+                         startIndex:int, selectIndex, selectLock, idRequestConnection, thumbnailOutput:str,
+                         downloadedData: dict[int, bool]):
         name = playlist.getName()
         self.logger.debug(f"Start index: {startIndex}")
         # cache if this download was successful or not
         downloadPlaylistSuccess = True
         stopDownloading = False
-        # make the images directory
-        os.makedirs(albumCoverOutput, exist_ok=True)
-        os.makedirs(thumbnailOutput, exist_ok=True)
         # replace playlist name with actual name
         # downloadOptions["outtmpl"] = downloadOptions["outtmpl"].replace("%(playlist_title)s", name)
         if not playlist.getThumbnailDownloaded():
@@ -159,7 +157,7 @@ class PlaylistDownloader():
                         # break out of the loop and restart the download
                         break
 
-                if track.getDownloaded():
+                if downloadedData[track.getID()]:
                     continue
                 
                 # download + processing
@@ -253,16 +251,19 @@ class PlaylistDownloader():
                         track.setArtistName(artistName)
                         track.setDisplayName(trackName)
                         track.setAlbumID(idData[0])
-                        track.setID(idData[1])
+
+                        # todo: change id system to use audio fingerprinting
+                        # track.setID(idData[1])
                         # download the album cover
                         if imageURL:
                             self.logger.debug(f"Downloading album cover for '{albumDisplayName}' via ytmusic serach")
-                            self._downloadThumbnail(imageURL, os.path.join(thumbnailOutput, f"{idData[0]}.jpg"))
+                            self._downloadThumbnail(imageURL, os.path.join(albumCoverOutput, f"{idData[0]}.jpg"))
                 
                 # mark the track as being downloaded
                 track.setDownloaded(True)
                 # signal the completion of the track download
                 self.logger.debug("here")
+                downloadedData[track.getID()] = True
                 responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": True})
             if not stopEvent.is_set():
 
@@ -279,7 +280,7 @@ class PlaylistDownloader():
                         # verify download
                         undownloaded = False
                         for track in playlist.getTracks():
-                            if not track.getDownloaded():
+                            if not downloadedData[track.getID()]:
                                 undownloaded = True
                                 break
                         if not undownloaded:

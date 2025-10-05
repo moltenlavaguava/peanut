@@ -10,6 +10,7 @@ from classes.playlist.playlist import Playlist
 from classes.log.service import LoggingService
 from classes.audio.service import AudioService
 from classes.id.service import IDService
+from classes.file.service import FileService
 
 import PySide6.QtAsyncio as QtAsyncio
 
@@ -20,7 +21,11 @@ import os
 
 class ManagerService():
     
-    def __init__(self, guiService:GuiService, threadService:ThreadService, hotkeyService:HotkeyService, configService:ConfigService, eventService:EventService, playlistService:PlaylistService, loggingService:LoggingService, audioService:AudioService, idService:IDService):
+    def __init__(self, guiService:GuiService, threadService:ThreadService, 
+                 hotkeyService:HotkeyService, configService:ConfigService, 
+                 eventService:EventService, playlistService:PlaylistService, 
+                 loggingService:LoggingService, audioService:AudioService, 
+                 idService:IDService, fileService:FileService):
         self.guiService = guiService
         self.threadService = threadService
         self.hotkeyService = hotkeyService
@@ -30,6 +35,7 @@ class ManagerService():
         self.loggingService = loggingService
         self.audioService = audioService
         self.idService = idService
+        self.fileService = fileService
         self.logger = logging.getLogger(__name__)
         
         # temporary
@@ -361,6 +367,9 @@ class ManagerService():
         
         # startup the id service
         self.idService.start()
+
+        # startup the file service
+        self.fileService.start()
 
         # startup the gui service
         self.guiService.start()

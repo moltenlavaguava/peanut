@@ -11,6 +11,7 @@ from classes.playlist.service import PlaylistService
 from classes.log.service import LoggingService
 from classes.audio.service import AudioService
 from classes.id.service import IDService
+from classes.file.service import FileService
 
 # Notes:
 # Singleton: one shared instance of the dependency
@@ -23,17 +24,22 @@ class Container(containers.DeclarativeContainer):
     configService = providers.Singleton(ConfigService)
     idService = providers.Singleton(IDService, configService=configService)
     eventService = providers.Singleton(EventService, threadService=threadService)
+    fileService = providers.Singleton(FileService, configService=configService)
     
     loggingService = providers.Singleton(LoggingService, configService=configService, threadService=threadService, eventService=eventService)
     playlistService = providers.Singleton(PlaylistService, eventService=eventService, configService=configService, 
                                           threadService=threadService, loggingService=loggingService,
-                                          idService=idService)
+                                          idService=idService, fileService=fileService,)
     hotkeyService = providers.Singleton(HotkeyService, threadService=threadService, configService=configService, eventService=eventService)
     
     mainWindow = providers.Singleton(mainwindow_ui.Ui_MainWindow)
     
-    guiService = providers.Singleton(GuiService, mainWindow=mainWindow, eventService=eventService, configService=configService, threadService=threadService)
-    audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService, configService=configService, threadService=threadService)
+    guiService = providers.Singleton(GuiService, mainWindow=mainWindow, eventService=eventService, 
+                                     configService=configService, threadService=threadService,
+                                     fileService=fileService)
+    audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService, 
+                                       configService=configService, threadService=threadService,
+                                       fileService=fileService,)
     managerService = providers.Singleton(ManagerService, 
                                   guiService=guiService, 
                                   threadService=threadService, 
@@ -44,4 +50,5 @@ class Container(containers.DeclarativeContainer):
                                   loggingService=loggingService,
                                   audioService=audioService,
                                   idService=idService,
+                                  fileService=fileService,
                                   )
