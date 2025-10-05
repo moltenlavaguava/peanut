@@ -216,12 +216,12 @@ class PlaylistDownloader():
                     artistName = ", ".join(info["artists"])
                     idRequestConnection.send([(albumName, "ALBUM",)])
                     idData = idRequestConnection.recv()
-                    track.setAlbumID(idData[0])
+                    track.setAlbumID(idData[0]["id"])
                     # check to see if the album was already downloaded
-                    if not albumName in playlist.getAlbums():
+                    if not idData[0]["downloaded"]:
                         albumImageURL = info["thumbnails"][-1]["url"]
                         self.logger.debug(f"Downloading album image for track '{albumDisplayName}' via auto-generated video.")
-                        imgPath = os.path.join(albumCoverOutput, f"{idData[0]}.jpg")
+                        imgPath = os.path.join(albumCoverOutput, f"{idData[0]['id']}.jpg")
                         self._downloadThumbnail(albumImageURL, imgPath)
                         self._squareImage(imgPath)
                         # square the image
@@ -250,19 +250,18 @@ class PlaylistDownloader():
                         track.setAlbumDisplayName(albumDisplayName)
                         track.setArtistName(artistName)
                         track.setDisplayName(trackName)
-                        track.setAlbumID(idData[0])
+                        track.setAlbumID(idData[0]["id"])
 
                         # todo: change id system to use audio fingerprinting
                         # track.setID(idData[1])
                         # download the album cover
-                        if imageURL:
+                        if imageURL and not idData[0]["downloaded"]:
                             self.logger.debug(f"Downloading album cover for '{albumDisplayName}' via ytmusic serach")
-                            self._downloadThumbnail(imageURL, os.path.join(albumCoverOutput, f"{idData[0]}.jpg"))
-                
-                # mark the track as being downloaded
-                track.setDownloaded(True)
+                            self._downloadThumbnail(imageURL, os.path.join(albumCoverOutput, f"{idData[0]['id']}.jpg"))
+                        else:
+                            self.logger.debug(f"Not downloading album cover for '{albumDisplayName}'; cover already downloaded or no cover exists")
+            
                 # signal the completion of the track download
-                self.logger.debug("here")
                 downloadedData[track.getID()] = True
                 responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": True})
             if not stopEvent.is_set():
@@ -285,7 +284,6 @@ class PlaylistDownloader():
                                 break
                         if not undownloaded:
                             self.logger.info("Done downloading playlist.")
-                            playlist.setDownloaded(True)
                             stopDownloading = True
                         else:
                             startIndex = 0
@@ -313,5 +311,4 @@ class PlaylistDownloader():
                         tracks.append(playlistTrack)
             playlist.setTracks(tracks)
             playlist.setLength(len(tracks))
-            playlist.setDownloaded(False)
             playlist.setThumbnailURL(info_dict["thumbnails"][-1]["url"])

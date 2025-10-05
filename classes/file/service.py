@@ -55,7 +55,7 @@ class FileService():
         return self.configService.getOtherOptions()["outputFolder"]
     
     def getMusicFolder(self):
-        return os.path.join(self.getOutputFolder, "music")
+        return os.path.join(self.getOutputFolder(), "music")
     
     def getAlbumFolder(self):
         return os.path.join(self.getOutputFolder(), "album")
@@ -96,3 +96,4 @@ class FileService():
         for track in playlist.getTracks():
             id = track.getID()
             d[id] = self.getTrackDownloaded(id)
+        return d

@@ -210,8 +210,6 @@ class PlaylistService():
                     # get the current playlist object
                     playlist = self.getPlaylist(playlistName)
                     self.logger.debug("Playlist downloader stopped.")
-                    # set the downloaded state
-                    playlist.setDownloaded(response["downloaded"])
                     playlist.setThumbnailDownloaded(response["thumbnailDownloaded"])
                     # set albums
                     playlist.setAlbums(response["albums"])
