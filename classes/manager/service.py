@@ -365,11 +365,11 @@ class ManagerService():
         # start the logging service
         self.loggingService.start()
         
-        # startup the id service
-        self.idService.start()
-
         # startup the file service
         self.fileService.start()
+        
+        # startup the id service
+        self.idService.start()
 
         # startup the gui service
         self.guiService.start()

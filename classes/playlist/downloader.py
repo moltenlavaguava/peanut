@@ -167,8 +167,8 @@ class PlaylistDownloader():
                 
                 # download options for only this track
                 localDownloadOptions = downloadOptions.copy()
-                outputLocation = localDownloadOptions["outtmpl"].replace("%(id)s", str(track.getID()))
-                localDownloadOptions["outtmpl"] = outputLocation
+                outputmpl = localDownloadOptions["outtmpl"].replace("%(id)s", str(track.getID()))
+                localDownloadOptions["outtmpl"] = outputmpl
                 with yt_dlp.YoutubeDL(localDownloadOptions) as ydl:
                     info = None
                     try:
@@ -176,11 +176,12 @@ class PlaylistDownloader():
                     except Exception as e:
                         # at least one track failed to download; restart at the end of the playlist and try agin
                         self.logger.warning(f"Failed to download track '{track.getDisplayName()}'; skipping and moving on")
-                        downloadPlaylistSuccess = False 
+                        downloadPlaylistSuccess = False
                         responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": False})
                         continue
 
                 # fingerprint the audio
+                outputLocation = outputmpl.replace("%(ext)s", outputExtension[1:])
                 self.logger.debug(f"Fingerprinting '{track.getName()}'..")
                 duration, fingerprintBytes = acoustid.fingerprint_file(outputLocation)
                 fingerString = fingerprintBytes.decode('utf-8')

@@ -32,6 +32,7 @@ options = {
     "outputConversionExtension": ".ogg",
     "binariesFolder": "binaries",
     "ffmpegPath": os.path.join(mainDirectory, "binaries", "ffmpeg", "bin"),
+    "fpcalcPath": os.path.join(mainDirectory, "binaries", "fpcalc", "fpcalc.exe"),
     "allowPlayingWhileDownloading": True,
     "overrideExistingPlaylistFile": True,
     "pauseFirstAudio": True,
@@ -69,14 +70,6 @@ if __name__ == "__main__":
     logger.info("Starting main.py")
     logger.debug(f"Main directory: {mainDirectory}")
     logger.debug(f"ffmpeg path: {options['ffmpegPath']}")
-    
-    # giving the location of the fingerprinting file (adding to path)
-    newpath = f"{os.path.join(options['mainDirectory'], options['binariesFolder'], 'fpcalc')}{os.pathsep}{os.environ.get('PATH', '')}"
-    
-    acoustid.FPCALC_ENVVAR = newpath
-
-    logger.debug(acoustid.FPCALC_ENVVAR)
-    a, b = acoustid.fingerprint_file("options.peanut")
 
     # initalize dependency injector
     container = Container()
@@ -86,4 +79,4 @@ if __name__ == "__main__":
     managerService.injectOptions(options)
     
     # startup
-    managerService.startProgram()
+    managerService.startProgram()   

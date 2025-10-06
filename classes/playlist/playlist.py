@@ -43,7 +43,7 @@ class Playlist():
                 try:
                     self._tracks = [PlaylistTrack(videoURL=trackData["video url"], name=trackData["name"], 
                                                   displayName=trackData["display name"], 
-                                                  id=trackData["pid"], index=trackData["index"], 
+                                                  id=trackData["id"], index=trackData["index"], 
                                                   albumName=trackData["album name"],
                                                   length=trackData["length"],
                                                   albumDisplayName=trackData["album display name"], 

@@ -19,11 +19,12 @@ import os
 import time
 import sys
 import queue
+import acoustid
 
 # run in different process. handles downloading logic.
 def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:multiprocessing.Queue, 
                               responseQueue:multiprocessing.Queue, stopEvent:Event, selectIndexLock, 
-                              selectIndexSharedValue, idRequestConnection:Connection):
+                              selectIndexSharedValue, idRequestConnection:Connection, fpcalcPath:str):
     logger = logging.getLogger(f"{multiprocessing.current_process().name}")
     # clear any existing queue handlers
     logger.handlers.clear()
@@ -34,6 +35,10 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
     # setup downloader
     downloader = PlaylistDownloader(logger)
     logger.info("Playlist downloader process setup.") # yes, it actually works
+    
+    # setting location for fpcalc executable
+    os.environ["FPCALC_EXE"] = fpcalcPath
+    acoustid.FPCALC_ENVVAR = "FPCALC_EXE"
     
     # listen for a download request
     while True:
@@ -121,7 +126,8 @@ class PlaylistService():
                                                                    loggingQueue=self.loggingService.getLoggingQueue(), downloadQueue=self._downloadQueue, 
                                                                    responseQueue=self._responseQueue, stopEvent=self._stopEvent,
                                                                    selectIndexSharedValue=self._selectIndexSharedValue, 
-                                                                   selectIndexLock=self._selectIndexLock, idRequestConnection=downloaderPipeConnection)
+                                                                   selectIndexLock=self._selectIndexLock, idRequestConnection=downloaderPipeConnection,
+                                                                   fpcalcPath=self.configService.getOtherOptions()["fpcalcPath"])
         # response threads to downloader process
         self.threadService.createThread(self._playlistDownloadListener, "PLAYLIST_DOWNLOAD_LISTENER")
         self.threadService.createThread(self._idRequestListener, "ID_REQUEST_LISTENER")

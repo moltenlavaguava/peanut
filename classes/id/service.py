@@ -27,12 +27,14 @@ class IDService():
             try:
                 with open(path) as file:
                     data = json.loads(file.read())
-                    self._iddict = data["ids"]
-                    self._currentid = data["currentid"]
+                    self._trackIDs = data["track ids"]
+                    self._alubmCoverIDs = data["album ids"]
+                    self._thumbnailIDs = data["thumbnail ids"]
             except Exception as e:
                 self.logger.warning(f"An unknown exception occured while attempting to open the id data file: {e}")
         else:
             self.logger.debug("ID data file not found; starting fresh")
+            self.saveToFile()
 
     def _generateID(self, txt:str):
         # generate (hash) an id from the given string
@@ -44,8 +46,8 @@ class IDService():
     def saveToFile(self):
         # save the current data to file.
         path = os.path.join(self.configService.getOtherOptions()["outputFolder"], "iddata.peanut")
-        with open(path, "W") as file:
-            file.write(json.dumps({"ids": self._iddict, "currentid": self._currentid}))
+        with open(path, "w") as file:
+            file.write(json.dumps({"track ids": self._trackIDs, "album ids": self._alubmCoverIDs, "thumbnail ids": self._thumbnailIDs}))
 
     def generateTrackID(self, trackName:str):
         if trackName in self._trackIDs:
