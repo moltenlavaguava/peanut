@@ -8,13 +8,14 @@ logger = logging.getLogger(__name__)
 # stores all data for a playlist track
 class PlaylistTrack():
     
-    def __init__(self, videoURL:str, name:str, displayName:str, index:int, id:int = None, length:float = None, albumName:str = None, albumDisplayName:str = None, artistName:str = None, albumID:int = None):
+    def __init__(self, videoURL:str, name:str, displayName:str, index:int, id:int = None, length:float = None, albumName:str = None, albumDisplayName:str = None, artistName:str = None, albumID:int = None, fingerprint:str = None):
         if not length: length = 0
         if not albumName: albumName = ""
         if not albumDisplayName: albumDisplayName = ""
         if not artistName: artistName = ""
         if not id: id = 0
         if not albumID: albumID = 0
+        if not fingerprint: fingerprint = ""
         # set variables
         self._videoURL = videoURL
         self._name = name
@@ -26,6 +27,7 @@ class PlaylistTrack():
         self._artistName = artistName
         self._id = id
         self._albumID = albumID
+        self._fingerprint = fingerprint
         
     def getVideoURL(self):
         return self._videoURL
@@ -78,13 +80,20 @@ class PlaylistTrack():
     def setAlbumID(self, id:int):
         self._albumID = id
 
+    def getFingerprint(self):
+        return self._fingerprint
+    
+    def setFingerprint(self, fingerprint:str):
+        self._fingerprint = fingerprint
+
     # returns the class in a dictionary form.
     def toDict(self):
         return {
             "video url": self._videoURL,
             "name": self._name,
             "display name": self._displayName,
-            "pid": self._id,
+            "id": self._id,
+            "fingerprint": self._fingerprint,
             "index": self._index,
             "length": self._length,
             "album name": self._albumName,

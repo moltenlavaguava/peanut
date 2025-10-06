@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 import os
 import sys
+import acoustid
 
 from container import Container
 import multiprocessing
@@ -69,6 +70,14 @@ if __name__ == "__main__":
     logger.debug(f"Main directory: {mainDirectory}")
     logger.debug(f"ffmpeg path: {options['ffmpegPath']}")
     
+    # giving the location of the fingerprinting file (adding to path)
+    newpath = f"{os.path.join(options['mainDirectory'], options['binariesFolder'], 'fpcalc')}{os.pathsep}{os.environ.get('PATH', '')}"
+    
+    acoustid.FPCALC_ENVVAR = newpath
+
+    logger.debug(acoustid.FPCALC_ENVVAR)
+    a, b = acoustid.fingerprint_file("options.peanut")
+
     # initalize dependency injector
     container = Container()
     managerService = container.managerService()

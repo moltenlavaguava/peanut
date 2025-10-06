@@ -11,6 +11,7 @@ from multiprocessing.synchronize import Event
 from multiprocessing import Queue
 from ytmusicapi import YTMusic
 from PIL import Image
+import acoustid
 
 # import yt-dlp's sanitation
 from yt_dlp import utils as yt_dlp_utils
@@ -166,7 +167,8 @@ class PlaylistDownloader():
                 
                 # download options for only this track
                 localDownloadOptions = downloadOptions.copy()
-                localDownloadOptions["outtmpl"] = localDownloadOptions["outtmpl"].replace("%(id)s", str(track.getID()))
+                outputLocation = localDownloadOptions["outtmpl"].replace("%(id)s", str(track.getID()))
+                localDownloadOptions["outtmpl"] = outputLocation
                 with yt_dlp.YoutubeDL(localDownloadOptions) as ydl:
                     info = None
                     try:
@@ -177,6 +179,13 @@ class PlaylistDownloader():
                         downloadPlaylistSuccess = False 
                         responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": False})
                         continue
+
+                # fingerprint the audio
+                self.logger.debug(f"Fingerprinting '{track.getName()}'..")
+                duration, fingerprintBytes = acoustid.fingerprint_file(outputLocation)
+                fingerString = fingerprintBytes.decode('utf-8')
+                track.setFingerprint(fingerString)
+                self.logger.debug(f"Fingerprinting done.")
 
                 # # attempt to download video. will try multiple times. if max attempts is -1, then it will try indefinitely.
                 # attemptCount = 0

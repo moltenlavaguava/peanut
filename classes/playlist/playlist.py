@@ -48,6 +48,7 @@ class Playlist():
                                                   length=trackData["length"],
                                                   albumDisplayName=trackData["album display name"], 
                                                   albumID=trackData["album id"],
+                                                  fingerprint=trackData["fingerprint"],
                                                   artistName=trackData["artist name"]) for trackData in data["tracks"]]
                     self._name = data["name"]
                     self._length = data["length"]

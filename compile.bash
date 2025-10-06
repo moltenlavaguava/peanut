@@ -25,6 +25,6 @@ fi
 # loading up venv
 "$venvName/Scripts/activate"
 
-python -m nuitka --include-data-files=$binariesFolder/ffmpeg/=$binariesFolder/ffmpeg/=**/*.* --enable-plugin=pyside6 --windows-console-mode=$consoleFlag --standalone --assume-yes-for-downloads --lto=no --include-module=_cffi_backend --noinclude-custom-mode=yt_dlp.extractor.lazy_extractors:nofollow --output-filename=$outputFileName --include-data-dir=$ytmusicapiLocalesFolder=ytmusicapi/locales --windows-icon-from-ico=resources/appicon.ico --product-name=$productName --company-name="$companyName" --file-version=$versionNumber --product-version=$versionNumber --file-description=$productName $compileFile
+python -m nuitka --include-data-files=$binariesFolder/ffmpeg/=$binariesFolder/ffmpeg/=**/*.* --include-data-files=$binariesFolder/fpcalc/=$binariesFolder/fpcalc/=**/*.* --enable-plugin=pyside6 --windows-console-mode=$consoleFlag --standalone --assume-yes-for-downloads --lto=no --include-module=_cffi_backend --noinclude-custom-mode=yt_dlp.extractor.lazy_extractors:nofollow --output-filename=$outputFileName --include-data-dir=$ytmusicapiLocalesFolder=ytmusicapi/locales --windows-icon-from-ico=resources/appicon.ico --product-name=$productName --company-name="$companyName" --file-version=$versionNumber --product-version=$versionNumber --file-description=$productName $compileFile
 
 echo "Compile complete."
