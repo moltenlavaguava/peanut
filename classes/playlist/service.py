@@ -67,8 +67,8 @@ def _downloaderProcessManager(loggingQueue:multiprocessing.Queue, downloadQueue:
                                                 responseQueue=responseQueue, selectIndex = selectIndexSharedValue, 
                                                 selectLock = selectIndexLock,idRequestConnection=idRequestConnection)
                     # signal finish (only give back name of playlist)
-                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(), 
-                                       "albums": playlist.getAlbums(), "queueEmpty": downloadQueue.empty(), 
+                    responseQueue.put({"action": "PLAYLIST_DOWNLOAD_DONE", "playlistName": playlist.getName(),
+                                       "queueEmpty": downloadQueue.empty(), 
                                        "thumbnailDownloaded": playlist.getThumbnailDownloaded()})
                 except Exception as e:
                     logger.error(f"An error occured while downloading the playlist {playlist.getName()}: {e}")
@@ -181,6 +181,7 @@ class PlaylistService():
                     self.setDownloadQueueEmpty(True)
                 case "INITIALIZE_DONE": # playlist initialization finished
                     playlist: Playlist|None = response["playlist"]
+                    self.eventService.triggerEvent("DOWNLOAD_STOP")
                     if not playlist: continue
 
                     # assign ids
@@ -194,7 +195,6 @@ class PlaylistService():
                     # mark the download as being complete
                     self.setIsDownloading(False)
                     self.logger.info(f"Successfully finished initalizing playlist '{playlist.getDisplayName()}'")
-                    self.eventService.triggerEvent("DOWNLOAD_STOP")
                 case "TRACK_DOWNLOAD_DONE": # a singular track finished downloading (or failed downloading)
                     playlistName = response["playlistName"]
                     # mark it as downloaded
@@ -206,7 +206,15 @@ class PlaylistService():
                         self.logger.debug(f"Marking track '{track.getDisplayName()}' as finished in the playlist service.")
                         # save the file. if this gets to be too cpu intensive, then stop doing this
                         self.savePlaylistFile(playlistName)
+                        # bookkeeping stuff
                         self.fileService.addDownloadedTrack(track.getID())
+                        if response["albumID"]:
+                            self.logger.debug(f"Marking track '{track.getDisplayName()}' as being part of album {response['albumID']}")
+                            if not self.idService.getAlbumDataFromID(response["albumID"]):
+                                # add the data
+                                self.idService.addAlbumData(response["albumID"], response["albumData"])
+                            # add the track to the album
+                            self.idService.setAlbumIDForTrackID(track.getID(), response["albumID"])
                         # trigger the download finish event for gui purposes
                         # sends the track itself plus the index the track is in the playlist
                     self.eventService.triggerEvent("PLAYLIST_TRACK_DOWNLOAD", playlist, track, response["downloadIndex"], response["success"])
@@ -218,7 +226,6 @@ class PlaylistService():
                     self.logger.debug("Playlist downloader stopped.")
                     playlist.setThumbnailDownloaded(response["thumbnailDownloaded"])
                     # set albums
-                    playlist.setAlbums(response["albums"])
                     self.savePlaylistFile(playlist.getName())
                     # if the queue is empty, actually mark the downloader as being done
                     if response["queueEmpty"]:

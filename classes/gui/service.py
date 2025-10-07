@@ -10,6 +10,7 @@ from classes.playlist.track import PlaylistTrack
 from classes.config.service import ConfigService
 from classes.thread.service import ThreadService
 from classes.file.service import FileService
+from classes.id.service import IDService
 
 from customwidgets.trackframe.trackframe import TrackFrame
 from customwidgets.loadwidget.loadwidget import LoadWidget
@@ -23,7 +24,7 @@ import resources_rc
 class GuiService():
     
     def __init__(self, mainWindow:Ui_MainWindow, eventService:EventService, configService:ConfigService, 
-                 threadService:ThreadService, fileService:FileService):
+                 threadService:ThreadService, fileService:FileService, idService:IDService):
         
         self.logger = logging.getLogger(__name__)
         
@@ -32,6 +33,7 @@ class GuiService():
         self.configService = configService
         self.threadService = threadService
         self.fileService = fileService
+        self.idService = idService
         
         self._closing = False
         
@@ -114,7 +116,12 @@ class GuiService():
         widget = widgetList[index]
         # set the text
         widget.setTitleText(track.getDisplayName())
-        widget.setArtistText(track.getArtistName())
+        
+        albumID = self.idService.getAlbumIDFromTrackID(track.getID())
+        if albumID:
+            widget.setArtistText(self.idService.getAlbumDataFromID(albumID)["artist"])
+        else:
+            widget.setArtistText("")
         widget.setDownloadedState(self.fileService.getTrackDownloaded(track.getID()))
     
     # generic method to set the main stack widget's page
@@ -169,9 +176,13 @@ class GuiService():
         for index, track in enumerate(playlist.getTracks()):
             button = TrackFrame(scrollArea)
             
+            albumID = self.idService.getAlbumIDFromTrackID(track.getID())
+            if albumID:
+                button.setArtistText(self.idService.getAlbumDataFromID(albumID)["artist"])
+            else:
+                button.setArtistText("")
             # customizing button
             button.setTitleText(track.getDisplayName())
-            button.setArtistText(track.getArtistName())
             button.setDownloadedState(downloadData[track.getID()])
             
             button.clicked.connect(lambda i=index: buttonActivated(self, i)) # checked singal is always sent
@@ -311,16 +322,18 @@ class GuiService():
         # update the playlist data
         self.setPlaylistDataText(playlist.getDisplayName(), index + 1, playlist.getLength())
         # update the author / album data
-        self.setArtistDataText(track.getArtistName() or "unknown artist", track.getAlbumDisplayName() or "unknown album")
+        albumID = self.idService.getAlbumIDFromTrackID(track.getID())
+        self.logger.debug(f"Album id here: {albumID}. track id: {track.getID()}")
+        if albumID:
+            albumData = self.idService.getAlbumDataFromID(albumID)
+            self.setArtistDataText(albumData["artist"], albumData["displayName"])
+            self.setAlbumCoverImage(self.fileService.getAlbumFile(albumID))
+        else:
+            self.setAlbumCoverImage(":/unsorted/resources/placeholder.png")
+            self.setArtistDataText("unknown artist", "unknown album")
         # set the total track time
         m, s = divmod(int(track.getLength()), 60)
         self.setTotalTrackTimeText(f"{m:02d}:{s:02d}")
-        # set the album cover image
-        albumID = track.getAlbumID()
-        if albumID:
-            self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], "album", f"{albumID}.jpg"))
-        else:
-            self.setAlbumCoverImage(":/unsorted/resources/placeholder.png")
         # cache the current track
         self._currentTrack = track
         # set the scroll
@@ -384,13 +397,20 @@ class GuiService():
             if success:
                 # update the track data for the specific gui element
                 self.updateTrackWidget(track, trackIndex)
-                if (track.getName() == self._currentTrack.getName()) and (track.getAlbumName()):
-                    # update the album image
-                    self.setAlbumCoverImage(os.path.join(self.configService.getOtherOptions()["outputFolder"], playlist.getName(), "images", f"album_{track.getAlbumName()}.jpg"))
-                    # update the relevant information
+                # get album data
+                albumID = self.idService.getAlbumIDFromTrackID(track.getID())
+                self.logger.debug(f"Album id after downloading: {albumID}")
+                if track.getID() == self._currentTrack.getID():
                     self.setTrackNameBoxText(track.getDisplayName())
-                    # update the author / album data
-                    self.setArtistDataText(track.getArtistName() or "unknown artist", track.getAlbumDisplayName() or "unknown album")
+                    if albumID:
+                        self.logger.debug("here")
+                        # set album information
+                        albumData = self.idService.getAlbumDataFromID(albumID)
+                        self.setAlbumCoverImage(self.fileService.getAlbumFile(albumID))
+                        self.setArtistDataText(albumData["artist"], albumData["displayName"]) 
+                    else:
+                        self.setTrackNameBoxText(track.getDisplayName())
+                        self.setArtistDataText("unknown artist", "unknown album")
         # set the track as no longer downloading
         trackWidget.setDownloading(False)
             

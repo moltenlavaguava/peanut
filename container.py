@@ -36,7 +36,7 @@ class Container(containers.DeclarativeContainer):
     
     guiService = providers.Singleton(GuiService, mainWindow=mainWindow, eventService=eventService, 
                                      configService=configService, threadService=threadService,
-                                     fileService=fileService)
+                                     fileService=fileService, idService=idService)
     audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService, 
                                        configService=configService, threadService=threadService,
                                        fileService=fileService,)

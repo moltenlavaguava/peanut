@@ -97,3 +97,8 @@ class FileService():
             id = track.getID()
             d[id] = self.getTrackDownloaded(id)
         return d
+    
+    def getAlbumFile(self, albumID:int):
+        path = os.path.join(self.getOutputFolder(), "album", f"{albumID}.jpg")
+        self.logger.debug(f"album path: {path}")
+        return path

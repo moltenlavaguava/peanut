@@ -8,13 +8,9 @@ logger = logging.getLogger(__name__)
 # stores all data for a playlist track
 class PlaylistTrack():
     
-    def __init__(self, videoURL:str, name:str, displayName:str, index:int, id:int = None, length:float = None, albumName:str = None, albumDisplayName:str = None, artistName:str = None, albumID:int = None, fingerprint:str = None):
+    def __init__(self, videoURL:str, name:str, displayName:str, index:int, id:int = None, length:float = None, fingerprint:str = None):
         if not length: length = 0
-        if not albumName: albumName = ""
-        if not albumDisplayName: albumDisplayName = ""
-        if not artistName: artistName = ""
         if not id: id = 0
-        if not albumID: albumID = 0
         if not fingerprint: fingerprint = ""
         # set variables
         self._videoURL = videoURL
@@ -22,11 +18,7 @@ class PlaylistTrack():
         self._displayName = displayName
         self._index = index
         self._length = length
-        self._albumName = albumName
-        self._albumDisplayName = albumDisplayName
-        self._artistName = artistName
         self._id = id
-        self._albumID = albumID
         self._fingerprint = fingerprint
         
     def getVideoURL(self):
@@ -50,35 +42,11 @@ class PlaylistTrack():
     def getLength(self):
         return self._length
 
-    def setAlbumName(self, name:str):
-        self._albumName = name
-        
-    def getAlbumName(self):
-        return self._albumName
-    
-    def setAlbumDisplayName(self, name:str):
-        self._albumDisplayName = name
-        
-    def getAlbumDisplayName(self):
-        return self._albumDisplayName
-    
-    def setArtistName(self, name:str):
-        self._artistName = name
-    
-    def getArtistName(self):
-        return self._artistName
-
     def getID(self):
         return self._id
 
     def setID(self, id:int):
         self._id = id
-
-    def getAlbumID(self):
-        return self._albumID
-    
-    def setAlbumID(self, id:int):
-        self._albumID = id
 
     def getFingerprint(self):
         return self._fingerprint
@@ -96,8 +64,4 @@ class PlaylistTrack():
             "fingerprint": self._fingerprint,
             "index": self._index,
             "length": self._length,
-            "album name": self._albumName,
-            "album display name": self._albumDisplayName,
-            "artist name": self._artistName,
-            "album id": self._albumID,
         }

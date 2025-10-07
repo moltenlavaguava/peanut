@@ -98,19 +98,12 @@ class PlaylistDownloader():
             albumDisplayName = mainResult["album"]["name"]
             albumID = mainResult["album"]["id"]
             artistName = None # will be assigned shortly
-            # check to see if the album art is already downloaded
-            albums = playlist.getAlbums()
             imageURL = None
-            if not albumName in albums:
-                albumData = self.ytmusic.get_album(albumID)
-                imageURL = albumData["thumbnails"][-1]["url"]
-                # download go brrrrrrrrrr
-                # self.logger.debug(f"Downloading album image for album '{albumDisplayName}' via youtube music search.")
-                artistName = ", ".join(d["name"] for d in albumData["artists"])
-                # save the album to prevent redownloading
-                playlist.addAlbumEntry(albumName, {"artist": artistName, "display name:": albumDisplayName})
-            else:
-                artistName = albums[albumName]["artist"]
+            albumData = self.ytmusic.get_album(albumID)
+            imageURL = albumData["thumbnails"][-1]["url"]
+            # download go brrrrrrrrrr
+            # self.logger.debug(f"Downloading album image for album '{albumDisplayName}' via youtube music search.")
+            artistName = ", ".join(d["name"] for d in albumData["artists"])
             return albumName, albumDisplayName, artistName, mainResult["title"], imageURL
         else:
             self.logger.debug(f"Album Data Request failed for term '{searchTerm}': no results found with search term"); return None, None, None, None
@@ -218,6 +211,8 @@ class PlaylistDownloader():
                 # convert file to specified format (not getting the track length atm)
                 # self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
                 
+                albumName, albumDisplayName, artistName, albumID = None, None, None, None
+                
                 # attempt to get music data
                 autogenVideo = True # whether or not the album data was handled via auto-generated video
                 try:
@@ -226,7 +221,7 @@ class PlaylistDownloader():
                     artistName = ", ".join(info["artists"])
                     idRequestConnection.send([(albumName, "ALBUM",)])
                     idData = idRequestConnection.recv()
-                    track.setAlbumID(idData[0]["id"])
+                    albumID = idData[0]["id"]
                     # check to see if the album was already downloaded
                     if not idData[0]["downloaded"]:
                         albumImageURL = info["thumbnails"][-1]["url"]
@@ -235,9 +230,6 @@ class PlaylistDownloader():
                         self._downloadThumbnail(albumImageURL, imgPath)
                         self._squareImage(imgPath)
                         # square the image
-                    track.setAlbumName(albumName)
-                    track.setAlbumDisplayName(albumDisplayName)
-                    track.setArtistName(artistName)
                 except KeyError:
                     autogenVideo = False
                 
@@ -252,15 +244,12 @@ class PlaylistDownloader():
                     self.logger.debug("Data retrieval done.")
                     if albumName:
                         # request id data
-                        idRequestConnection.send([(albumName, "ALBUM",), (trackName, "TRACK",)])
+                        idRequestConnection.send([(albumName, "ALBUM",)])
                         self.logger.debug("recieving id data..")
                         idData = idRequestConnection.recv() # wait for response
+                        albumID = idData[0]["id"]
                         self.logger.debug("id data recieved.")
-                        track.setAlbumName(albumName)
-                        track.setAlbumDisplayName(albumDisplayName)
-                        track.setArtistName(artistName)
                         track.setDisplayName(trackName)
-                        track.setAlbumID(idData[0]["id"])
 
                         # todo: change id system to use audio fingerprinting
                         # track.setID(idData[1])
@@ -273,7 +262,8 @@ class PlaylistDownloader():
             
                 # signal the completion of the track download
                 downloadedData[track.getID()] = True
-                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, "downloadIndex": index, "success": True})
+                responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, 
+                                   "downloadIndex": index, "success": True, "albumID": albumID, "albumData": {"name": albumName, "displayName": albumDisplayName, "artist": artistName}})
             if not stopEvent.is_set():
 
                 # check to see if a selection was made
