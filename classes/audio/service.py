@@ -12,9 +12,10 @@ from classes.file.service import FileService
 from just_playback import Playback
 
 import logging
-import pathlib
 import os
 import asyncio
+import time
+import math
 
 # manages various audio functions.
 class AudioService():
@@ -41,6 +42,7 @@ class AudioService():
         self._volume = 1
         self._muted = False
         self._currentIndex: int = -1 # used in the audio manager
+        self._pauseTime: int|None = None # when the current playback was paused, if it was paused
         
         # options
         self.volume = 1
@@ -112,13 +114,27 @@ class AudioService():
             # iterate through each track in the playlist n play it (imitating a for loop, but not doing one b/c no previous abilities)
             self._currentIndex = -1
             while True:
-                self._currentIndex += 1
+                
+                # if the previous event was set, keep looping back until the track is downloaded
+                if previousEvent.is_set():
+                    self._currentIndex -= 1
+                    if self._currentIndex < 0: self._currentIndex = 0
+                    temptrack = tracks[self._currentIndex]
+                    if self.fileService.getTrackDownloaded(temptrack.getID()):
+                        previousEvent.clear()
+                        self.logger.debug(f"Stopping at index {self._currentIndex}")
+                    else:
+                        continue
+                else:
+                    self._currentIndex += 1
+                    
                 # if the index is out of bounds, signal the finish of the playlist
                 if self._currentIndex == length:
                     break
                 # clamp index
                 if self._currentIndex < 0: self._currentIndex = 0
                 track = tracks[self._currentIndex]
+                
                 self.setCurrentTrack(track)
                 # check to see if anything's downloading
                 if not self.fileService.getTrackDownloaded(track.getID()):
@@ -181,11 +197,11 @@ class AudioService():
                 if shuffleEvent.is_set():
                     self.logger.info(f"Restarting (shuffled) playlist from beginning.")
                     break
-                # if the previous event was set, go to the previous track
-                if previousEvent.is_set():
-                    self.logger.info(f"Going to previous track.")
-                    self.threadService.resetAsyncioEvent("AUDIO_PREVIOUS")
-                    self._currentIndex -= 2 # go back 2 b/c every new track index increases by one
+                # # if the previous event was set, go to the previous track
+                # if previousEvent.is_set():
+                #     self.logger.info(f"Going to previous track.")
+                #     self.threadService.resetAsyncioEvent("AUDIO_PREVIOUS")
+                #     self._currentIndex -= 2 # go back 2 b/c every new track index increases by one
                 # reset the skip event if it was set
                 if skipEvent.is_set():
                     self.threadService.resetAsyncioEvent("AUDIO_SKIP")
@@ -220,6 +236,7 @@ class AudioService():
         # playback.set_volume(0)
         playback.pause()
         self.setPaused(True)
+        self.setPauseTime(int(time.time()))
         self.eventService.triggerEvent("AUDIO_TRACK_PAUSE", self._currentTrack)
     
     def resumeAudio(self):
@@ -228,6 +245,7 @@ class AudioService():
         # playback.set_volume(self.volume)
         playback.resume()
         self.setPaused(False)
+        self.setPauseTime(None)
         self.eventService.triggerEvent("AUDIO_TRACK_RESUME", self._currentTrack)
     
     # loads the specified track.
@@ -351,4 +369,15 @@ class AudioService():
     def getCurrentPlaylist(self):
         return self._playlist
     
+    # get the current position of the current playing audio. returns None if there isn't any audio loaded
+    def getAudioPosition(self):
+        playback = self.getCurrentPlayback()
+        if playback:
+            return playback.curr_pos
+        return None
     
+    def getPauseTime(self):
+        return self._pauseTime
+    
+    def setPauseTime(self, time:int|None):
+        self._pauseTime = time

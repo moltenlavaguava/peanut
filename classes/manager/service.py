@@ -11,6 +11,7 @@ from classes.log.service import LoggingService
 from classes.audio.service import AudioService
 from classes.id.service import IDService
 from classes.file.service import FileService
+from classes.richpresence.service import DRPService
 
 import PySide6.QtAsyncio as QtAsyncio
 
@@ -25,7 +26,7 @@ class ManagerService():
                  hotkeyService:HotkeyService, configService:ConfigService, 
                  eventService:EventService, playlistService:PlaylistService, 
                  loggingService:LoggingService, audioService:AudioService, 
-                 idService:IDService, fileService:FileService):
+                 idService:IDService, fileService:FileService, drpService:DRPService):
         self.guiService = guiService
         self.threadService = threadService
         self.hotkeyService = hotkeyService
@@ -36,6 +37,7 @@ class ManagerService():
         self.audioService = audioService
         self.idService = idService
         self.fileService = fileService
+        self.drpService = drpService
         self.logger = logging.getLogger(__name__)
         
         # temporary
@@ -382,6 +384,9 @@ class ManagerService():
         
         # start the audio service
         self.audioService.start()
+        
+        # enable discord rich presence + start the service
+        self.drpService.start(True)
         
         # startup the main loop
         self.threadService.start()

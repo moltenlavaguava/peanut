@@ -323,7 +323,6 @@ class GuiService():
         self.setPlaylistDataText(playlist.getDisplayName(), index + 1, playlist.getLength())
         # update the author / album data
         albumID = self.idService.getAlbumIDFromTrackID(track.getID())
-        self.logger.debug(f"Album id here: {albumID}. track id: {track.getID()}")
         if albumID:
             albumData = self.idService.getAlbumDataFromID(albumID)
             self.setArtistDataText(albumData["artist"], albumData["displayName"])
@@ -399,7 +398,7 @@ class GuiService():
                 self.updateTrackWidget(track, trackIndex)
                 # get album data
                 albumID = self.idService.getAlbumIDFromTrackID(track.getID())
-                self.logger.debug(f"Album id after downloading: {albumID}")
+                if not self._currentTrack: return
                 if track.getID() == self._currentTrack.getID():
                     self.setTrackNameBoxText(track.getDisplayName())
                     if albumID:

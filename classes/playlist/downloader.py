@@ -211,7 +211,7 @@ class PlaylistDownloader():
                 # convert file to specified format (not getting the track length atm)
                 # self._processAudioFile(path, outputExtension, track, ffmpegPath=ffmpegPath)
                 
-                albumName, albumDisplayName, artistName, albumID = None, None, None, None
+                albumName, albumDisplayName, artistName, albumID, albumImageURL = None, None, None, None, None
                 
                 # attempt to get music data
                 autogenVideo = True # whether or not the album data was handled via auto-generated video
@@ -240,7 +240,7 @@ class PlaylistDownloader():
                     if trackLength == 0:
                         self.logger.warning(f"track length directly from track is 0. Why? Track dict: {track.toDict()}")
                     self.logger.debug("Attempting to retrieve album data..")
-                    albumName, albumDisplayName, artistName, trackName, imageURL = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=trackLength, maxVariation=maxVariation, playlist=playlist)
+                    albumName, albumDisplayName, artistName, trackName, albumImageURL = self._getAlbumData(searchTerm=track.getDisplayName(), trackLength=trackLength, maxVariation=maxVariation, playlist=playlist)
                     self.logger.debug("Data retrieval done.")
                     if albumName:
                         # request id data
@@ -254,16 +254,16 @@ class PlaylistDownloader():
                         # todo: change id system to use audio fingerprinting
                         # track.setID(idData[1])
                         # download the album cover
-                        if imageURL and not idData[0]["downloaded"]:
+                        if albumImageURL and not idData[0]["downloaded"]:
                             self.logger.debug(f"Downloading album cover for '{albumDisplayName}' via ytmusic serach")
-                            self._downloadThumbnail(imageURL, os.path.join(albumCoverOutput, f"{idData[0]['id']}.jpg"))
+                            self._downloadThumbnail(albumImageURL, os.path.join(albumCoverOutput, f"{idData[0]['id']}.jpg"))
                         else:
                             self.logger.debug(f"Not downloading album cover for '{albumDisplayName}'; cover already downloaded or no cover exists")
             
                 # signal the completion of the track download
                 downloadedData[track.getID()] = True
                 responseQueue.put({"action": "TRACK_DOWNLOAD_DONE", "track": track, "playlistName": name, 
-                                   "downloadIndex": index, "success": True, "albumID": albumID, "albumData": {"name": albumName, "displayName": albumDisplayName, "artist": artistName}})
+                                   "downloadIndex": index, "success": True, "albumID": albumID, "albumData": {"name": albumName, "displayName": albumDisplayName, "artist": artistName, "imageURL": albumImageURL}})
             if not stopEvent.is_set():
 
                 # check to see if a selection was made

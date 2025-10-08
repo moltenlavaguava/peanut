@@ -81,6 +81,7 @@ class ThreadService():
         thread = threading.Thread(target=threadFunction, name=threadName, *args, kwargs=kwargs)
         thread.start()
         self._threads[threadName] = thread
+        return thread
         
     # returns whether or not the given thread event is set or not.
     def isThreadEventSet(self, eventName:str):

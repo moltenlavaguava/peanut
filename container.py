@@ -12,6 +12,7 @@ from classes.log.service import LoggingService
 from classes.audio.service import AudioService
 from classes.id.service import IDService
 from classes.file.service import FileService
+from classes.richpresence.service import DRPService
 
 # Notes:
 # Singleton: one shared instance of the dependency
@@ -40,6 +41,10 @@ class Container(containers.DeclarativeContainer):
     audioService = providers.Singleton(AudioService, eventService=eventService, playlistService=playlistService, 
                                        configService=configService, threadService=threadService,
                                        fileService=fileService,)
+    
+    drpService = providers.Singleton(DRPService, eventService=eventService, threadService=threadService, 
+                                     audioService=audioService, idService=idService)
+    
     managerService = providers.Singleton(ManagerService, 
                                   guiService=guiService, 
                                   threadService=threadService, 
@@ -51,4 +56,5 @@ class Container(containers.DeclarativeContainer):
                                   audioService=audioService,
                                   idService=idService,
                                   fileService=fileService,
+                                  drpService = drpService
                                   )

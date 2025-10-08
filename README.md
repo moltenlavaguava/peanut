@@ -99,6 +99,7 @@ The following public libraries were used in this project:
 - [yt_dlp](https://pypi.org/project/yt-dlp/)
 - [ytmusicapi](https://pypi.org/project/ytmusicapi/)
 - [pyacoustid](https://pypi.org/project/pyacoustid/)
+- [pypresence](https://pypi.org/project/pypresence/)
 
 The majority of the icons in this project are from https://www.flaticon.com/.
 
