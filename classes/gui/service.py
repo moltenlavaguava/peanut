@@ -467,6 +467,19 @@ class GuiService():
         
         # set the default page on startup
         self.loadPagePlaylistSelector()
+
+        # change the size of the window to be a little more reasonable for different screen sizes
+        ASPECT_RATIO = 1.5
+        MAX_SCREEN_PERCENTAGE = 0.5
+
+        # calculating dimensions of window
+        screenResolution = self._QApplication.primaryScreen().size()
+        windowWidth = screenResolution.width() * MAX_SCREEN_PERCENTAGE
+        windowHeight = windowWidth / ASPECT_RATIO
+
+        self.logger.debug(f"dimensions: {int(windowWidth)}x{int(windowHeight)}")
+        self._window.setFixedSize(int(windowWidth), int(windowHeight))
         
         # show the window
         self._window.show()
+        self.logger.debug(self._window.geometry())

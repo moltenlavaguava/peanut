@@ -218,7 +218,7 @@ QScrollArea, #container_albumCover {
        </item>
        <item>
         <widget class="SquareFrame" name="container_loadFrame">
-         <widget class="LoadWidget" name="info_loading">
+         <widget class="LoadWidget" name="info_loading" native="true">
           <property name="geometry">
            <rect>
             <x>0</x>
@@ -424,8 +424,8 @@ QScrollArea, #container_albumCover {
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>498</width>
-                      <height>318</height>
+                      <width>814</width>
+                      <height>300</height>
                      </rect>
                     </property>
                     <property name="layoutDirection">
@@ -961,8 +961,8 @@ QScrollArea, #container_albumCover {
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>924</width>
-             <height>489</height>
+             <width>92</width>
+             <height>22</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_8"/>
@@ -988,19 +988,21 @@ QScrollArea, #container_albumCover {
    <header>customwidgets.loadwidget.loadwidget</header>
   </customwidget>
   <customwidget>
-   <class>ProgressCircleBar</class>
-   <extends>ScrollProgressBar</extends>
-   <header>customwidgets.scrollprogressbar.progresscirclebar</header>
-  </customwidget>
-  <customwidget>
    <class>ScrollProgressBar</class>
    <extends>QFrame</extends>
    <header>customwidgets.scrollprogressbar.scrollprogressbar</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>SquareFrame</class>
    <extends>QFrame</extends>
    <header>customwidgets.squareframe.squareframe</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ProgressCircleBar</class>
+   <extends>ScrollProgressBar</extends>
+   <header>customwidgets.scrollprogressbar.progresscirclebar</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

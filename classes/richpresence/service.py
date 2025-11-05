@@ -141,7 +141,7 @@ class DRPService():
                                         startTime = self.audioService.getPauseTime()
                                 else:
                                     details = "browsing peanut"
-                                    state = "maybe you should too :)"
+                                    state = "hi there :)"
                                 
                                 # send an update
                                 await rpc.update(

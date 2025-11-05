@@ -42,9 +42,6 @@ class Window(QMainWindow):
         self.ui.input_volumeBar.setKnobSizeRatio(.3)
         self.ui.input_volumeBar.setProgressBarRatio(0.2)
         
-        # disallowing any resizing
-        self.setFixedSize(self.size().width(), self.size().height())
-        
         # set the default image for the album cover
         
 

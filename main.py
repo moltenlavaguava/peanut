@@ -80,4 +80,4 @@ if __name__ == "__main__":
     managerService.injectOptions(options)
     
     # startup
-    managerService.startProgram()   
+    managerService.startProgram()
