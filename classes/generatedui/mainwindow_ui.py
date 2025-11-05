@@ -31,7 +31,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(950, 630)
+        MainWindow.resize(618, 400)
         icon = QIcon()
         icon.addFile(u":/icon/resources/windowicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         MainWindow.setWindowIcon(icon)
@@ -208,6 +208,16 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
 
+        self.action_settings = CircleImageButton(self.container_topFrame)
+        self.action_settings.setObjectName(u"action_settings")
+        sizePolicy1.setHeightForWidth(self.action_settings.sizePolicy().hasHeightForWidth())
+        self.action_settings.setSizePolicy(sizePolicy1)
+        icon2 = QIcon()
+        icon2.addFile(u":/buttons/resources/white/settings.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_settings.setIcon(icon2)
+
+        self.horizontalLayout.addWidget(self.action_settings)
+
         self.container_loadFrame = SquareFrame(self.container_topFrame)
         self.container_loadFrame.setObjectName(u"container_loadFrame")
         self.info_loading = LoadWidget(self.container_loadFrame)
@@ -298,7 +308,7 @@ class Ui_MainWindow(object):
         self.container_nextList.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.container_nextListScrollArea = QWidget()
         self.container_nextListScrollArea.setObjectName(u"container_nextListScrollArea")
-        self.container_nextListScrollArea.setGeometry(QRect(0, 0, 814, 300))
+        self.container_nextListScrollArea.setGeometry(QRect(0, 0, 482, 94))
         self.container_nextListScrollArea.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.verticalLayout_7 = QVBoxLayout(self.container_nextListScrollArea)
         self.verticalLayout_7.setSpacing(9)
@@ -432,9 +442,9 @@ class Ui_MainWindow(object):
         self.action_mute.setObjectName(u"action_mute")
         sizePolicy1.setHeightForWidth(self.action_mute.sizePolicy().hasHeightForWidth())
         self.action_mute.setSizePolicy(sizePolicy1)
-        icon2 = QIcon()
-        icon2.addFile(u":/buttons/resources/white/volume.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_mute.setIcon(icon2)
+        icon3 = QIcon()
+        icon3.addFile(u":/buttons/resources/white/volume.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_mute.setIcon(icon3)
 
         self.horizontalLayout_8.addWidget(self.action_mute)
 
@@ -473,9 +483,9 @@ class Ui_MainWindow(object):
         self.action_download.setObjectName(u"action_download")
         sizePolicy1.setHeightForWidth(self.action_download.sizePolicy().hasHeightForWidth())
         self.action_download.setSizePolicy(sizePolicy1)
-        icon3 = QIcon()
-        icon3.addFile(u":/buttons/resources/white/download.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_download.setIcon(icon3)
+        icon4 = QIcon()
+        icon4.addFile(u":/buttons/resources/white/download.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_download.setIcon(icon4)
 
         self.horizontalLayout_5.addWidget(self.action_download)
 
@@ -483,9 +493,9 @@ class Ui_MainWindow(object):
         self.action_organize.setObjectName(u"action_organize")
         sizePolicy1.setHeightForWidth(self.action_organize.sizePolicy().hasHeightForWidth())
         self.action_organize.setSizePolicy(sizePolicy1)
-        icon4 = QIcon()
-        icon4.addFile(u":/buttons/resources/white/organize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_organize.setIcon(icon4)
+        icon5 = QIcon()
+        icon5.addFile(u":/buttons/resources/white/organize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_organize.setIcon(icon5)
 
         self.horizontalLayout_5.addWidget(self.action_organize)
 
@@ -493,9 +503,9 @@ class Ui_MainWindow(object):
         self.action_previous.setObjectName(u"action_previous")
         sizePolicy1.setHeightForWidth(self.action_previous.sizePolicy().hasHeightForWidth())
         self.action_previous.setSizePolicy(sizePolicy1)
-        icon5 = QIcon()
-        icon5.addFile(u":/buttons/resources/white/reverse.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_previous.setIcon(icon5)
+        icon6 = QIcon()
+        icon6.addFile(u":/buttons/resources/white/reverse.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_previous.setIcon(icon6)
 
         self.horizontalLayout_5.addWidget(self.action_previous)
 
@@ -503,9 +513,9 @@ class Ui_MainWindow(object):
         self.action_play.setObjectName(u"action_play")
         sizePolicy1.setHeightForWidth(self.action_play.sizePolicy().hasHeightForWidth())
         self.action_play.setSizePolicy(sizePolicy1)
-        icon6 = QIcon()
-        icon6.addFile(u":/buttons/resources/white/play.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_play.setIcon(icon6)
+        icon7 = QIcon()
+        icon7.addFile(u":/buttons/resources/white/play.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_play.setIcon(icon7)
 
         self.horizontalLayout_5.addWidget(self.action_play)
 
@@ -513,9 +523,9 @@ class Ui_MainWindow(object):
         self.action_skip.setObjectName(u"action_skip")
         sizePolicy1.setHeightForWidth(self.action_skip.sizePolicy().hasHeightForWidth())
         self.action_skip.setSizePolicy(sizePolicy1)
-        icon7 = QIcon()
-        icon7.addFile(u":/buttons/resources/white/skip.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_skip.setIcon(icon7)
+        icon8 = QIcon()
+        icon8.addFile(u":/buttons/resources/white/skip.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_skip.setIcon(icon8)
 
         self.horizontalLayout_5.addWidget(self.action_skip)
 
@@ -523,9 +533,9 @@ class Ui_MainWindow(object):
         self.action_shuffle.setObjectName(u"action_shuffle")
         sizePolicy1.setHeightForWidth(self.action_shuffle.sizePolicy().hasHeightForWidth())
         self.action_shuffle.setSizePolicy(sizePolicy1)
-        icon8 = QIcon()
-        icon8.addFile(u":/buttons/resources/white/shuffle.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_shuffle.setIcon(icon8)
+        icon9 = QIcon()
+        icon9.addFile(u":/buttons/resources/white/shuffle.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_shuffle.setIcon(icon9)
 
         self.horizontalLayout_5.addWidget(self.action_shuffle)
 
@@ -533,9 +543,9 @@ class Ui_MainWindow(object):
         self.action_loop.setObjectName(u"action_loop")
         sizePolicy1.setHeightForWidth(self.action_loop.sizePolicy().hasHeightForWidth())
         self.action_loop.setSizePolicy(sizePolicy1)
-        icon9 = QIcon()
-        icon9.addFile(u":/buttons/resources/white/loop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.action_loop.setIcon(icon9)
+        icon10 = QIcon()
+        icon10.addFile(u":/buttons/resources/white/loop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_loop.setIcon(icon10)
 
         self.horizontalLayout_5.addWidget(self.action_loop)
 
@@ -563,6 +573,16 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.addWidget(self.container_lowerFrame)
 
         self.container_stackedWidget.addWidget(self.page_audioPlayer)
+        self.page_settings = QWidget()
+        self.page_settings.setObjectName(u"page_settings")
+        self.horizontalLayout_10 = QHBoxLayout(self.page_settings)
+        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
+        self.pushButton = QPushButton(self.page_settings)
+        self.pushButton.setObjectName(u"pushButton")
+
+        self.horizontalLayout_10.addWidget(self.pushButton)
+
+        self.container_stackedWidget.addWidget(self.page_settings)
         self.page_playlistSelector = QWidget()
         self.page_playlistSelector.setObjectName(u"page_playlistSelector")
         sizePolicy2.setHeightForWidth(self.page_playlistSelector.sizePolicy().hasHeightForWidth())
@@ -602,7 +622,7 @@ class Ui_MainWindow(object):
         self.container_playlistSelector.setWidgetResizable(True)
         self.container_playlistSelectorScrollArea = QWidget()
         self.container_playlistSelectorScrollArea.setObjectName(u"container_playlistSelectorScrollArea")
-        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 92, 22))
+        self.container_playlistSelectorScrollArea.setGeometry(QRect(0, 0, 592, 298))
         self.verticalLayout_8 = QVBoxLayout(self.container_playlistSelectorScrollArea)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.container_playlistSelector.setWidget(self.container_playlistSelectorScrollArea)
@@ -617,7 +637,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.container_stackedWidget.setCurrentIndex(0)
+        self.container_stackedWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -633,6 +653,7 @@ class Ui_MainWindow(object):
         self.info_playlistData.setText(QCoreApplication.translate("MainWindow", u"playlistName \u2022 69/420", None))
         self.info_trackCurrentTime.setText(QCoreApplication.translate("MainWindow", u"0:69", None))
         self.info_trackTotalTime.setText(QCoreApplication.translate("MainWindow", u"4:20", None))
+        self.pushButton.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.input_playlistURL.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Load from youtube playlist url...", None))
         self.action_loadFromURL.setText(QCoreApplication.translate("MainWindow", u"Load", None))
     # retranslateUi

@@ -221,6 +221,8 @@ class ManagerService():
             self.audioService.setVolume(0)
             self.eventService.triggerEvent("GUI_MUTE_AUDIO")
             
+    def _actionSettings(self):
+        self.guiService.loadPageSettings()
 
     # Playlist
     def _playlistInitalizationFinish(self, playlist:Playlist):
@@ -324,6 +326,8 @@ class ManagerService():
         self.eventService.subscribeToEvent("ACTION_SET_VOLUME", self._actionSetVolume)
         self.eventService.addEvent("ACTION_MUTE")
         self.eventService.subscribeToEvent("ACTION_MUTE", self._actionMute)
+        self.eventService.addEvent("ACTION_SETTINGS")
+        self.eventService.subscribeToEvent("ACTION_SETTINGS", self._actionSettings)
         # playlist events
         self.eventService.addEvent("PLAYLIST_INITIALIZATION_START")
         self.eventService.addEvent("PLAYLIST_INITALIZATION_FINISH")

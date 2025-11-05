@@ -30,6 +30,7 @@ class Window(QMainWindow):
         self.ui.action_home.clicked.connect(self.buttonHomeActivated)
         self.ui.action_organize.clicked.connect(self.buttonOrganizeActivated)
         self.ui.action_mute.clicked.connect(self.buttonMuteActivated)
+        self.ui.action_settings.clicked.connect(self.buttonSettingsActivated)
         
         # progress bar things
         self.ui.info_progressBar.manualProgressChangeStart.connect(self.progressBarChangeBegin)
@@ -103,6 +104,10 @@ class Window(QMainWindow):
     @Slot()
     def volumeBarChangeBegin(self, progress:float):
         self.eventService.triggerEvent("ACTION_SET_VOLUME", progress)
+
+    @Slot()
+    def buttonSettingsActivated(self):
+        self.eventService.triggerEvent("ACTION_SETTINGS")
     
     # catch when the window closes
     def closeEvent(self, event):

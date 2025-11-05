@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
-    <height>630</height>
+    <width>618</width>
+    <height>400</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -166,7 +166,7 @@ QScrollArea, #container_albumCover {
       <property name="frameShadow">
        <enum>QFrame::Shadow::Raised</enum>
       </property>
-      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0">
+      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0">
        <property name="leftMargin">
         <number>15</number>
        </property>
@@ -217,6 +217,20 @@ QScrollArea, #container_albumCover {
         </spacer>
        </item>
        <item>
+        <widget class="CircleImageButton" name="action_settings">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="icon">
+          <iconset resource="../../resources.qrc">
+           <normaloff>:/buttons/resources/white/settings.png</normaloff>:/buttons/resources/white/settings.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="SquareFrame" name="container_loadFrame">
          <widget class="LoadWidget" name="info_loading" native="true">
           <property name="geometry">
@@ -245,7 +259,7 @@ QScrollArea, #container_albumCover {
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="page_audioPlayer">
        <property name="sizePolicy">
@@ -424,8 +438,8 @@ QScrollArea, #container_albumCover {
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>814</width>
-                      <height>300</height>
+                      <width>482</width>
+                      <height>94</height>
                      </rect>
                     </property>
                     <property name="layoutDirection">
@@ -887,6 +901,17 @@ QScrollArea, #container_albumCover {
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="page_settings">
+       <layout class="QHBoxLayout" name="horizontalLayout_10">
+        <item>
+         <widget class="QPushButton" name="pushButton">
+          <property name="text">
+           <string>PushButton</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="page_playlistSelector">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -961,8 +986,8 @@ QScrollArea, #container_albumCover {
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>92</width>
-             <height>22</height>
+             <width>592</width>
+             <height>298</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_8"/>

@@ -142,6 +142,10 @@ class GuiService():
         self.setMainWindowPage(self._window.ui.page_playlistSelector)
         self.setTitleTextBoxText("Playlist Selector")
         
+    def loadPageSettings(self):
+        self.setMainWindowPage(self._window.ui.page_settings)
+        self.setTitleTextBoxText("Settings")
+
     # element that contains the playlist selection options
     def getPlaylistSelectorElement(self):
         return self._window.ui.container_playlistSelectorScrollArea
