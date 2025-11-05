@@ -6,9 +6,6 @@ logger = logging.getLogger(__name__)
 
 # test
 
-# NOTE: pypresence had to be monkeypatched to allow it to work
-# this is because of its enums not being able to be json serialized
-
 import os
 import sys
 import acoustid
