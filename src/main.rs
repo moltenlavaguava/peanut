@@ -1,3 +1,5 @@
+use peanut::core::CoreService;
+
 fn main() {
-    println!("Hello world!");
+    let _ = CoreService::spawn();
 }
