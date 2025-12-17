@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{self, ErrorKind};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 
 use iced::Subscription;
@@ -12,19 +12,11 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
-use crate::service::file::FileMessage;
+use crate::service::file::enums::FileMessage;
 use crate::util::sync::{EventMessage, ReceiverHandle, TaskResponse};
+use enums::Message;
 
-#[derive(Debug, Clone)]
-enum Message {
-    FileTextEdit(String),
-    FileTextSubmit,
-    FileLoadResult(Result<String, io::ErrorKind>),
-    EventRecieved(EventMessage),
-    EventBusClosed,
-    TaskFinished(u64),
-    StartTestTask,
-}
+pub mod enums;
 
 struct App {
     // Communication
