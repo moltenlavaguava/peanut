@@ -12,6 +12,7 @@ The main features of peanut currently are:
 - User friendly GUI
 - System wide hotkeys to control playback without interacting with the GUI
 - Artist and Album data for most YouTube videos via YouTube Music
+- Discord Rich Presence support (versions v0.72.0+ only)
 
 To see all upcoming and planned features, please direct your eyes to the latest release.
 

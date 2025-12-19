@@ -3,8 +3,8 @@
 
 pub mod audio;
 pub mod config;
-pub mod download;
 pub mod file;
 pub mod gui;
 pub mod log;
 pub mod playlist;
+pub mod process;

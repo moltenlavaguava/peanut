@@ -4,8 +4,8 @@ use crate::util::sync::EventMessage;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    FileTextEdit(String),
-    FileTextSubmit,
+    PlaylistTextEdit(String),
+    PlaylistURLSubmit,
     FileLoadResult(Result<String, io::ErrorKind>),
     EventRecieved(EventMessage),
     EventBusClosed,

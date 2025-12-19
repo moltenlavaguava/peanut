@@ -6,6 +6,9 @@ pub trait ServiceLogic<T>: Send + 'static
 where
     T: Send + 'static,
 {
+    async fn on_start(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
     async fn handle_message(&mut self, msg: T);
     fn name(&self) -> &'static str;
 }
@@ -15,6 +18,14 @@ where
     S: ServiceLogic<T>,
     T: Send + 'static,
 {
+    let name = service.name();
+
+    println!("Initializing {}...", name);
+    if let Err(e) = service.on_start().await {
+        eprintln!("Error: {} failed to start: {:?}", name, e);
+        return;
+    }
+    println!("{name} started");
     loop {
         tokio::select! {
             _ = token.cancelled() => break,
@@ -23,5 +34,5 @@ where
             }
         }
     }
-    println!("{} stopped.", service.name());
+    println!("{} stopped.", name);
 }

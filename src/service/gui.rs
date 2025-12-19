@@ -9,10 +9,12 @@ use iced::{
     widget::{Column, button, column, text, text_input},
 };
 use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
+use url::Url;
 
-use crate::service::file::enums::FileMessage;
+use crate::service::file::FileSender;
+use crate::service::playlist::PlaylistSender;
+use crate::service::playlist::enums::PlaylistMessage;
 use crate::util::sync::{EventMessage, ReceiverHandle, TaskResponse};
 use enums::Message;
 
@@ -21,19 +23,21 @@ pub mod enums;
 struct App {
     // Communication
     _shutdown_token: CancellationToken,
-    file_comm: mpsc::Sender<FileMessage>,
+    file_sender: FileSender,
+    playlist_sender: PlaylistSender,
     tasks: HashMap<u64, ReceiverHandle<TaskResponse>>,
     event_bus: ReceiverHandle<EventMessage>,
 
     // Internal state
-    file_path: String,
+    playlist_url: String,
 }
 
 #[derive(Clone)]
 struct GuiFlags {
     shutdown_token: CancellationToken,
     event_receiver: ReceiverHandle<EventMessage>,
-    file_tx: mpsc::Sender<FileMessage>,
+    file_sender: FileSender,
+    playlist_sender: PlaylistSender,
 }
 
 impl App {
@@ -41,27 +45,29 @@ impl App {
         (
             Self {
                 _shutdown_token: flags.shutdown_token,
-                file_comm: flags.file_tx,
+                file_sender: flags.file_sender,
+                playlist_sender: flags.playlist_sender,
                 tasks: HashMap::new(),
                 event_bus: flags.event_receiver,
-                file_path: String::new(),
+                playlist_url: String::new(),
             },
             Task::none(),
         )
     }
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::FileTextEdit(txt) => {
-                self.file_path = txt;
+            Message::PlaylistTextEdit(txt) => {
+                self.playlist_url = txt;
                 Task::none()
             }
-            Message::FileTextSubmit => {
-                println!("file path: {}", self.file_path);
-                let path_buf = PathBuf::from(&self.file_path);
-                Task::perform(
-                    request_file_contents(self.file_comm.clone(), path_buf),
-                    Message::FileLoadResult,
-                )
+            Message::PlaylistURLSubmit => {
+                println!("playlist url: {}", self.playlist_url);
+                // try to create a url
+                if let Ok(url) = Url::parse(&self.playlist_url) {
+                    Task::future(submit_playlist_url(url, self.playlist_sender.clone())).discard()
+                } else {
+                    Task::none()
+                }
             }
             Message::FileLoadResult(result) => match result {
                 Ok(contents) => {
@@ -94,15 +100,15 @@ impl App {
 
         let header = row![title_text, Space::new().width(Length::Fill),];
 
-        let load_file = button("load file").on_press(Message::FileTextSubmit);
+        let load_file = button("init playlist").on_press(Message::PlaylistURLSubmit);
         let start_task = button("start task").on_press(Message::StartTestTask);
-        let file_path = text_input("file path", &self.file_path)
+        let playlist_url = text_input("file path", &self.playlist_url)
             .width(Length::Fill)
-            .on_input(Message::FileTextEdit)
-            .on_paste(Message::FileTextEdit)
-            .on_submit(Message::FileTextSubmit);
+            .on_input(Message::PlaylistTextEdit)
+            .on_paste(Message::PlaylistTextEdit)
+            .on_submit(Message::PlaylistURLSubmit);
 
-        let content = container(row![file_path, load_file, start_task])
+        let content = container(row![playlist_url, load_file, start_task])
             .width(Length::Fill)
             .height(Length::Fill);
 
@@ -135,12 +141,14 @@ impl GuiService {
     pub fn start_loop(
         &self,
         shutdown_token: CancellationToken,
-        file_comm: mpsc::Sender<FileMessage>,
+        file_sender: FileSender,
+        playlist_sender: PlaylistSender,
         event_bus_rx: mpsc::Receiver<EventMessage>,
     ) -> iced::Result {
         let flags = GuiFlags {
             shutdown_token,
-            file_tx: file_comm,
+            file_sender,
+            playlist_sender,
             event_receiver: ReceiverHandle::new(0, event_bus_rx),
         };
 
@@ -155,23 +163,9 @@ impl GuiService {
 }
 
 // helper methods
-async fn request_file_contents(
-    mailbox: mpsc::Sender<FileMessage>,
-    path: PathBuf,
-) -> Result<String, ErrorKind> {
-    let (tx, rx) = oneshot::channel();
-    let msg = FileMessage::ReadFile {
-        reply: tx,
-        path_buf: path,
-    };
-
-    // send the data and wait
-    if let Err(_) = mailbox.send(msg).await {
-        return Err(ErrorKind::BrokenPipe);
-    }
-    let result = rx.await;
-    match result {
-        Ok(inner) => inner,
-        Err(_) => Err(ErrorKind::Other),
-    }
+async fn submit_playlist_url(url: Url, sender: PlaylistSender) {
+    println!("submitting playlist url..");
+    let _ = sender
+        .send(PlaylistMessage::InitializePlaylist { url })
+        .await;
 }
