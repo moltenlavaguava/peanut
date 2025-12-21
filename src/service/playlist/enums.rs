@@ -8,8 +8,10 @@ pub enum PlaylistMessage {
     InitializePlaylist { url: Url },
 }
 
-pub enum TrackSource {
-    Youtube {},
+pub enum MediaType {
+    Playlist,
+    Track,
+    Album,
 }
 
 #[derive(Debug)]

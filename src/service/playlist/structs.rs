@@ -3,8 +3,6 @@ use serde::Deserialize;
 
 use url::Url;
 
-use super::enums::TrackSource;
-
 pub struct Playlist {
     pub name: String,
     pub length: usize,
@@ -16,7 +14,6 @@ pub struct Track {
     pub length: Duration,
     pub artists: Vec<String>,
     pub album: Option<Album>,
-    pub source: TrackSource,
 }
 
 pub struct Album {
