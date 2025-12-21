@@ -1,10 +1,11 @@
 use crate::{
     service::{
         file::{FileSender, enums::FileMessage, structs::BinApps},
+        gui::enums::EventSender,
         playlist::download::initialize_playlist,
         process::ProcessSender,
     },
-    util::{service::ServiceLogic, sync::EventSender},
+    util::service::ServiceLogic,
 };
 use enums::PlaylistMessage;
 use structs::Playlist;
@@ -64,12 +65,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
     async fn handle_message(&mut self, msg: enums::PlaylistMessage) {
         // message handling
         match msg {
-            PlaylistMessage::InitializePlaylist { url } => {
+            PlaylistMessage::InitializePlaylist { url, reply_stream } => {
                 let bin_files_copy = self.bin_files.as_ref().unwrap().clone();
                 let process_sender_copy = self.process_sender.clone();
                 tokio::spawn(async move {
                     if let Ok(playlist) =
-                        initialize_playlist(url, bin_files_copy, process_sender_copy).await
+                        initialize_playlist(url, bin_files_copy, process_sender_copy, reply_stream)
+                            .await
                     {
                         println!("playlist init succeeded");
                     } else {

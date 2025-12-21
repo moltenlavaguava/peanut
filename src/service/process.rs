@@ -1,8 +1,8 @@
 use tokio::sync::mpsc;
 
 use crate::{
-    service::process::util::stream_process,
-    util::{service::ServiceLogic, sync::EventSender},
+    service::{gui::enums::EventSender, process::util::stream_process},
+    util::service::ServiceLogic,
 };
 use enums::ProcessMessage;
 

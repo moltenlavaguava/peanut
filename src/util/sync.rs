@@ -98,16 +98,3 @@ where
     )
     .boxed()
 }
-
-// types and enums used within the whole program
-
-#[derive(Debug, Clone)]
-pub enum TaskResponse {}
-
-#[derive(Debug, Clone)]
-pub enum EventMessage {
-    TaskResponse(TaskResponse),
-    Count(usize),
-}
-
-pub type EventSender = mpsc::Sender<EventMessage>;

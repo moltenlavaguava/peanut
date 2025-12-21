@@ -14,3 +14,5 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 url = {version = "2.5.7", features = ["serde"] }
 regex = {version = "1.12.2", features = ["std"] }
+strum = "0.27.2"
+strum_macros = "0.27.2"

@@ -1,8 +1,7 @@
 use tokio::{fs, sync::mpsc};
 
-use crate::util::{service::ServiceLogic, sync::EventSender};
+use crate::{service::gui::enums::EventSender, util::service::ServiceLogic};
 use enums::FileMessage;
-use structs::BinApps;
 
 pub mod enums;
 pub mod structs;

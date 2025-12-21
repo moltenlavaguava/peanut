@@ -1,6 +1,8 @@
 use std::io;
 
-use crate::util::sync::EventMessage;
+use tokio::sync::mpsc;
+
+use crate::{service::playlist::enums::PlaylistInitStatus, util::sync::ReceiverHandle};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -10,5 +12,19 @@ pub enum Message {
     EventRecieved(EventMessage),
     EventBusClosed,
     TaskFinished(u64),
-    StartTestTask,
+    PlaylistInitTaskStarted(u64, ReceiverHandle<TaskResponse>),
+    TaskDataReceived(u64, TaskResponse),
+    None,
 }
+
+// wrapper around all possible messages
+#[derive(Debug, Clone)]
+pub enum TaskResponse {
+    PlaylistInitStatus(PlaylistInitStatus),
+}
+
+// for app-wide messages (usually more important)
+#[derive(Debug, Clone)]
+pub enum EventMessage {}
+
+pub type EventSender = mpsc::Sender<EventMessage>;

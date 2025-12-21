@@ -1,0 +1,13 @@
+#[derive(Clone)]
+pub struct IdCounter {
+    id: u64,
+}
+impl IdCounter {
+    pub fn new() -> Self {
+        Self { id: 0 }
+    }
+    pub fn next(&mut self) -> u64 {
+        self.id += 1;
+        self.id
+    }
+}
