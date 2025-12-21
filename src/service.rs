@@ -8,3 +8,4 @@ pub mod gui;
 pub mod log;
 pub mod playlist;
 pub mod process;
+pub mod id;
