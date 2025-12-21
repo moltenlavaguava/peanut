@@ -45,6 +45,6 @@ pub async fn stream_process(
 
     let _ = std_handle.await;
     let _ = err_handle.await;
-    let exit_code = child.wait().await.unwrap();
-    let _ = output_stream.send(ChildMessage::Exit(exit_code)).await;
+    let status = child.wait().await.unwrap();
+    let _ = output_stream.send(ChildMessage::Exit(status)).await;
 }

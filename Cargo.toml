@@ -9,6 +9,8 @@ async-trait = "0.1.89"
 futures = "0.3.31"
 iced = { version = "0.14.0", features = ["tokio", "debug"] }
 serde_json = "1.0.145"
+serde = {version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
-url = "2.5.7"
+url = {version = "2.5.7", features = ["serde"] }
+regex = {version = "1.12.2", features = ["std"] }
