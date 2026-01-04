@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::service::gui::enums::TaskResponse;
 
-use super::structs::{DownloadJsonOutput, InitJsonOutput};
+use super::structs::{DownloadTrackJson, PlaylistTrackJson};
 
 pub enum PlaylistMessage {
     InitializePlaylist {
@@ -30,9 +30,10 @@ pub enum MediaType {
 #[derive(Debug)]
 pub enum ExtractorLineOut {
     InitProgress { current: u32, total: u32 },
-    InitData(InitJsonOutput),
+    InitTrackData(PlaylistTrackJson),
     DownloadProgress(f64),
-    DownloadData(DownloadJsonOutput),
+    DownloadTrackData(DownloadTrackJson),
+    PlaylistInitDone(String),
     Exit(ExitStatus),
     Standard(String),
     Error(String),
@@ -41,6 +42,23 @@ pub enum ExtractorLineOut {
 #[derive(Debug, Clone)]
 pub enum PlaylistInitStatus {
     Progress { current: u32, total: u32 },
-    Complete,
+    Complete { title: String },
     Fail,
+}
+
+#[derive(Debug)]
+pub enum Artist {
+    Community(String),
+    Official(Vec<String>),
+}
+impl Artist {
+    pub fn artist(self) -> String {
+        match self {
+            Self::Official(artist_list) => {
+                // concat list separated by commas
+                artist_list.join(", ")
+            }
+            Self::Community(artist) => artist,
+        }
+    }
 }

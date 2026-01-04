@@ -1,7 +1,7 @@
 use crate::{
     service::{
         file::{FileSender, enums::FileMessage, structs::BinApps},
-        gui::enums::EventSender,
+        gui::enums::{EventSender, TaskResponse},
         playlist::download::initialize_playlist,
         process::ProcessSender,
     },
@@ -69,13 +69,35 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let bin_files_copy = self.bin_files.as_ref().unwrap().clone();
                 let process_sender_copy = self.process_sender.clone();
                 tokio::spawn(async move {
-                    if let Ok(playlist) =
-                        initialize_playlist(url, bin_files_copy, process_sender_copy, reply_stream)
-                            .await
+                    // create channel to send info (progress updates) back through
+                    let (t_init_status, r_init_status) = mpsc::channel(100);
+                    reply_stream.send(r_init_status).unwrap();
+
+                    if let Ok(playlist) = initialize_playlist(
+                        url,
+                        bin_files_copy,
+                        process_sender_copy,
+                        &t_init_status,
+                    )
+                    .await
                     {
-                        println!("playlist init succeeded");
+                        println!("playlist init succeeded. playlist: {playlist:?}");
+                        t_init_status
+                            .send(TaskResponse::PlaylistInitStatus(
+                                enums::PlaylistInitStatus::Complete {
+                                    title: playlist.title,
+                                },
+                            ))
+                            .await
+                            .unwrap();
                     } else {
                         println!("playlist init failed");
+                        t_init_status
+                            .send(TaskResponse::PlaylistInitStatus(
+                                enums::PlaylistInitStatus::Fail,
+                            ))
+                            .await
+                            .unwrap();
                     }
                 });
             }

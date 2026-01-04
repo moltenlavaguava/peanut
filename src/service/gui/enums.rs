@@ -17,9 +17,17 @@ pub enum Message {
     None,
 }
 
-// wrapper around all possible messages
+// represents each possible major page the gui can be
+#[derive(Debug, Clone)]
+pub enum Page {
+    Home,
+    Player,
+}
+
+// wrapper around all possible task messages
 #[derive(Debug, Clone)]
 pub enum TaskResponse {
+    // fired when new track info is received for a playlist init
     PlaylistInitStatus(PlaylistInitStatus),
 }
 

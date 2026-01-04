@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 
 use iced::Subscription;
-use iced::widget::{Space, container, progress_bar, row};
-use iced::{
-    Length, Task,
-    widget::{Column, button, column, text, text_input},
-};
+use iced::{Task, widget::Column};
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
@@ -15,10 +11,12 @@ use crate::service::gui::structs::IdCounter;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
 use crate::util::sync::ReceiverHandle;
-use enums::{EventMessage, Message, TaskResponse};
+use enums::{EventMessage, Message, Page, TaskResponse};
+use util::{home, player};
 
 pub mod enums;
 mod structs;
+mod util;
 
 struct App {
     // Communication
@@ -33,6 +31,7 @@ struct App {
     id_counter: IdCounter,
     current_track_index: u32,
     total_tracks: u32,
+    page: Page,
 }
 
 #[derive(Clone)]
@@ -57,6 +56,7 @@ impl App {
                 id_counter: flags.id_counter,
                 current_track_index: 0,
                 total_tracks: 0,
+                page: Page::Home,
             },
             Task::none(),
         )
@@ -119,9 +119,11 @@ impl App {
                             self.current_track_index = current;
                             self.total_tracks = total;
                         }
-                        _ => {
-                            self.current_track_index = 0;
-                            self.total_tracks = 0;
+                        PlaylistInitStatus::Complete { title } => {
+                            println!("received msg that playlist with title {title} finished init")
+                        }
+                        PlaylistInitStatus::Fail => {
+                            println!("received msg that playlist init failed")
                         }
                     },
                 }
@@ -132,37 +134,10 @@ impl App {
     }
 
     fn view(&self) -> Column<'_, Message> {
-        let title_text = text("peanut v0.00069?");
-
-        let header = row![title_text, Space::new().width(Length::Fill),];
-
-        let load_file = button("init playlist").on_press(Message::PlaylistURLSubmit);
-        let playlist_url = text_input("file path", &self.playlist_url)
-            .width(Length::Fill)
-            .on_input(Message::PlaylistTextEdit)
-            .on_paste(Message::PlaylistTextEdit)
-            .on_submit(Message::PlaylistURLSubmit);
-
-        let prog_bar = progress_bar(
-            0.0..=self.total_tracks as f32,
-            self.current_track_index as f32,
-        );
-        let text_prog = text(format!(
-            "{}/{} tracks init'd",
-            self.current_track_index, self.total_tracks
-        ));
-
-        let prog_row = row![prog_bar, text_prog];
-
-        let content = container(column![row![playlist_url, load_file], prog_row])
-            .width(Length::Fill)
-            .height(Length::Fill);
-
-        let footer_text = text("unused text at the bottom :p");
-
-        let footer = row![footer_text];
-
-        column![header, content, footer]
+        match self.page {
+            Page::Home => home(&self),
+            Page::Player => player(&self),
+        }
     }
     fn subscription(&self) -> Subscription<Message> {
         let bus = self.event_bus.watch(
