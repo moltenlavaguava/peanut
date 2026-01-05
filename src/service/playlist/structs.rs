@@ -3,7 +3,10 @@ use std::time::Duration;
 
 use url::Url;
 
-use crate::service::{id::structs::Id, playlist::enums::Artist};
+use crate::service::{
+    id::{enums::Platform, structs::Id},
+    playlist::enums::{Artist, MediaType},
+};
 
 #[derive(Debug)]
 pub struct Playlist {
@@ -32,6 +35,7 @@ pub struct Track {
     pub length: Duration,
     pub artist: Artist,
     pub album: Option<Album>,
+    pub id: Id,
 }
 
 impl Track {
@@ -41,6 +45,7 @@ impl Track {
             length: Duration::from_secs(ptj.duration),
             artist: Artist::Community(ptj.channel),
             album: None,
+            id: Id::new(Platform::Youtube, MediaType::Track, ptj.id),
         }
     }
 }
@@ -57,7 +62,6 @@ pub struct PlaylistTrackJson {
     title: String,
     duration: u64,
     channel: String,
-    playlist_count: usize,
     playlist_index: usize,
     pub playlist_id: String,
     id: String,

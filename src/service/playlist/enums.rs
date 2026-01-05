@@ -4,7 +4,7 @@ use strum_macros::{Display, EnumString};
 use tokio::sync::{mpsc, oneshot};
 use url::Url;
 
-use crate::service::gui::enums::TaskResponse;
+use crate::service::{gui::enums::TaskResponse, playlist::structs::Playlist};
 
 use super::structs::{DownloadTrackJson, PlaylistTrackJson};
 
@@ -13,9 +13,13 @@ pub enum PlaylistMessage {
         url: Url,
         reply_stream: oneshot::Sender<mpsc::Receiver<TaskResponse>>,
     },
+    PlaylistInitDone {
+        playlist: Playlist,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
 }
 
-#[derive(Debug, EnumString, Display)]
+#[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone)]
 pub enum MediaType {
     #[strum(serialize = "pl")]
     Playlist,
@@ -44,6 +48,7 @@ pub enum PlaylistInitStatus {
     Progress { current: u32, total: u32 },
     Complete { title: String },
     Fail,
+    Duplicate { title: String },
 }
 
 #[derive(Debug)]

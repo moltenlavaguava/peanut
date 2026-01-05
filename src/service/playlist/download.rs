@@ -3,7 +3,6 @@ use std::{ffi::OsString, sync::LazyLock};
 use regex::Regex;
 
 use anyhow::{Result, anyhow};
-use tokio::sync::{mpsc, oneshot};
 use url::Url;
 
 use crate::service::{

@@ -1,12 +1,16 @@
+use std::collections::HashMap;
+
 use crate::{
     service::{
-        file::{FileSender, enums::FileMessage, structs::BinApps},
+        file::{self, structs::BinApps},
         gui::enums::{EventSender, TaskResponse},
+        id::structs::Id,
         playlist::download::initialize_playlist,
         process::ProcessSender,
     },
     util::service::ServiceLogic,
 };
+use anyhow::anyhow;
 use enums::PlaylistMessage;
 use structs::Playlist;
 use tokio::sync::{mpsc, oneshot};
@@ -21,26 +25,26 @@ pub type PlaylistSender = mpsc::Sender<PlaylistMessage>;
 /// Handles playlist management.
 pub struct PlaylistService {
     event_sender: EventSender,
-    file_sender: FileSender,
     process_sender: ProcessSender,
-    playlists: Vec<Playlist>,
+    playlist_sender: PlaylistSender,
+    playlists: HashMap<Id, Playlist>,
     bin_files: Option<BinApps>,
 }
 
 pub struct PlaylistFlags {
     pub event_sender: EventSender,
-    pub file_sender: FileSender,
     pub process_sender: ProcessSender,
+    pub playlist_sender: PlaylistSender,
 }
 
 impl PlaylistService {
     pub fn new(flags: PlaylistFlags) -> Self {
         Self {
             event_sender: flags.event_sender,
-            file_sender: flags.file_sender,
             process_sender: flags.process_sender,
-            playlists: Vec::new(),
+            playlists: HashMap::new(),
             bin_files: None,
+            playlist_sender: flags.playlist_sender,
         }
     }
 }
@@ -53,12 +57,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
     async fn on_start(&mut self) -> anyhow::Result<()> {
         // startup logic
         // get the yt_dlp and ffmpeg file locations
-        let (bin_tx, bin_rx) = oneshot::channel();
-        let _ = self
-            .file_sender
-            .send(FileMessage::GetBinApps { reply: bin_tx })
-            .await;
-        let bin_files = bin_rx.await.unwrap();
+        let bin_files = file::util::get_bin_app_paths();
         self.bin_files = Some(bin_files);
 
         Ok(())
@@ -69,6 +68,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             PlaylistMessage::InitializePlaylist { url, reply_stream } => {
                 let bin_files_copy = self.bin_files.as_ref().unwrap().clone();
                 let process_sender_copy = self.process_sender.clone();
+                let playlist_sender_copy = self.playlist_sender.clone();
                 tokio::spawn(async move {
                     // create channel to send info (progress updates) back through
                     let (t_init_status, r_init_status) = mpsc::channel(100);
@@ -82,15 +82,29 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     )
                     .await
                     {
-                        println!("playlist init succeeded. playlist: {playlist:?}");
-                        t_init_status
-                            .send(TaskResponse::PlaylistInitStatus(
-                                enums::PlaylistInitStatus::Complete {
-                                    title: playlist.title,
-                                },
-                            ))
+                        // before playlist is sent, copy title to send to gui in case of success
+                        let playlist_title = playlist.title.clone();
+                        // check to see if playlist is duplicate or not
+                        let (tx, rx) = oneshot::channel();
+                        playlist_sender_copy
+                            .send(PlaylistMessage::PlaylistInitDone {
+                                playlist,
+                                result_sender: tx,
+                            })
                             .await
                             .unwrap();
+                        if let Err(_) = rx.await.unwrap() {
+                            println!("playlist init failed; duplicate");
+                        } else {
+                            t_init_status
+                                .send(TaskResponse::PlaylistInitStatus(
+                                    enums::PlaylistInitStatus::Complete {
+                                        title: playlist_title,
+                                    },
+                                ))
+                                .await
+                                .unwrap();
+                        }
                     } else {
                         println!("playlist init failed");
                         t_init_status
@@ -101,6 +115,20 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             .unwrap();
                     }
                 });
+            }
+            PlaylistMessage::PlaylistInitDone {
+                playlist,
+                result_sender,
+            } => {
+                // check if playlist is duplicate. otherwise, add to hashmap
+                if self.playlists.contains_key(&playlist.id) {
+                    result_sender
+                        .send(Err(anyhow!("Duplicate playlist")))
+                        .unwrap();
+                } else {
+                    self.playlists.insert(playlist.id.clone(), playlist);
+                    result_sender.send(Ok(())).unwrap();
+                }
             }
         }
     }

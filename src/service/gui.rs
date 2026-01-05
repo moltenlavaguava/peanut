@@ -6,7 +6,6 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
-use crate::service::file::FileSender;
 use crate::service::gui::structs::IdCounter;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
@@ -21,7 +20,6 @@ mod util;
 struct App {
     // Communication
     _shutdown_token: CancellationToken,
-    file_sender: FileSender,
     playlist_sender: PlaylistSender,
     tasks: HashMap<u64, ReceiverHandle<TaskResponse>>,
     event_bus: ReceiverHandle<EventMessage>,
@@ -39,7 +37,6 @@ struct App {
 struct GuiFlags {
     shutdown_token: CancellationToken,
     event_receiver: ReceiverHandle<EventMessage>,
-    file_sender: FileSender,
     playlist_sender: PlaylistSender,
     id_counter: IdCounter,
 }
@@ -49,7 +46,6 @@ impl App {
         (
             Self {
                 _shutdown_token: flags.shutdown_token,
-                file_sender: flags.file_sender,
                 playlist_sender: flags.playlist_sender,
                 tasks: HashMap::new(),
                 event_bus: flags.event_receiver,
@@ -128,6 +124,9 @@ impl App {
                         PlaylistInitStatus::Fail => {
                             println!("received msg that playlist init failed");
                         }
+                        PlaylistInitStatus::Duplicate { title } => {
+                            println!("received msg that playlist {title} was a duplicate")
+                        }
                     },
                 }
                 Task::none()
@@ -173,7 +172,6 @@ impl GuiService {
     pub fn start_loop(
         &self,
         shutdown_token: CancellationToken,
-        file_sender: FileSender,
         playlist_sender: PlaylistSender,
         event_bus_rx: mpsc::Receiver<EventMessage>,
     ) -> iced::Result {
@@ -182,7 +180,6 @@ impl GuiService {
 
         let flags = GuiFlags {
             shutdown_token,
-            file_sender,
             playlist_sender,
             event_receiver: ReceiverHandle::new(event_recv_id, event_bus_rx),
             id_counter,
