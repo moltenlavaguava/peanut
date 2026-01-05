@@ -14,6 +14,7 @@ use tokio::sync::{mpsc, oneshot};
 mod download;
 pub mod enums;
 mod structs;
+mod util;
 
 pub type PlaylistSender = mpsc::Sender<PlaylistMessage>;
 

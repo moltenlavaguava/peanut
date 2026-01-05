@@ -3,23 +3,25 @@ use std::time::Duration;
 
 use url::Url;
 
-use crate::service::playlist::enums::Artist;
+use crate::service::{id::structs::Id, playlist::enums::Artist};
 
 #[derive(Debug)]
 pub struct Playlist {
     pub title: String,
     pub length: u64,
+    pub id: Id,
     pub tracks: Vec<Track>,
 }
 
 impl Playlist {
-    pub fn new(title: String, tracks: Vec<Track>) -> Self {
+    pub fn new(title: String, tracks: Vec<Track>, id: Id) -> Self {
         // calculate length from tracks
         let length = tracks.len() as u64;
         Self {
             title,
             length,
             tracks,
+            id,
         }
     }
 }
@@ -57,6 +59,7 @@ pub struct PlaylistTrackJson {
     channel: String,
     playlist_count: usize,
     playlist_index: usize,
+    pub playlist_id: String,
     id: String,
 }
 

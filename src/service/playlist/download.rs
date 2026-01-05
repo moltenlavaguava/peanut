@@ -9,8 +9,9 @@ use url::Url;
 use crate::service::{
     file::structs::BinApps,
     gui::enums::TaskResponse,
+    id::{enums::Platform, structs::Id},
     playlist::{
-        enums::{ExtractorLineOut, PlaylistInitStatus},
+        enums::{ExtractorLineOut, MediaType, PlaylistInitStatus},
         structs::{PlaylistTrackJson, Track},
     },
     process::{
@@ -54,6 +55,7 @@ pub async fn initialize_playlist(
     // cache received track data
     let mut tracks = vec![];
     let mut playlist_name: Option<String> = None;
+    let mut playlist_id: Option<String> = None;
 
     // receive messages from process
     while let Some(msg) = rx.recv().await {
@@ -71,6 +73,10 @@ pub async fn initialize_playlist(
                     .await;
             }
             ExtractorLineOut::InitTrackData(json_track_data) => {
+                // if the playlist id isn't already set, use this track data to get it
+                if let None = playlist_id {
+                    playlist_id = Some(json_track_data.playlist_id.clone())
+                }
                 // add track to list to be added to playlist
                 tracks.push(Track::from_playlist_track_json(json_track_data))
             }
@@ -95,7 +101,9 @@ pub async fn initialize_playlist(
         return Err(anyhow!("no playlist name found"));
     }
 
-    Ok(Playlist::new(playlist_name.unwrap(), tracks))
+    // make the id for the playlist. unwrap here should be fine due to error checking above
+    let id = Id::new(Platform::Youtube, MediaType::Playlist, playlist_id.unwrap());
+    Ok(Playlist::new(playlist_name.unwrap(), tracks, id))
 }
 
 fn parse_init_output(msg: ChildMessage) -> ExtractorLineOut {

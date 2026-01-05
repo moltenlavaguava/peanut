@@ -32,6 +32,7 @@ struct App {
     current_track_index: u32,
     total_tracks: u32,
     page: Page,
+    loaded_playlist_names: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -57,6 +58,7 @@ impl App {
                 current_track_index: 0,
                 total_tracks: 0,
                 page: Page::Home,
+                loaded_playlist_names: vec![],
             },
             Task::none(),
         )
@@ -120,10 +122,11 @@ impl App {
                             self.total_tracks = total;
                         }
                         PlaylistInitStatus::Complete { title } => {
-                            println!("received msg that playlist with title {title} finished init")
+                            println!("received msg that playlist with title {title} finished init");
+                            self.loaded_playlist_names.push(title);
                         }
                         PlaylistInitStatus::Fail => {
-                            println!("received msg that playlist init failed")
+                            println!("received msg that playlist init failed");
                         }
                     },
                 }

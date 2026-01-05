@@ -4,6 +4,7 @@ use crate::service::playlist::enums::MediaType;
 
 use super::enums::Platform;
 
+#[derive(Debug)]
 pub struct Id {
     platform: Platform,
     media_type: MediaType,

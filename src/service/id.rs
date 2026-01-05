@@ -1,2 +1,2 @@
-mod structs;
-mod enums;
+pub mod enums;
+pub mod structs;
