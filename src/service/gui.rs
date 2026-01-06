@@ -93,6 +93,13 @@ impl App {
             },
             Message::EventRecieved(msg) => {
                 println!("Recieved event message: {msg:?}");
+                match msg {
+                    EventMessage::InitialPlaylistsInitalized(playlist_data) => {
+                        for (playlist_title, _playlist_id) in playlist_data {
+                            self.loaded_playlist_names.push(playlist_title);
+                        }
+                    }
+                };
                 Task::none()
             }
             Message::EventBusClosed => {

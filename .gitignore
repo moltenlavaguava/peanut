@@ -2,3 +2,4 @@
 /test
 /bin
 *.code-workspace
+/output

@@ -1,5 +1,6 @@
 use std::process::ExitStatus;
 
+use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use tokio::sync::{mpsc, oneshot};
 use url::Url;
@@ -19,7 +20,7 @@ pub enum PlaylistMessage {
     },
 }
 
-#[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub enum MediaType {
     #[strum(serialize = "pl")]
     Playlist,
@@ -51,7 +52,7 @@ pub enum PlaylistInitStatus {
     Duplicate { title: String },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum Artist {
     Community(String),
     Official(Vec<String>),

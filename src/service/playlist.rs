@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     service::{
         file::{self, structs::BinApps},
-        gui::enums::{EventSender, TaskResponse},
+        gui::enums::{EventMessage, EventSender, TaskResponse},
         id::structs::Id,
         playlist::download::initialize_playlist,
         process::ProcessSender,
@@ -13,7 +13,10 @@ use crate::{
 use anyhow::anyhow;
 use enums::PlaylistMessage;
 use structs::Playlist;
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    fs,
+    sync::{mpsc, oneshot},
+};
 
 mod download;
 pub mod enums;
@@ -59,6 +62,19 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
         // get the yt_dlp and ffmpeg file locations
         let bin_files = file::util::get_bin_app_paths();
         self.bin_files = Some(bin_files);
+
+        // load existing playlists
+        let playlists = util::load_saved_playlists().await.unwrap();
+        self.playlists = playlists;
+        self.event_sender
+            .send(EventMessage::InitialPlaylistsInitalized(
+                self.playlists
+                    .values()
+                    .map(|playlist| (playlist.title.clone(), playlist.id.clone()))
+                    .collect(),
+            ))
+            .await
+            .unwrap();
 
         Ok(())
     }
@@ -120,12 +136,21 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 playlist,
                 result_sender,
             } => {
-                // check if playlist is duplicate. otherwise, add to hashmap
+                // check if playlist is duplicate. otherwise, add to hashmap + save to file
                 if self.playlists.contains_key(&playlist.id) {
                     result_sender
                         .send(Err(anyhow!("Duplicate playlist")))
                         .unwrap();
                 } else {
+                    // get playlist json
+                    let playlist_json = serde_json::to_string_pretty(&playlist).unwrap();
+                    println!("playlist id in string: {}", playlist.id.to_string());
+                    // write to file
+                    let pth = file::util::playlist_file_path_from_id(&playlist.id);
+                    println!("{pth:?}");
+                    fs::write(pth.unwrap(), playlist_json).await.unwrap();
+
+                    // insert playlist into cache
                     self.playlists.insert(playlist.id.clone(), playlist);
                     result_sender.send(Ok(())).unwrap();
                 }

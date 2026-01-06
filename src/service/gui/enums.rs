@@ -2,7 +2,10 @@ use std::io;
 
 use tokio::sync::mpsc;
 
-use crate::{service::playlist::enums::PlaylistInitStatus, util::sync::ReceiverHandle};
+use crate::{
+    service::{id::structs::Id, playlist::enums::PlaylistInitStatus},
+    util::sync::ReceiverHandle,
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -33,6 +36,8 @@ pub enum TaskResponse {
 
 // for app-wide messages (usually more important)
 #[derive(Debug, Clone)]
-pub enum EventMessage {}
+pub enum EventMessage {
+    InitialPlaylistsInitalized(Vec<(String, Id)>),
+}
 
 pub type EventSender = mpsc::Sender<EventMessage>;

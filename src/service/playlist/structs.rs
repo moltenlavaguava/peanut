@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use url::Url;
@@ -8,7 +8,7 @@ use crate::service::{
     playlist::enums::{Artist, MediaType},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Playlist {
     pub title: String,
     pub length: u64,
@@ -29,7 +29,7 @@ impl Playlist {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Track {
     pub title: String,
     pub length: Duration,
@@ -50,7 +50,7 @@ impl Track {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Album {
     pub name: String,
     pub artists: Vec<String>,

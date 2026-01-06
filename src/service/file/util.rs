@@ -1,7 +1,18 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::service::id::structs::Id;
+use crate::service::playlist::enums::MediaType;
+
 use super::structs::BinApps;
+use anyhow::anyhow;
+
+const OUTPUT_DIR: &str = "output";
+const TRACK_DIR: &str = "track";
+const DATA_DIR: &str = "data";
+
+const TRACK_EXTENSION: &str = "ogg";
+const DATA_EXTENSION: &str = "json";
 
 /// Returns the current project root. If in debug mode, returns the root directory for the project. Otherwise, returns the directory the executable is in.
 pub fn get_project_root() -> std::io::Result<PathBuf> {
@@ -33,4 +44,34 @@ pub fn get_bin_app_paths() -> BinApps {
         yt_dlp: yt_dlp_path,
         ffmpeg: ffmpeg_path,
     }
+}
+
+pub fn output_dir_path() -> anyhow::Result<PathBuf> {
+    Ok(get_project_root()?.join(OUTPUT_DIR))
+}
+
+pub fn track_dir_path() -> anyhow::Result<PathBuf> {
+    Ok(output_dir_path()?.join(TRACK_DIR))
+}
+
+pub fn data_dir_path() -> anyhow::Result<PathBuf> {
+    Ok(output_dir_path()?.join(DATA_DIR))
+}
+
+pub fn track_file_path_from_id(id: &Id) -> anyhow::Result<PathBuf> {
+    let MediaType::Track = id.media_type else {
+        return Err(anyhow!("Id provided was not a track id"));
+    };
+    let mut track_path = track_dir_path()?.join(id.to_string());
+    track_path.set_extension(TRACK_EXTENSION);
+    Ok(track_path)
+}
+
+pub fn playlist_file_path_from_id(id: &Id) -> anyhow::Result<PathBuf> {
+    let MediaType::Playlist = id.media_type else {
+        return Err(anyhow!("Id provided was not a playlist id"));
+    };
+    let mut playlist_path = data_dir_path()?.join(id.to_string());
+    playlist_path.set_extension(DATA_EXTENSION);
+    Ok(playlist_path)
 }
