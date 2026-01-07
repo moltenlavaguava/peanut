@@ -5,7 +5,11 @@ use strum_macros::{Display, EnumString};
 use tokio::sync::{mpsc, oneshot};
 use url::Url;
 
-use crate::service::{gui::enums::TaskResponse, playlist::structs::Playlist};
+use crate::service::{
+    gui::enums::TaskResponse,
+    id::structs::Id,
+    playlist::structs::{Playlist, PlaylistMetadata},
+};
 
 use super::structs::{DownloadTrackJson, PlaylistTrackJson};
 
@@ -17,6 +21,10 @@ pub enum PlaylistMessage {
     PlaylistInitDone {
         playlist: Playlist,
         result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    RequestPlaylist {
+        id: Id,
+        result_sender: oneshot::Sender<Option<Playlist>>,
     },
 }
 
@@ -47,12 +55,12 @@ pub enum ExtractorLineOut {
 #[derive(Debug, Clone)]
 pub enum PlaylistInitStatus {
     Progress { current: u32, total: u32 },
-    Complete { title: String },
+    Complete(PlaylistMetadata),
     Fail,
-    Duplicate { title: String },
+    Duplicate(PlaylistMetadata),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Artist {
     Community(String),
     Official(Vec<String>),

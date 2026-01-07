@@ -7,8 +7,10 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::service::gui::structs::IdCounter;
+use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
+use crate::service::playlist::structs::PlaylistMetadata;
 use crate::util::sync::ReceiverHandle;
 use enums::{EventMessage, Message, Page, TaskResponse};
 use util::{home, player};
@@ -30,7 +32,7 @@ struct App {
     current_track_index: u32,
     total_tracks: u32,
     page: Page,
-    loaded_playlist_names: Vec<String>,
+    loaded_playlist_metadata: Vec<PlaylistMetadata>,
 }
 
 #[derive(Clone)]
@@ -54,7 +56,7 @@ impl App {
                 current_track_index: 0,
                 total_tracks: 0,
                 page: Page::Home,
-                loaded_playlist_names: vec![],
+                loaded_playlist_metadata: Vec::new(),
             },
             Task::none(),
         )
@@ -95,9 +97,7 @@ impl App {
                 println!("Recieved event message: {msg:?}");
                 match msg {
                     EventMessage::InitialPlaylistsInitalized(playlist_data) => {
-                        for (playlist_title, _playlist_id) in playlist_data {
-                            self.loaded_playlist_names.push(playlist_title);
-                        }
+                        self.loaded_playlist_metadata = playlist_data;
                     }
                 };
                 Task::none()
@@ -124,21 +124,28 @@ impl App {
                             self.current_track_index = current;
                             self.total_tracks = total;
                         }
-                        PlaylistInitStatus::Complete { title } => {
-                            println!("received msg that playlist with title {title} finished init");
-                            self.loaded_playlist_names.push(title);
+                        PlaylistInitStatus::Complete(metadata) => {
+                            self.loaded_playlist_metadata.push(metadata);
                         }
                         PlaylistInitStatus::Fail => {
                             println!("received msg that playlist init failed");
                         }
-                        PlaylistInitStatus::Duplicate { title } => {
-                            println!("received msg that playlist {title} was a duplicate")
+                        PlaylistInitStatus::Duplicate(metadata) => {
+                            println!(
+                                "received msg that playlist {} was a duplicate",
+                                metadata.title
+                            )
                         }
                     },
                 }
                 Task::none()
             }
             Message::None => Task::none(),
+            Message::PlaylistSelect(playlist_metadata) => {
+                // very useful comment
+                println!("selected metadata: {playlist_metadata:?}");
+                Task::none()
+            }
         }
     }
 

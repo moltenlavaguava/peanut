@@ -31,7 +31,7 @@ pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Playlist>> {
                                 let maybe_playlist: Result<Playlist, serde_json::Error> =
                                     serde_json::from_str(&contents);
                                 if let Ok(playlist) = maybe_playlist {
-                                    playlists.insert(playlist.id.clone(), playlist);
+                                    playlists.insert(playlist.id().clone(), playlist);
                                 }
                             }
                         }

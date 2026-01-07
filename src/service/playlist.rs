@@ -5,7 +5,7 @@ use crate::{
         file::{self, structs::BinApps},
         gui::enums::{EventMessage, EventSender, TaskResponse},
         id::structs::Id,
-        playlist::download::initialize_playlist,
+        playlist::{download::initialize_playlist, structs::PlaylistMetadata},
         process::ProcessSender,
     },
     util::service::ServiceLogic,
@@ -20,7 +20,7 @@ use tokio::{
 
 mod download;
 pub mod enums;
-mod structs;
+pub mod structs;
 mod util;
 
 pub type PlaylistSender = mpsc::Sender<PlaylistMessage>;
@@ -70,7 +70,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             .send(EventMessage::InitialPlaylistsInitalized(
                 self.playlists
                     .values()
-                    .map(|playlist| (playlist.title.clone(), playlist.id.clone()))
+                    .map(|playlist| PlaylistMetadata {
+                        title: playlist.title.clone(),
+                        id: playlist.id().clone(),
+                    })
                     .collect(),
             ))
             .await
@@ -98,8 +101,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     )
                     .await
                     {
-                        // before playlist is sent, copy title to send to gui in case of success
+                        // before playlist is sent, copy title + id to send to gui in case of success
                         let playlist_title = playlist.title.clone();
+                        let playlist_id = playlist.id().clone();
+                        let playlist_metadata = PlaylistMetadata {
+                            title: playlist_title,
+                            id: playlist_id,
+                        };
                         // check to see if playlist is duplicate or not
                         let (tx, rx) = oneshot::channel();
                         playlist_sender_copy
@@ -110,13 +118,16 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             .await
                             .unwrap();
                         if let Err(_) = rx.await.unwrap() {
-                            println!("playlist init failed; duplicate");
+                            t_init_status
+                                .send(TaskResponse::PlaylistInitStatus(
+                                    enums::PlaylistInitStatus::Duplicate(playlist_metadata),
+                                ))
+                                .await
+                                .unwrap();
                         } else {
                             t_init_status
                                 .send(TaskResponse::PlaylistInitStatus(
-                                    enums::PlaylistInitStatus::Complete {
-                                        title: playlist_title,
-                                    },
+                                    enums::PlaylistInitStatus::Complete(playlist_metadata),
                                 ))
                                 .await
                                 .unwrap();
@@ -137,22 +148,29 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 result_sender,
             } => {
                 // check if playlist is duplicate. otherwise, add to hashmap + save to file
-                if self.playlists.contains_key(&playlist.id) {
+                if self.playlists.contains_key(&playlist.id()) {
                     result_sender
                         .send(Err(anyhow!("Duplicate playlist")))
                         .unwrap();
                 } else {
                     // get playlist json
                     let playlist_json = serde_json::to_string_pretty(&playlist).unwrap();
-                    println!("playlist id in string: {}", playlist.id.to_string());
+                    println!("playlist id in string: {}", playlist.id().to_string());
                     // write to file
-                    let pth = file::util::playlist_file_path_from_id(&playlist.id);
+                    let pth = file::util::playlist_file_path_from_id(&playlist.id());
                     println!("{pth:?}");
                     fs::write(pth.unwrap(), playlist_json).await.unwrap();
 
                     // insert playlist into cache
-                    self.playlists.insert(playlist.id.clone(), playlist);
+                    self.playlists.insert(playlist.id().clone(), playlist);
                     result_sender.send(Ok(())).unwrap();
+                }
+            }
+            PlaylistMessage::RequestPlaylist { id, result_sender } => {
+                if let Some(playlist) = self.playlists.get(&id) {
+                    result_sender.send(Some(playlist.clone())).unwrap();
+                } else {
+                    result_sender.send(None).unwrap()
                 }
             }
         }

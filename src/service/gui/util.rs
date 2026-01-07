@@ -3,6 +3,8 @@
 use iced::Length;
 use iced::widget::{Column, Space, button, column, container, row, text, text_input};
 
+use crate::service::playlist::structs::Playlist;
+
 use super::App;
 
 use super::enums::Message;
@@ -19,11 +21,13 @@ pub fn home(app: &App) -> Column<'_, Message> {
         .on_paste(Message::PlaylistTextEdit)
         .on_submit(Message::PlaylistURLSubmit);
 
-    let content = container(column(
-        app.loaded_playlist_names
-            .iter()
-            .map(|title| button(text(title)).into()),
-    ))
+    let content = container(column(app.loaded_playlist_metadata.iter().map(
+        |metadata| {
+            button(text(&metadata.title))
+                .on_press(Message::PlaylistSelect(metadata.clone()))
+                .into()
+        },
+    )))
     .width(Length::Fill)
     .height(Length::Fill);
 
@@ -37,3 +41,6 @@ pub fn home(app: &App) -> Column<'_, Message> {
 pub fn player(app: &App) -> Column<'_, Message> {
     column![]
 }
+
+// requesting methods
+// pub fn request_playlist(id: Id) -> anyhow::Result<Option<Playlist>> {}
