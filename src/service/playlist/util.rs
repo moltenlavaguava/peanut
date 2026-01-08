@@ -6,8 +6,6 @@ use crate::service::{file, id::structs::Id};
 
 use super::structs::Playlist;
 
-use super::PlaylistService;
-
 pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Playlist>> {
     // get the playlist data dir
     let playlist_data_dir = file::util::data_dir_path()?;

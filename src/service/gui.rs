@@ -7,10 +7,9 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::service::gui::structs::IdCounter;
-use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
-use crate::service::playlist::structs::PlaylistMetadata;
+use crate::service::playlist::structs::{Playlist, PlaylistMetadata};
 use crate::util::sync::ReceiverHandle;
 use enums::{EventMessage, Message, Page, TaskResponse};
 use util::{home, player};
@@ -33,6 +32,7 @@ struct App {
     total_tracks: u32,
     page: Page,
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
+    current_playlist: Option<Playlist>,
 }
 
 #[derive(Clone)]
@@ -57,6 +57,7 @@ impl App {
                 total_tracks: 0,
                 page: Page::Home,
                 loaded_playlist_metadata: Vec::new(),
+                current_playlist: None,
             },
             Task::none(),
         )
@@ -83,16 +84,6 @@ impl App {
                     Task::none()
                 }
             }
-            Message::FileLoadResult(result) => match result {
-                Ok(contents) => {
-                    println!("contents: {contents}");
-                    Task::none()
-                }
-                Err(err) => {
-                    println!("error: {err}");
-                    Task::none()
-                }
-            },
             Message::EventRecieved(msg) => {
                 println!("Recieved event message: {msg:?}");
                 match msg {
@@ -140,12 +131,22 @@ impl App {
                 }
                 Task::none()
             }
-            Message::None => Task::none(),
             Message::PlaylistSelect(playlist_metadata) => {
-                // very useful comment
                 println!("selected metadata: {playlist_metadata:?}");
+                // request playlist
+                let playlist_sender_clone = self.playlist_sender.clone();
+                Task::perform(
+                    util::request_playlist(playlist_metadata.id, playlist_sender_clone),
+                    |output| Message::PlaylistSelectAccepted(output.unwrap().unwrap()),
+                )
+            }
+            Message::PlaylistSelectAccepted(playlist) => {
+                // change the page + set the current playlist
+                self.current_playlist = Some(playlist);
+                self.page = Page::Player;
                 Task::none()
             }
+            Message::None => Task::none(),
         }
     }
 

@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use url::Url;
-
 use crate::service::{
     id::{enums::Platform, structs::Id},
     playlist::enums::{Artist, MediaType},
@@ -69,11 +67,11 @@ pub struct Album {
 
 #[derive(Debug, Deserialize)]
 pub struct PlaylistTrackJson {
-    url: Url,
+    // url: Url,
     title: String,
     duration: u64,
     channel: String,
-    playlist_index: usize,
+    // playlist_index: usize,
     pub playlist_id: String,
     id: String,
 }

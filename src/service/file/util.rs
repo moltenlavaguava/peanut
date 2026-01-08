@@ -18,8 +18,8 @@ const DATA_EXTENSION: &str = "json";
 pub fn get_project_root() -> std::io::Result<PathBuf> {
     #[cfg(not(debug_assertions))]
     {
-        let mut exe_path = env::current_exe()?;
-        return Ok(exe_path.pop());
+        let exe_path = env::current_exe()?;
+        return Ok(exe_path.with_extension(""));
     }
     #[cfg(debug_assertions)]
     {
@@ -29,14 +29,15 @@ pub fn get_project_root() -> std::io::Result<PathBuf> {
 
 pub fn get_bin_app_paths() -> BinApps {
     // get root path where binaries should be located
-    let mut root_path = get_project_root().expect("Critical: could not find root directory path");
+    let root_path = get_project_root().expect("Critical: could not find root directory path");
     // manipulate paths
-    root_path.push("bin");
-    let yt_dlp_path = root_path.join("yt-dlp_x86.exe");
-    let ffmpeg_path = root_path.join("ffmpeg").join("ffmpeg.exe");
+    let bin_path = root_path.join("bin");
+    let yt_dlp_path = bin_path.join("yt-dlp_x86.exe");
+    let ffmpeg_path = bin_path.join("ffmpeg").join("ffmpeg.exe");
     if !yt_dlp_path.is_file() || !ffmpeg_path.is_file() {
         panic!(
-            "Critical: yt_dlp or ffmpeg exes are not found or invalid.\nEnsure that there exists a bin folder in the main directory and that it contains yt-dlp_x86.exe and a folder named ffmpeg containing ffmpeg.exe"
+            "Critical: yt_dlp or ffmpeg exes are not found or invalid.\nEnsure that there exists a bin folder in the main directory and that it contains yt-dlp_x86.exe and a folder named ffmpeg containing ffmpeg.exe\n(Output dir: {}",
+            root_path.display()
         )
     }
     // construct result

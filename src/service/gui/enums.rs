@@ -1,26 +1,34 @@
-use std::io;
-
 use tokio::sync::mpsc;
 
 use crate::{
-    service::{
-        id::structs::Id,
-        playlist::{enums::PlaylistInitStatus, structs::PlaylistMetadata},
+    service::playlist::{
+        enums::PlaylistInitStatus,
+        structs::{Playlist, PlaylistMetadata},
     },
     util::sync::ReceiverHandle,
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    // Playlist url text box edited. Provides text of box.
     PlaylistTextEdit(String),
+    // Playlist url button submitted.
     PlaylistURLSubmit,
-    FileLoadResult(Result<String, io::ErrorKind>),
+    // General event received. Provides message.
     EventRecieved(EventMessage),
+    // Event bus closed.
     EventBusClosed,
+    // Task finished. Provides id.
     TaskFinished(u64),
+    // A playlist init task started. Provides the id and the receiver handle relevant to the task.
     PlaylistInitTaskStarted(u64, ReceiverHandle<TaskResponse>),
+    // Task data was received from a task. Provides the id and response.
     TaskDataReceived(u64, TaskResponse),
+    // A playlist was selected to be loaded. Provides the selected playlist's metadata.
     PlaylistSelect(PlaylistMetadata),
+    // A playlist that was selected received playlist data to render.
+    PlaylistSelectAccepted(Playlist),
+    // A special message for when nothing should happen
     None,
 }
 
