@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     service::{
@@ -30,7 +30,8 @@ pub struct PlaylistService {
     event_sender: EventSender,
     process_sender: ProcessSender,
     playlist_sender: PlaylistSender,
-    playlists: HashMap<Id, Playlist>,
+    // Store playlists in an arc to make 'managing' them easier
+    playlists: HashMap<Id, Arc<Playlist>>,
     bin_files: Option<BinApps>,
 }
 
@@ -64,7 +65,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
         self.bin_files = Some(bin_files);
 
         // load existing playlists
-        let playlists = util::load_saved_playlists().await.unwrap();
+        let playlists = file::util::load_saved_playlists().await.unwrap();
         self.playlists = playlists;
         self.event_sender
             .send(EventMessage::InitialPlaylistsInitalized(
@@ -162,13 +163,14 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     fs::write(pth.unwrap(), playlist_json).await.unwrap();
 
                     // insert playlist into cache
-                    self.playlists.insert(playlist.id().clone(), playlist);
+                    self.playlists
+                        .insert(playlist.id().clone(), Arc::new(playlist));
                     result_sender.send(Ok(())).unwrap();
                 }
             }
             PlaylistMessage::RequestPlaylist { id, result_sender } => {
                 if let Some(playlist) = self.playlists.get(&id) {
-                    result_sender.send(Some(playlist.clone())).unwrap();
+                    result_sender.send(Some(playlist.as_ref().clone())).unwrap();
                 } else {
                     result_sender.send(None).unwrap()
                 }

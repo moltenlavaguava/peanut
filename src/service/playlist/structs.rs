@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use crate::service::{
     id::{enums::Platform, structs::Id},
@@ -43,6 +43,7 @@ pub struct Track {
     pub album: Option<Album>,
     pub source_id: Id,
     pub dyn_id: Id,
+    pub index: u64,
 }
 
 impl Track {
@@ -55,7 +56,11 @@ impl Track {
             album: None,
             source_id: id.clone(),
             dyn_id: id,
+            index: ptj.playlist_index,
         }
+    }
+    pub fn id(&self) -> &Id {
+        &self.dyn_id
     }
 }
 
@@ -71,7 +76,7 @@ pub struct PlaylistTrackJson {
     title: String,
     duration: u64,
     channel: String,
-    // playlist_index: usize,
+    playlist_index: u64,
     pub playlist_id: String,
     id: String,
 }
@@ -83,4 +88,12 @@ pub struct DownloadTrackJson {}
 pub struct PlaylistMetadata {
     pub title: String,
     pub id: Id,
+}
+
+// Stores a `Track`'s 'metadata.' mostly just used for gui buttons to only redraw the button when important information changes.
+#[derive(Debug, Hash)]
+pub struct TrackMetadata {
+    pub downloaded: bool,
+    // needed to prevent unnecessary copying
+    pub title: Arc<str>,
 }

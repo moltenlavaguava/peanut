@@ -1,9 +1,12 @@
 use tokio::sync::mpsc;
 
 use crate::{
-    service::playlist::{
-        enums::PlaylistInitStatus,
-        structs::{Playlist, PlaylistMetadata},
+    service::{
+        id::structs::Id,
+        playlist::{
+            enums::PlaylistInitStatus,
+            structs::{Playlist, PlaylistMetadata},
+        },
     },
     util::sync::ReceiverHandle,
 };
@@ -28,8 +31,26 @@ pub enum Message {
     PlaylistSelect(PlaylistMetadata),
     // A playlist that was selected received playlist data to render.
     PlaylistSelectAccepted(Playlist),
+    // The list of tracks that was downloaded before the program started. Given: the list of track ids
+    DownloadedTrackListReceived(Vec<Id>),
+    // An action was performed. Usually occurs when the user triggers something.
+    Action(Action),
     // A special message for when nothing should happen
     None,
+}
+
+#[derive(Debug, Clone)]
+pub enum Action {
+    // In the player menu, the home button was activated.
+    Home,
+    DownloadPlaylist { playlist_id: Id },
+    OrganizePlaylist { playlist_id: Id },
+    ShufflePlaylist { playlist_id: Id },
+    PreviousTrack { playlist_id: Id },
+    PlayTrack { playlist_id: Id },
+    PauseTrack { playlist_id: Id },
+    NextTrack { playlist_id: Id },
+    LoopTrack { playlist_id: Id },
 }
 
 // represents each possible major page the gui can be
@@ -37,6 +58,11 @@ pub enum Message {
 pub enum Page {
     Home,
     Player,
+}
+
+pub enum PlayingState {
+    Playing,
+    Stopped,
 }
 
 // wrapper around all possible task messages

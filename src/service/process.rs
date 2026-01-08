@@ -15,12 +15,14 @@ pub type ProcessSender = mpsc::Sender<ProcessMessage>;
 
 /// Handles file paths.
 pub struct ProcessService {
-    event_sender: EventSender,
+    _event_sender: EventSender,
 }
 
 impl ProcessService {
     pub fn new(event_sender: EventSender) -> Self {
-        Self { event_sender }
+        Self {
+            _event_sender: event_sender,
+        }
     }
 }
 

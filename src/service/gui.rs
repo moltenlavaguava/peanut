@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use iced::Subscription;
 use iced::{Task, widget::Column};
@@ -6,7 +6,10 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
+use crate::service::file;
+use crate::service::gui::enums::{Action, PlayingState};
 use crate::service::gui::structs::IdCounter;
+use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
 use crate::service::playlist::structs::{Playlist, PlaylistMetadata};
@@ -32,7 +35,9 @@ struct App {
     total_tracks: u32,
     page: Page,
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
+    downloaded_tracks: HashSet<Id>,
     current_playlist: Option<Playlist>,
+    track_playing_state: PlayingState,
 }
 
 #[derive(Clone)]
@@ -58,8 +63,16 @@ impl App {
                 page: Page::Home,
                 loaded_playlist_metadata: Vec::new(),
                 current_playlist: None,
+                downloaded_tracks: HashSet::new(),
+                track_playing_state: PlayingState::Stopped,
             },
-            Task::none(),
+            Task::perform(file::util::get_downloaded_tracks(), |maybe_tracks| {
+                if let Ok(tracks) = maybe_tracks {
+                    Message::DownloadedTrackListReceived(tracks)
+                } else {
+                    Message::DownloadedTrackListReceived(Vec::new())
+                }
+            }),
         )
     }
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -145,6 +158,22 @@ impl App {
                 self.current_playlist = Some(playlist);
                 self.page = Page::Player;
                 Task::none()
+            }
+            Message::DownloadedTrackListReceived(tracks) => {
+                // add to the list of downloaded tracks
+                self.downloaded_tracks.extend(tracks);
+                Task::none()
+            }
+            Message::Action(action) => {
+                match action {
+                    Action::Home => {
+                        // reset everything player-wise
+                        self.current_playlist = None;
+                        self.page = Page::Home;
+                        Task::none()
+                    }
+                    _ => Task::none(),
+                }
             }
             Message::None => Task::none(),
         }

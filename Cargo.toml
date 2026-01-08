@@ -7,12 +7,12 @@ edition = "2024"
 anyhow = "1.0.100"
 async-trait = "0.1.89"
 futures = "0.3.31"
-iced = { version = "0.14.0", features = ["tokio", "debug"] }
+iced = { version = "0.14.0", features = ["tokio", "debug", "lazy"] }
 serde_json = "1.0.145"
-serde = {version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
-url = {version = "2.5.7", features = ["serde"] }
-regex = {version = "1.12.2", features = ["std"] }
+url = { version = "2.5.7", features = ["serde"] }
+regex = { version = "1.12.2", features = ["std"] }
 strum = "0.27.2"
 strum_macros = "0.27.2"

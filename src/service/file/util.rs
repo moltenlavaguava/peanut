@@ -1,11 +1,15 @@
+use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::service::id::structs::Id;
 use crate::service::playlist::enums::MediaType;
+use crate::service::playlist::structs::Playlist;
 
 use super::structs::BinApps;
 use anyhow::anyhow;
+use tokio::fs;
 
 const OUTPUT_DIR: &str = "output";
 const TRACK_DIR: &str = "track";
@@ -75,4 +79,66 @@ pub fn playlist_file_path_from_id(id: &Id) -> anyhow::Result<PathBuf> {
     let mut playlist_path = data_dir_path()?.join(id.to_string());
     playlist_path.set_extension(DATA_EXTENSION);
     Ok(playlist_path)
+}
+
+pub fn track_file_exists(id: &Id) -> bool {
+    matches!(track_file_path_from_id(&id), Ok(_))
+}
+
+pub async fn get_downloaded_tracks() -> anyhow::Result<Vec<Id>> {
+    // get the track data dir
+    let track_dir = track_dir_path()?;
+    // go through the directory and search for valid playlist files and add any successful files to a vec
+    let mut track_ids = Vec::new();
+    let mut paths = fs::read_dir(track_dir).await?;
+    while let Some(path) = paths.next_entry().await.ok().flatten() {
+        if path.path().is_file() {
+            // check to see if the name of the file is a valid track id
+            let file_name = path.file_name().into_string();
+            if let Ok(s) = file_name {
+                // try to parse to id
+                let id = Id::from_string(s);
+                if let Ok(id) = id {
+                    // valid id, check if it is a track id
+                    if let MediaType::Track = id.media_type {
+                        track_ids.push(id);
+                    }
+                }
+            }
+        }
+    }
+    Ok(track_ids)
+}
+
+pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Arc<Playlist>>> {
+    // get the playlist data dir
+    let playlist_data_dir = data_dir_path()?;
+    // go through the directory and search for valid playlist files and add any successful files to a vec
+    let mut playlists = HashMap::new();
+    let mut paths = fs::read_dir(playlist_data_dir).await?;
+    while let Some(path) = paths.next_entry().await.ok().flatten() {
+        if path.path().is_file() {
+            // check to see if the name of the file is a valid playlist id
+            let file_name = path.file_name().into_string();
+            if let Ok(s) = file_name {
+                // try to parse to id
+                let id = Id::from_string(s);
+                if let Ok(id) = id {
+                    // valid id, check if it is a playlist id
+                    if let MediaType::Playlist = id.media_type {
+                        // valid file, let's have a look at its contents
+                        let maybe_contents = tokio::fs::read_to_string(path.path()).await;
+                        if let Ok(contents) = maybe_contents {
+                            let maybe_playlist: Result<Playlist, serde_json::Error> =
+                                serde_json::from_str(&contents);
+                            if let Ok(playlist) = maybe_playlist {
+                                playlists.insert(playlist.id().clone(), Arc::new(playlist));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(playlists)
 }
