@@ -1,4 +1,8 @@
-use std::{ffi::OsString, sync::LazyLock};
+use std::{
+    ffi::{OsStr, OsString},
+    path::PathBuf,
+    sync::LazyLock,
+};
 
 use regex::Regex;
 
@@ -104,6 +108,60 @@ pub async fn initialize_playlist(
     // make the id for the playlist. unwrap here should be fine due to error checking above
     let id = Id::new(Platform::Youtube, MediaType::Playlist, playlist_id.unwrap());
     Ok(Playlist::new(playlist_name.unwrap(), tracks, id))
+}
+
+pub async fn download_track(
+    url: &Url,
+    download_directory: PathBuf,
+    file_name: String,
+    extension: &str,
+    bin_apps: BinApps,
+    process_sender: &ProcessSender,
+    // status_sender: &mpsc::Sender<TaskResponse>,
+) -> Result<Track> {
+    let cmd = bin_apps.yt_dlp.into_os_string();
+    let args = vec![
+        OsString::from("--ffmpeg"),
+        bin_apps.ffmpeg.into_os_string(),
+        OsString::from("--newline"),
+        OsString::from("--dump-json"),
+        OsString::from("--no-quiet"),
+        OsString::from("-P"),
+        OsString::from(download_directory),
+        OsString::from("-o"),
+        OsString::from(format!("{}.%(ext)s", file_name)),
+        OsString::from("-f"),
+        OsString::from(extension),
+        OsString::from(url.as_str()),
+    ];
+
+    println!(
+        "Command:\n{} {}",
+        cmd.display(),
+        args.iter()
+            .map(|os| os.as_ref())
+            .collect::<Vec<&OsStr>>()
+            .join(OsStr::new(" "))
+            .display()
+    );
+
+    // get channel pair for status messages
+    let (tx, mut rx) = mpsc::channel(100);
+
+    // send through channel for execution
+    let _send_result = process_sender
+        .send(ProcessMessage::SpawnProcess {
+            cmd,
+            args,
+            output_stream: tx,
+        })
+        .await;
+
+    while let Some(msg) = rx.recv().await {
+        println!("Received msg from download: {msg:?}")
+    }
+
+    Err(anyhow!("unimplemented"))
 }
 
 fn parse_init_output(msg: ChildMessage) -> ExtractorLineOut {

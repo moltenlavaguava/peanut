@@ -5,7 +5,10 @@ use crate::{
         file::{self, structs::BinApps},
         gui::enums::{EventMessage, EventSender, TaskResponse},
         id::structs::Id,
-        playlist::{download::initialize_playlist, structs::PlaylistMetadata},
+        playlist::{
+            download::initialize_playlist,
+            structs::{PlaylistDownloadManager, PlaylistMetadata, TrackOrder},
+        },
         process::ProcessSender,
     },
     util::service::ServiceLogic,
@@ -17,6 +20,7 @@ use tokio::{
     fs,
     sync::{mpsc, oneshot},
 };
+use tokio_util::sync::CancellationToken;
 
 mod download;
 pub mod enums;
@@ -33,6 +37,7 @@ pub struct PlaylistService {
     // Store playlists in an arc to make 'managing' them easier
     playlists: HashMap<Id, Arc<Playlist>>,
     bin_files: Option<BinApps>,
+    active_playlist_download_manager_exists: bool,
 }
 
 pub struct PlaylistFlags {
@@ -49,6 +54,7 @@ impl PlaylistService {
             playlists: HashMap::new(),
             bin_files: None,
             playlist_sender: flags.playlist_sender,
+            active_playlist_download_manager_exists: false,
         }
     }
 }
@@ -174,6 +180,62 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 } else {
                     result_sender.send(None).unwrap()
                 }
+            }
+            PlaylistMessage::DownloadPlaylist { id, reply_stream } => {
+                // first, check to see if there's already a current downloading playlist.
+                // if there is, then do nothing.
+                if self.active_playlist_download_manager_exists {
+                    println!("A playlist is already downloading; doing nothing");
+                    return;
+                }
+                // setup reply channel
+                let (metadata_t, metadata_r) = mpsc::channel(100);
+                reply_stream.send(metadata_r).unwrap();
+                // setup and start a new download manager
+                // locate the playlist to download
+                let playlist = self.playlists.get(&id);
+                if let None = playlist {
+                    println!("Playlist was somehow none when downloading; returning");
+                    return;
+                }
+                let playlist = playlist.unwrap();
+                // temporary: manage the download order later
+                let order = TrackOrder::from_playlist(&playlist);
+                let cancel_token = CancellationToken::new();
+                let playlist_sender = self.playlist_sender.clone();
+                let process_sender = self.process_sender.clone();
+                let bin_apps = self.bin_files.clone().unwrap();
+
+                let manager =
+                    PlaylistDownloadManager::new(Arc::clone(playlist), order, cancel_token.clone());
+                let _join_handle = tokio::spawn(manager.run(
+                    async move |track_id| {
+                        metadata_t
+                            .send(TaskResponse::TrackDownloaded(track_id))
+                            .await
+                            .unwrap();
+                    },
+                    async move |success| {
+                        playlist_sender
+                            .send(PlaylistMessage::PlaylistDownloadDone {
+                                success,
+                                id: id.clone(),
+                            })
+                            .await
+                            .unwrap();
+                    },
+                    process_sender,
+                    bin_apps,
+                ));
+                self.active_playlist_download_manager_exists = true;
+            }
+            PlaylistMessage::CancelDownloadPlaylist { id, result_sender } => {
+                println!("Cancelling playlist?");
+                result_sender.send(Err(anyhow!("Unimplemented"))).unwrap();
+            }
+            PlaylistMessage::PlaylistDownloadDone { success: _, id: _ } => {
+                println!("playlist download done");
+                self.active_playlist_download_manager_exists = false;
             }
         }
     }

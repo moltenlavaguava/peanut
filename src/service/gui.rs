@@ -141,6 +141,10 @@ impl App {
                             )
                         }
                     },
+                    TaskResponse::TrackDownloaded(id) => {
+                        // track finished downloading; add it to the list
+                        self.downloaded_tracks.insert(id);
+                    }
                 }
                 Task::none()
             }
@@ -172,8 +176,37 @@ impl App {
                         self.page = Page::Home;
                         Task::none()
                     }
+                    Action::DownloadPlaylist { playlist_id } => {
+                        // send request to playlist service to download
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        let next_id = self.id_counter.next();
+                        Task::perform(
+                            util::download_playlist(
+                                playlist_id,
+                                playlist_sender_clone.clone(),
+                                next_id,
+                            ),
+                            |maybe_msg| {
+                                if let Ok(msg) = maybe_msg {
+                                    msg
+                                } else {
+                                    println!(
+                                        "Message from download playlist was an error; probably channel dropped"
+                                    );
+                                    Message::None
+                                }
+                            },
+                        )
+                    }
                     _ => Task::none(),
                 }
+            }
+            Message::DownloadPlaylistStarted {
+                id: _,
+                receiver_handle,
+            } => {
+                self.tasks.insert(receiver_handle.id(), receiver_handle);
+                Task::none()
             }
             Message::None => Task::none(),
         }

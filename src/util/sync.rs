@@ -69,6 +69,9 @@ where
         };
         Subscription::run_with(context, stream_builder::<T, M>)
     }
+    pub fn id(&self) -> u64 {
+        self.id
+    }
 }
 
 fn stream_builder<T, M>(ctx: &WatchContext<T, M>) -> BoxStream<'static, M>

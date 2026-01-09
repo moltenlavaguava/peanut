@@ -5,7 +5,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
-            structs::{Playlist, PlaylistMetadata},
+            structs::{Playlist, PlaylistMetadata, TrackMetadata},
         },
     },
     util::sync::ReceiverHandle,
@@ -33,6 +33,11 @@ pub enum Message {
     PlaylistSelectAccepted(Playlist),
     // The list of tracks that was downloaded before the program started. Given: the list of track ids
     DownloadedTrackListReceived(Vec<Id>),
+    // A playlist download request succeeded and caused a playlist to start downloading. Provided: the playlist Id and its ReceiverHandle for information.
+    DownloadPlaylistStarted {
+        id: Id,
+        receiver_handle: ReceiverHandle<TaskResponse>,
+    },
     // An action was performed. Usually occurs when the user triggers something.
     Action(Action),
     // A special message for when nothing should happen
@@ -70,6 +75,8 @@ pub enum PlayingState {
 pub enum TaskResponse {
     // fired when new track info is received for a playlist init
     PlaylistInitStatus(PlaylistInitStatus),
+    // A single track has downloaded. Given: the id of the track.
+    TrackDownloaded(Id),
 }
 
 // for app-wide messages (usually more important)

@@ -26,6 +26,18 @@ pub enum PlaylistMessage {
         id: Id,
         result_sender: oneshot::Sender<Option<Playlist>>,
     },
+    DownloadPlaylist {
+        id: Id,
+        reply_stream: oneshot::Sender<mpsc::Receiver<TaskResponse>>,
+    },
+    CancelDownloadPlaylist {
+        id: Id,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    PlaylistDownloadDone {
+        success: bool,
+        id: Id,
+    },
 }
 
 #[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]

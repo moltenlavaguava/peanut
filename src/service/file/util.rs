@@ -142,3 +142,7 @@ pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Arc<Playlist>>
     }
     Ok(playlists)
 }
+
+pub fn track_output_extension() -> &'static str {
+    TRACK_EXTENSION
+}

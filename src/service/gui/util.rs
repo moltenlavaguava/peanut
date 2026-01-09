@@ -2,17 +2,19 @@
 
 use std::sync::Arc;
 
-use iced::Length;
 use iced::widget::{
     Column, Space, button, column, container, lazy, row, scrollable, text, text_input,
 };
+use iced::{Length, Task};
 use tokio::sync::oneshot;
 
 use crate::service::gui::enums::{Action, PlayingState};
+use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::PlaylistMessage;
 use crate::service::playlist::structs::{Playlist, TrackMetadata};
+use crate::util::sync::ReceiverHandle;
 
 use super::App;
 
@@ -68,7 +70,11 @@ pub fn player(app: &App) -> Column<'_, Message> {
         };
         // create a lazy button
         lazy(track_metadata, |metadata| {
-            button(text(metadata.title.to_string()))
+            button(text(format!(
+                "{}{}",
+                metadata.title.to_string(),
+                if metadata.downloaded { " ✅" } else { "" }
+            )))
         })
         .into()
     });
@@ -121,4 +127,24 @@ pub async fn request_playlist(
         })
         .await?;
     rx.await.map_err(|err| anyhow::Error::from(err))
+}
+
+pub async fn download_playlist(
+    id: Id,
+    playlist_sender: PlaylistSender,
+    task_id: u64,
+) -> anyhow::Result<Message> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::DownloadPlaylist {
+            id: id.clone(),
+            reply_stream: tx,
+        })
+        .await?;
+    let receiver = rx.await?;
+    let receiver_handle = ReceiverHandle::new(task_id, receiver);
+    Ok(Message::DownloadPlaylistStarted {
+        id,
+        receiver_handle,
+    })
 }

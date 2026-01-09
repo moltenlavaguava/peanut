@@ -10,6 +10,7 @@ pub enum ProcessMessage {
     },
 }
 
+#[derive(Debug)]
 pub enum ChildMessage {
     StdOut(String),
     StdErr(String),
