@@ -8,7 +8,7 @@ use url::Url;
 use crate::service::{
     gui::enums::TaskResponse,
     id::structs::Id,
-    playlist::structs::{Playlist, PlaylistMetadata},
+    playlist::structs::{Playlist, PlaylistMetadata, TrackDownloadJson},
 };
 
 use super::structs::{DownloadTrackJson, PlaylistTrackJson};
@@ -56,8 +56,9 @@ pub enum MediaType {
 pub enum ExtractorLineOut {
     InitProgress { current: u32, total: u32 },
     InitTrackData(PlaylistTrackJson),
-    DownloadProgress(f64),
-    DownloadTrackData(DownloadTrackJson),
+    DownloadTrackData(TrackDownloadJson),
+    // eta: min::sec
+    DownloadProgress { progress: f32, download_size: f32, download_speed: f32, eta: (u64, u64) },
     PlaylistInitDone(String),
     Exit(ExitStatus),
     Standard(String),
@@ -87,4 +88,9 @@ impl Artist {
             Self::Community(artist) => artist,
         }
     }
+}
+
+pub enum ExtractorContext {
+    Initialize,
+    Download,
 }

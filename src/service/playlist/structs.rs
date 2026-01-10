@@ -82,6 +82,7 @@ pub struct Album {
 }
 
 #[derive(Debug, Deserialize)]
+// created on playlist initialization
 pub struct PlaylistTrackJson {
     url: Url,
     title: String,
@@ -90,6 +91,12 @@ pub struct PlaylistTrackJson {
     playlist_index: u64,
     pub playlist_id: String,
     id: String,
+}
+
+#[derive(Debug, Deserialize)]
+// created on track download 
+pub struct TrackDownloadJson {
+    
 }
 
 #[derive(Debug)]
@@ -180,7 +187,6 @@ impl PlaylistDownloadManager {
                 &track.download_url,
                 file::util::track_dir_path().unwrap(),
                 track.id().to_string(),
-                file::util::track_output_extension(),
                 bin_apps.clone(),
                 &process_sender,
                 // status_sender,

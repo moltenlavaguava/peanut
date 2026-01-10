@@ -15,7 +15,7 @@ const OUTPUT_DIR: &str = "output";
 const TRACK_DIR: &str = "track";
 const DATA_DIR: &str = "data";
 
-const TRACK_EXTENSION: &str = "ogg";
+const TRACK_EXTENSION: &str = "webm";
 const DATA_EXTENSION: &str = "json";
 
 /// Returns the current project root. If in debug mode, returns the root directory for the project. Otherwise, returns the directory the executable is in.
@@ -38,9 +38,11 @@ pub fn get_bin_app_paths() -> BinApps {
     let bin_path = root_path.join("bin");
     let yt_dlp_path = bin_path.join("yt-dlp_x86.exe");
     let ffmpeg_path = bin_path.join("ffmpeg").join("ffmpeg.exe");
-    if !yt_dlp_path.is_file() || !ffmpeg_path.is_file() {
+    let deno_path = bin_path.join("deno.exe");
+    if !yt_dlp_path.is_file() || !ffmpeg_path.is_file() || !deno_path.is_file() {
+        println!("Paths: '{}' '{}' '{}'", yt_dlp_path.display(), ffmpeg_path.display(), deno_path.display());
         panic!(
-            "Critical: yt_dlp or ffmpeg exes are not found or invalid.\nEnsure that there exists a bin folder in the main directory and that it contains yt-dlp_x86.exe and a folder named ffmpeg containing ffmpeg.exe\n(Output dir: {}",
+            "Critical: yt_dlp, ffmpeg, or deno exes are not found or invalid.\nEnsure that there exists a bin folder in the main directory and that it contains yt-dlp_x86.exe, deno.exe, and a folder named ffmpeg containing ffmpeg.exe\n(Output dir: {}",
             root_path.display()
         )
     }
@@ -48,6 +50,7 @@ pub fn get_bin_app_paths() -> BinApps {
     BinApps {
         yt_dlp: yt_dlp_path,
         ffmpeg: ffmpeg_path,
+        deno: deno_path,
     }
 }
 

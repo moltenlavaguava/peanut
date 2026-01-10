@@ -4,4 +4,5 @@ use std::path::PathBuf;
 pub struct BinApps {
     pub yt_dlp: PathBuf,
     pub ffmpeg: PathBuf,
+    pub deno: PathBuf,
 }

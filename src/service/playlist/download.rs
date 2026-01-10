@@ -15,8 +15,8 @@ use crate::service::{
     gui::enums::TaskResponse,
     id::{enums::Platform, structs::Id},
     playlist::{
-        enums::{ExtractorLineOut, MediaType, PlaylistInitStatus},
-        structs::{PlaylistTrackJson, Track},
+        enums::{ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus},
+        structs::{PlaylistTrackJson, Track, TrackDownloadJson},
     },
     process::{
         ProcessSender,
@@ -35,15 +35,30 @@ pub async fn initialize_playlist(
     // construct command
     println!("init playlist?");
     let cmd = bin_apps.yt_dlp.into_os_string();
+    let mut deno_s = OsString::from("deno:");
+    deno_s.push(bin_apps.deno.into_os_string());
     let args = vec![
         OsString::from("--ffmpeg"),
         bin_apps.ffmpeg.into_os_string(),
+        OsString::from("--js-runtimes"),
+        deno_s,
         OsString::from("--newline"),
         OsString::from("--flat-playlist"),
         OsString::from("--dump-json"),
         OsString::from("--no-quiet"),
         OsString::from(url.as_str()),
     ];
+
+    println!(
+        "Command:\n{} {}",
+        cmd.display(),
+        args.iter()
+            .map(|os| os.as_ref())
+            .collect::<Vec<&OsStr>>()
+            .join(OsStr::new(" "))
+            .display()
+    );
+    
     // get channel pair for status messages
     let (tx, mut rx) = mpsc::channel(100);
 
@@ -63,7 +78,7 @@ pub async fn initialize_playlist(
 
     // receive messages from process
     while let Some(msg) = rx.recv().await {
-        let download_msg = parse_init_output(msg);
+        let download_msg = parse_output(msg, ExtractorContext::Initialize);
         println!("recieved message: {download_msg:?}");
 
         // if this is a progress message, then notify the gui
@@ -114,15 +129,18 @@ pub async fn download_track(
     url: &Url,
     download_directory: PathBuf,
     file_name: String,
-    extension: &str,
     bin_apps: BinApps,
     process_sender: &ProcessSender,
     // status_sender: &mpsc::Sender<TaskResponse>,
 ) -> Result<Track> {
     let cmd = bin_apps.yt_dlp.into_os_string();
+    let mut deno_s = OsString::from("deno:");
+    deno_s.push(bin_apps.deno.into_os_string());
     let args = vec![
         OsString::from("--ffmpeg"),
         bin_apps.ffmpeg.into_os_string(),
+        OsString::from("--js-runtimes"),
+        deno_s,
         OsString::from("--newline"),
         OsString::from("--dump-json"),
         OsString::from("--no-quiet"),
@@ -131,7 +149,10 @@ pub async fn download_track(
         OsString::from("-o"),
         OsString::from(format!("{}.%(ext)s", file_name)),
         OsString::from("-f"),
-        OsString::from(extension),
+        OsString::from("bestaudio"),
+        OsString::from("--audio-format"),
+        OsString::from("opus"),
+        OsString::from("--no-simulate"),
         OsString::from(url.as_str()),
     ];
 
@@ -158,45 +179,65 @@ pub async fn download_track(
         .await;
 
     while let Some(msg) = rx.recv().await {
-        println!("Received msg from download: {msg:?}")
+        println!("Received msg from download: {msg:?}");
+        let line = parse_output(msg, ExtractorContext::Download);
     }
 
     Err(anyhow!("unimplemented"))
 }
 
-fn parse_init_output(msg: ChildMessage) -> ExtractorLineOut {
+fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOut {
     // regex setup just for parsing init logic
     static RE_PROGRESS: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^\[download\] Downloading item (\d+) of (\d+)").unwrap());
     static RE_FINISH: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"\[download\] Finished downloading playlist: (.*)").unwrap());
+    static RE_DOWNLOAD_PROGRESS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+(\d+(?:\.\d+)?)(KiB|MiB|GiB)\s+at\s+(\d+(?:\.\d+)?)(KiB|MiB|GiB)\/s\s+ETA\s+(\d+):(\d+)").unwrap());
 
     match msg {
         ChildMessage::StdOut(line) => {
             // check to see if this line is likely json
             if line.starts_with('{') {
-                // try to parse json
-                match serde_json::from_str::<PlaylistTrackJson>(&line) {
-                    Ok(output) => ExtractorLineOut::InitTrackData(output),
-                    Err(_) => ExtractorLineOut::Standard(line),
+                // try to parse json. depends on if this is an init or download though
+                match context {
+                    ExtractorContext::Initialize => {
+                        match serde_json::from_str::<PlaylistTrackJson>(&line) {
+                            Ok(output) => ExtractorLineOut::InitTrackData(output),
+                            Err(_) => ExtractorLineOut::Standard(line),
+                        }
+                    }
+                    ExtractorContext::Download => {
+                        match serde_json::from_str::<TrackDownloadJson>(&line) {
+                            Ok(output) => ExtractorLineOut::DownloadTrackData(output),
+                            Err(_) => ExtractorLineOut::Standard(line),
+                        }
+                    }
                 }
             } else {
                 // not json, just normal status message
-                // check if this is an init progress message
-                if let Some(captures) = RE_PROGRESS.captures(&line) {
-                    return ExtractorLineOut::InitProgress {
-                        current: captures[1].parse().unwrap_or(0),
-                        total: captures[2].parse().unwrap_or(0),
-                    };
-                } else if let Some(captures) = RE_FINISH.captures(&line) {
-                    return ExtractorLineOut::PlaylistInitDone(
-                        captures[1]
-                            .parse()
-                            .unwrap_or(String::from("Unknown playlist")),
-                    );
+                match context {
+                    ExtractorContext::Initialize => {
+                        // check if this is an init progress message
+                        if let Some(captures) = RE_PROGRESS.captures(&line) {
+                            return ExtractorLineOut::InitProgress {
+                                current: captures[1].parse().unwrap_or(0),
+                                total: captures[2].parse().unwrap_or(0),
+                            };
+                        } else if let Some(captures) = RE_FINISH.captures(&line) {
+                            return ExtractorLineOut::PlaylistInitDone(
+                                captures[1]
+                                    .parse()
+                                    .unwrap_or(String::from("Unknown playlist")),
+                            );
+                        }
+                        // line is not one that is recongized, so just return the line
+                        return ExtractorLineOut::Standard(line)
+                    }
+                    ExtractorContext::Download => {
+                        if let Some(captures) = RE_DOWNLOAD_PROGRESS.captures(&line) {
+                            return ExtractorLineOut::DownloadProgress { progress: captures[1].parse().unwrap_or(0.0), download_size: captures[2].parse().unwrap_or(0.0), download_speed: captures[4].parse().unwrap_or(0.0), eta: (captures[6].parse().unwrap_or(1000), captures[7].parse.unwrap_or(1000)) }
+                        }
                 }
-                // line is not one that is recongized, so just return the line
-                ExtractorLineOut::Standard(line)
             }
         }
         ChildMessage::StdErr(line) => ExtractorLineOut::Error(line),
