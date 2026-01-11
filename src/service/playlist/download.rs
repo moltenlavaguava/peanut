@@ -16,7 +16,7 @@ use crate::service::{
         enums::SizeUnit,
         structs::{BinApps, DataSize},
     },
-    gui::enums::TaskResponse,
+    gui::enums::Message,
     id::{enums::Platform, structs::Id},
     playlist::{
         enums::{ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus},
@@ -34,7 +34,7 @@ pub async fn initialize_playlist(
     url: Url,
     bin_apps: BinApps,
     process_sender: ProcessSender,
-    status_sender: &mpsc::Sender<TaskResponse>,
+    status_sender: &mpsc::Sender<Message>,
 ) -> Result<Playlist> {
     // construct command
     println!("init playlist?");
@@ -90,9 +90,10 @@ pub async fn initialize_playlist(
             ExtractorLineOut::InitProgress { current, total } => {
                 let _ = status_sender
                     // wrap in task response for gui
-                    .send(TaskResponse::PlaylistInitStatus(
-                        PlaylistInitStatus::Progress { current, total },
-                    ))
+                    .send(Message::PlaylistInitStatus(PlaylistInitStatus::Progress {
+                        current,
+                        total,
+                    }))
                     .await;
             }
             ExtractorLineOut::InitTrackData(json_track_data) => {

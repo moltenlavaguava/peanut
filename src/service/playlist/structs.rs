@@ -3,8 +3,7 @@ use futures::future::BoxFuture;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
-use tokio::{task::JoinHandle, time::sleep};
-use tokio_util::sync::CancellationToken;
+use tokio::task::JoinHandle;
 use url::Url;
 
 use crate::service::{

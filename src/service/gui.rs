@@ -14,7 +14,7 @@ use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
 use crate::service::playlist::structs::{Playlist, PlaylistMetadata};
 use crate::util::sync::ReceiverHandle;
-use enums::{EventMessage, Message, Page, TaskResponse};
+use enums::{EventMessage, Message, Page};
 use util::{home, player};
 
 pub mod enums;
@@ -25,7 +25,7 @@ struct App {
     // Communication
     _shutdown_token: CancellationToken,
     playlist_sender: PlaylistSender,
-    tasks: HashMap<u64, ReceiverHandle<TaskResponse>>,
+    tasks: HashMap<u64, ReceiverHandle<Message>>,
     event_bus: ReceiverHandle<EventMessage>,
 
     // Internal state
@@ -124,33 +124,23 @@ impl App {
                 self.total_tracks = 0;
                 Task::none()
             }
-            Message::TaskDataReceived(_id, response) => {
-                // manage state with the response
-                match response {
-                    TaskResponse::PlaylistInitStatus(status) => match status {
-                        PlaylistInitStatus::Progress { current, total } => {
-                            self.current_track_index = current;
-                            self.total_tracks = total;
-                        }
-                        PlaylistInitStatus::Complete(metadata) => {
-                            self.loaded_playlist_metadata.push(metadata);
-                        }
-                        PlaylistInitStatus::Fail => {
-                            println!("received msg that playlist init failed");
-                        }
-                        PlaylistInitStatus::Duplicate(metadata) => {
-                            println!(
-                                "received msg that playlist {} was a duplicate",
-                                metadata.title
-                            )
-                        }
-                    },
-                    TaskResponse::TrackDownloaded(id) => {
-                        // track finished downloading; add it to the list
-                        self.downloaded_tracks.insert(id);
+            Message::PlaylistInitStatus(status) => {
+                match status {
+                    PlaylistInitStatus::Progress { current, total } => {
+                        self.current_track_index = current;
+                        self.total_tracks = total;
                     }
-                    TaskResponse::TrackDownloadStatus { id, data } => {
-                        println!("got data at gui for track download: id: {id:?}, data: {data:?}")
+                    PlaylistInitStatus::Complete(metadata) => {
+                        self.loaded_playlist_metadata.push(metadata);
+                    }
+                    PlaylistInitStatus::Fail => {
+                        println!("received msg that playlist init failed");
+                    }
+                    PlaylistInitStatus::Duplicate(metadata) => {
+                        println!(
+                            "received msg that playlist {} was a duplicate",
+                            metadata.title
+                        );
                     }
                 }
                 Task::none()
@@ -253,6 +243,18 @@ impl App {
                 self.download_stopping_playlists.push(id);
                 Task::none()
             }
+            Message::TrackDownloadFinished { id: _ } => {
+                // a given track finished downloading.
+                Task::none()
+            }
+            Message::TrackDownloadStarted { id: _ } => {
+                // a given track started downloading.
+                Task::none()
+            }
+            Message::TrackDownloadStatus { id: _, data: _ } => {
+                // A given track's download status updated.
+                Task::none()
+            }
             Message::None => Task::none(),
         }
     }
@@ -268,12 +270,11 @@ impl App {
             |_id, msg| Message::EventRecieved(msg),
             |_id| Message::EventBusClosed,
         );
-        let tasks = Subscription::batch(self.tasks.values().map(|handle| {
-            handle.watch(
-                |id, msg| Message::TaskDataReceived(id, msg),
-                |id| Message::TaskFinished(id),
-            )
-        }));
+        let tasks = Subscription::batch(
+            self.tasks
+                .values()
+                .map(|handle| handle.watch(|_id, msg| msg, |id| Message::TaskFinished(id))),
+        );
 
         Subscription::batch(vec![bus, tasks])
     }

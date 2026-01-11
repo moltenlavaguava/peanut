@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     service::{
         file::{self, structs::BinApps},
-        gui::enums::{EventMessage, EventSender, TaskResponse},
+        gui::enums::{EventMessage, EventSender, Message},
         id::structs::Id,
         playlist::{
             download::initialize_playlist,
@@ -125,14 +125,14 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             .unwrap();
                         if let Err(_) = rx.await.unwrap() {
                             t_init_status
-                                .send(TaskResponse::PlaylistInitStatus(
+                                .send(Message::PlaylistInitStatus(
                                     enums::PlaylistInitStatus::Duplicate(playlist_metadata),
                                 ))
                                 .await
                                 .unwrap();
                         } else {
                             t_init_status
-                                .send(TaskResponse::PlaylistInitStatus(
+                                .send(Message::PlaylistInitStatus(
                                     enums::PlaylistInitStatus::Complete(playlist_metadata),
                                 ))
                                 .await
@@ -141,9 +141,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     } else {
                         println!("playlist init failed");
                         t_init_status
-                            .send(TaskResponse::PlaylistInitStatus(
-                                enums::PlaylistInitStatus::Fail,
-                            ))
+                            .send(Message::PlaylistInitStatus(enums::PlaylistInitStatus::Fail))
                             .await
                             .unwrap();
                     }
@@ -211,7 +209,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         let metadata_t = metadata_t.clone();
                         Box::pin(async move {
                             metadata_t
-                                .send(TaskResponse::TrackDownloaded(track_id))
+                                .send(Message::TrackDownloadFinished { id: track_id })
                                 .await
                                 .unwrap();
                         })

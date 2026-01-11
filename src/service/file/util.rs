@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::service::id::structs::Id;
 use crate::service::playlist::enums::MediaType;

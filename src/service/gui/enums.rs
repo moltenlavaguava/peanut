@@ -24,9 +24,7 @@ pub enum Message {
     // Task finished. Provides id.
     TaskFinished(u64),
     // A playlist init task started. Provides the id and the receiver handle relevant to the task.
-    PlaylistInitTaskStarted(u64, ReceiverHandle<TaskResponse>),
-    // Task data was received from a task. Provides the id and response.
-    TaskDataReceived(u64, TaskResponse),
+    PlaylistInitTaskStarted(u64, ReceiverHandle<Message>),
     // A playlist was selected to be loaded. Provides the selected playlist's metadata.
     PlaylistSelect(PlaylistMetadata),
     // A playlist that was selected received playlist data to render.
@@ -36,11 +34,26 @@ pub enum Message {
     // A playlist download request succeeded and caused a playlist to start downloading. Provided: the playlist Id and its ReceiverHandle for information.
     DownloadPlaylistStarted {
         id: Id,
-        receiver_handle: ReceiverHandle<TaskResponse>,
+        receiver_handle: ReceiverHandle<Message>,
     },
     // A playlist download request was received and started, but it hasn't actually stopped yet. Provided: the playlist id.
     PlaylistDownloadCancelStarted {
         id: Id,
+    },
+    // fired when new track info is received for a playlist init
+    PlaylistInitStatus(PlaylistInitStatus),
+    // A single track has downloaded. Given: the id of the track.
+    TrackDownloadFinished {
+        id: Id,
+    },
+    // A single track download started. Given: the id of the track.
+    TrackDownloadStarted {
+        id: Id,
+    },
+    // The status for a single track download updated. Provided: the id of the track and the download data.
+    TrackDownloadStatus {
+        id: Id,
+        data: TrackDownloadData,
     },
     // A playlist download ended. Provided: the playlist Id.
     DownloadPlaylistEnded {
@@ -77,16 +90,6 @@ pub enum Page {
 pub enum PlayingState {
     Playing,
     Stopped,
-}
-
-// wrapper around all possible task messages
-#[derive(Debug, Clone)]
-pub enum TaskResponse {
-    // fired when new track info is received for a playlist init
-    PlaylistInitStatus(PlaylistInitStatus),
-    // A single track has downloaded. Given: the id of the track.
-    TrackDownloaded(Id),
-    TrackDownloadStatus { id: Id, data: TrackDownloadData },
 }
 
 // for app-wide messages (usually more important)

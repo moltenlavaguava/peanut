@@ -2,14 +2,13 @@
 
 use std::sync::Arc;
 
+use iced::Length;
 use iced::widget::{
     Column, Space, button, column, container, lazy, row, scrollable, text, text_input,
 };
-use iced::{Length, Task};
 use tokio::sync::oneshot;
 
 use crate::service::gui::enums::{Action, PlayingState};
-use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::PlaylistMessage;
