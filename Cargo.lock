@@ -2361,6 +2361,7 @@ dependencies = [
  "async-trait",
  "futures",
  "iced",
+ "parking_lot",
  "rand",
  "regex",
  "serde",

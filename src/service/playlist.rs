@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use crate::{
     service::{
@@ -7,7 +7,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             download::initialize_playlist,
-            structs::{PlaylistDownloadManager, PlaylistMetadata, TrackOrder},
+            structs::{PlaylistDownloadManager, PlaylistMetadata, TrackList},
         },
         process::ProcessSender,
     },
@@ -20,7 +20,6 @@ use tokio::{
     fs,
     sync::{mpsc, oneshot},
 };
-use tokio_util::sync::CancellationToken;
 
 mod download;
 pub mod enums;
@@ -35,9 +34,9 @@ pub struct PlaylistService {
     process_sender: ProcessSender,
     playlist_sender: PlaylistSender,
     // Store playlists in an arc to make 'managing' them easier
-    playlists: HashMap<Id, Arc<Playlist>>,
+    playlists: HashMap<Id, Playlist>,
     bin_files: Option<BinApps>,
-    active_playlist_download_manager_exists: bool,
+    download_managers: HashMap<Id, PlaylistDownloadManager>,
 }
 
 pub struct PlaylistFlags {
@@ -54,7 +53,7 @@ impl PlaylistService {
             playlists: HashMap::new(),
             bin_files: None,
             playlist_sender: flags.playlist_sender,
-            active_playlist_download_manager_exists: false,
+            download_managers: HashMap::new(),
         }
     }
 }
@@ -169,14 +168,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     fs::write(pth.unwrap(), playlist_json).await.unwrap();
 
                     // insert playlist into cache
-                    self.playlists
-                        .insert(playlist.id().clone(), Arc::new(playlist));
+                    self.playlists.insert(playlist.id().clone(), playlist);
                     result_sender.send(Ok(())).unwrap();
                 }
             }
             PlaylistMessage::RequestPlaylist { id, result_sender } => {
                 if let Some(playlist) = self.playlists.get(&id) {
-                    result_sender.send(Some(playlist.as_ref().clone())).unwrap();
+                    result_sender.send(Some(playlist.clone())).unwrap();
                 } else {
                     result_sender.send(None).unwrap()
                 }
@@ -184,7 +182,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             PlaylistMessage::DownloadPlaylist { id, reply_stream } => {
                 // first, check to see if there's already a current downloading playlist.
                 // if there is, then do nothing.
-                if self.active_playlist_download_manager_exists {
+                if !self.download_managers.is_empty() {
                     println!("A playlist is already downloading; doing nothing");
                     return;
                 }
@@ -199,43 +197,57 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     return;
                 }
                 let playlist = playlist.unwrap();
-                // temporary: manage the download order later
-                let order = TrackOrder::from_playlist(&playlist);
-                let cancel_token = CancellationToken::new();
                 let playlist_sender = self.playlist_sender.clone();
                 let process_sender = self.process_sender.clone();
                 let bin_apps = self.bin_files.clone().unwrap();
+                let id_clone = id.clone();
 
-                let manager =
-                    PlaylistDownloadManager::new(Arc::clone(playlist), order, cancel_token.clone());
-                let _join_handle = tokio::spawn(manager.run(
-                    async move |track_id| {
-                        metadata_t
-                            .send(TaskResponse::TrackDownloaded(track_id))
-                            .await
-                            .unwrap();
+                // temporary: manage the download order later
+                let tracklist = TrackList::from_playlist_ref(&playlist);
+
+                let mut manager = PlaylistDownloadManager::new(tracklist);
+                manager.run(
+                    move |track_id| {
+                        let metadata_t = metadata_t.clone();
+                        Box::pin(async move {
+                            metadata_t
+                                .send(TaskResponse::TrackDownloaded(track_id))
+                                .await
+                                .unwrap();
+                        })
                     },
-                    async move |success| {
-                        playlist_sender
-                            .send(PlaylistMessage::PlaylistDownloadDone {
-                                success,
-                                id: id.clone(),
-                            })
-                            .await
-                            .unwrap();
+                    |success| {
+                        Box::pin(async move {
+                            playlist_sender
+                                .send(PlaylistMessage::PlaylistDownloadDone {
+                                    success,
+                                    id: id_clone,
+                                })
+                                .await
+                                .unwrap();
+                        })
                     },
                     process_sender,
                     bin_apps,
-                ));
-                self.active_playlist_download_manager_exists = true;
+                );
+
+                self.download_managers.insert(id, manager);
             }
             PlaylistMessage::CancelDownloadPlaylist { id, result_sender } => {
                 println!("Cancelling playlist?");
-                result_sender.send(Err(anyhow!("Unimplemented"))).unwrap();
+                if let Some(mgr) = self.download_managers.get_mut(&id) {
+                    // send the cancel signal
+                    mgr.cancel();
+                    result_sender.send(Ok(())).unwrap();
+                } else {
+                    result_sender
+                        .send(Err(anyhow!("Playlist was not previously downloading")))
+                        .unwrap();
+                }
             }
-            PlaylistMessage::PlaylistDownloadDone { success: _, id: _ } => {
+            PlaylistMessage::PlaylistDownloadDone { success: _, id } => {
                 println!("playlist download done");
-                self.active_playlist_download_manager_exists = false;
+                self.download_managers.remove(&id);
             }
         }
     }

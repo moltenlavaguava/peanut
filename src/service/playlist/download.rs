@@ -2,6 +2,7 @@ use std::{
     ffi::{OsStr, OsString},
     path::PathBuf,
     sync::LazyLock,
+    time::Duration,
 };
 
 use regex::Regex;
@@ -11,12 +12,15 @@ use tokio::sync::mpsc;
 use url::Url;
 
 use crate::service::{
-    file::structs::BinApps,
+    file::{
+        enums::SizeUnit,
+        structs::{BinApps, DataSize},
+    },
     gui::enums::TaskResponse,
     id::{enums::Platform, structs::Id},
     playlist::{
         enums::{ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus},
-        structs::{PlaylistTrackJson, Track, TrackDownloadJson},
+        structs::{PlaylistTrackJson, Track, TrackDownloadData, TrackDownloadJson},
     },
     process::{
         ProcessSender,
@@ -58,7 +62,7 @@ pub async fn initialize_playlist(
             .join(OsStr::new(" "))
             .display()
     );
-    
+
     // get channel pair for status messages
     let (tx, mut rx) = mpsc::channel(100);
 
@@ -132,7 +136,7 @@ pub async fn download_track(
     bin_apps: BinApps,
     process_sender: &ProcessSender,
     // status_sender: &mpsc::Sender<TaskResponse>,
-) -> Result<Track> {
+) -> Result<Option<Track>> {
     let cmd = bin_apps.yt_dlp.into_os_string();
     let mut deno_s = OsString::from("deno:");
     deno_s.push(bin_apps.deno.into_os_string());
@@ -181,9 +185,11 @@ pub async fn download_track(
     while let Some(msg) = rx.recv().await {
         println!("Received msg from download: {msg:?}");
         let line = parse_output(msg, ExtractorContext::Download);
+        println!("got line from download: {line:?}");
     }
 
-    Err(anyhow!("unimplemented"))
+    Ok(None)
+    // Err(anyhow!("unimplemented"))
 }
 
 fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOut {
@@ -192,7 +198,9 @@ fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOu
         LazyLock::new(|| Regex::new(r"^\[download\] Downloading item (\d+) of (\d+)").unwrap());
     static RE_FINISH: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"\[download\] Finished downloading playlist: (.*)").unwrap());
-    static RE_DOWNLOAD_PROGRESS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+(\d+(?:\.\d+)?)(KiB|MiB|GiB)\s+at\s+(\d+(?:\.\d+)?)(KiB|MiB|GiB)\/s\s+ETA\s+(\d+):(\d+)").unwrap());
+    static RE_DOWNLOAD_PROGRESS: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+(\d+(?:\.\d+)?)(KiB|MiB|GiB)\s+at\s+(\d+(?:\.\d+)?)(KiB|MiB|GiB)\/s\s+ETA\s+(\d+):(\d+)").unwrap()
+    });
 
     match msg {
         ChildMessage::StdOut(line) => {
@@ -202,14 +210,14 @@ fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOu
                 match context {
                     ExtractorContext::Initialize => {
                         match serde_json::from_str::<PlaylistTrackJson>(&line) {
-                            Ok(output) => ExtractorLineOut::InitTrackData(output),
-                            Err(_) => ExtractorLineOut::Standard(line),
+                            Ok(output) => return ExtractorLineOut::InitTrackData(output),
+                            Err(_) => return ExtractorLineOut::Standard(line),
                         }
                     }
                     ExtractorContext::Download => {
                         match serde_json::from_str::<TrackDownloadJson>(&line) {
-                            Ok(output) => ExtractorLineOut::DownloadTrackData(output),
-                            Err(_) => ExtractorLineOut::Standard(line),
+                            Ok(output) => return ExtractorLineOut::DownloadTrackData(output),
+                            Err(_) => return ExtractorLineOut::Standard(line),
                         }
                     }
                 }
@@ -230,14 +238,41 @@ fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOu
                                     .unwrap_or(String::from("Unknown playlist")),
                             );
                         }
-                        // line is not one that is recongized, so just return the line
-                        return ExtractorLineOut::Standard(line)
                     }
                     ExtractorContext::Download => {
                         if let Some(captures) = RE_DOWNLOAD_PROGRESS.captures(&line) {
-                            return ExtractorLineOut::DownloadProgress { progress: captures[1].parse().unwrap_or(0.0), download_size: captures[2].parse().unwrap_or(0.0), download_speed: captures[4].parse().unwrap_or(0.0), eta: (captures[6].parse().unwrap_or(1000), captures[7].parse.unwrap_or(1000)) }
+                            // do some calculating from the data given
+                            let download_size_unit: Result<SizeUnit, _> = captures[3].parse();
+                            let download_speed_unit: Result<SizeUnit, _> = captures[5].parse();
+                            // if any of these units aren't valid, return a normal message
+                            if download_size_unit.is_err() || download_speed_unit.is_err() {
+                                println!(
+                                    "Warning: line {line} in download failed to parse a download progress"
+                                );
+                                return ExtractorLineOut::Standard(line);
+                            }
+                            // build the information
+                            let download_size = DataSize::new(
+                                captures[2].parse().unwrap_or(0.0),
+                                download_size_unit.unwrap(),
+                            );
+                            let download_speed = DataSize::new(
+                                captures[4].parse().unwrap_or(0.0),
+                                download_speed_unit.unwrap(),
+                            );
+                            let eta_seconds = captures[6].parse().unwrap_or(1000) * 60
+                                + captures[7].parse().unwrap_or(1000);
+                            return ExtractorLineOut::DownloadProgress(TrackDownloadData {
+                                progress: captures[1].parse().unwrap_or(0.0),
+                                download_size: download_size,
+                                download_speed: download_speed,
+                                eta: Duration::from_secs(eta_seconds),
+                            });
                         }
+                    }
                 }
+                // line is not one that is recongized, so just return the line
+                return ExtractorLineOut::Standard(line);
             }
         }
         ChildMessage::StdErr(line) => ExtractorLineOut::Error(line),

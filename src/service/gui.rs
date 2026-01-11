@@ -38,6 +38,8 @@ struct App {
     downloaded_tracks: HashSet<Id>,
     current_playlist: Option<Playlist>,
     track_playing_state: PlayingState,
+    download_stopping_playlists: Vec<Id>,
+    downloading_playlists: Vec<Id>,
 }
 
 #[derive(Clone)]
@@ -65,6 +67,8 @@ impl App {
                 current_playlist: None,
                 downloaded_tracks: HashSet::new(),
                 track_playing_state: PlayingState::Stopped,
+                downloading_playlists: Vec::new(),
+                download_stopping_playlists: Vec::new(),
             },
             Task::perform(file::util::get_downloaded_tracks(), |maybe_tracks| {
                 if let Ok(tracks) = maybe_tracks {
@@ -145,6 +149,9 @@ impl App {
                         // track finished downloading; add it to the list
                         self.downloaded_tracks.insert(id);
                     }
+                    TaskResponse::TrackDownloadStatus { id, data } => {
+                        println!("got data at gui for track download: id: {id:?}, data: {data:?}")
+                    }
                 }
                 Task::none()
             }
@@ -198,14 +205,52 @@ impl App {
                             },
                         )
                     }
+                    Action::StopPlaylistDownload { playlist_id } => {
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::stop_playlist_download(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                            ),
+                            |result| {
+                                if let Err(e) = result {
+                                    println!(
+                                        "An error occured while stopping the playlist download: {}",
+                                        e
+                                    )
+                                }
+                                Message::PlaylistDownloadCancelStarted { id: playlist_id }
+                            },
+                        )
+                    }
                     _ => Task::none(),
                 }
             }
             Message::DownloadPlaylistStarted {
-                id: _,
+                id,
                 receiver_handle,
             } => {
+                // start the (listening) task
                 self.tasks.insert(receiver_handle.id(), receiver_handle);
+                // mark this playlist as downloading
+                self.downloading_playlists.push(id);
+                Task::none()
+            }
+            Message::DownloadPlaylistEnded { id } => {
+                if let Some(index) = self
+                    .download_stopping_playlists
+                    .iter()
+                    .position(|x| *x == id)
+                {
+                    self.download_stopping_playlists.remove(index);
+                }
+                Task::none()
+            }
+            Message::PlaylistDownloadCancelStarted { id } => {
+                if let Some(index) = self.downloading_playlists.iter().position(|x| *x == id) {
+                    self.downloading_playlists.remove(index);
+                }
+                self.download_stopping_playlists.push(id);
                 Task::none()
             }
             Message::None => Task::none(),

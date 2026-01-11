@@ -40,7 +40,12 @@ pub fn get_bin_app_paths() -> BinApps {
     let ffmpeg_path = bin_path.join("ffmpeg").join("ffmpeg.exe");
     let deno_path = bin_path.join("deno.exe");
     if !yt_dlp_path.is_file() || !ffmpeg_path.is_file() || !deno_path.is_file() {
-        println!("Paths: '{}' '{}' '{}'", yt_dlp_path.display(), ffmpeg_path.display(), deno_path.display());
+        println!(
+            "Paths: '{}' '{}' '{}'",
+            yt_dlp_path.display(),
+            ffmpeg_path.display(),
+            deno_path.display()
+        );
         panic!(
             "Critical: yt_dlp, ffmpeg, or deno exes are not found or invalid.\nEnsure that there exists a bin folder in the main directory and that it contains yt-dlp_x86.exe, deno.exe, and a folder named ffmpeg containing ffmpeg.exe\n(Output dir: {}",
             root_path.display()
@@ -113,7 +118,7 @@ pub async fn get_downloaded_tracks() -> anyhow::Result<Vec<Id>> {
     Ok(track_ids)
 }
 
-pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Arc<Playlist>>> {
+pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Playlist>> {
     // get the playlist data dir
     let playlist_data_dir = data_dir_path()?;
     // go through the directory and search for valid playlist files and add any successful files to a vec
@@ -135,7 +140,7 @@ pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Arc<Playlist>>
                             let maybe_playlist: Result<Playlist, serde_json::Error> =
                                 serde_json::from_str(&contents);
                             if let Ok(playlist) = maybe_playlist {
-                                playlists.insert(playlist.id().clone(), Arc::new(playlist));
+                                playlists.insert(playlist.id().clone(), playlist);
                             }
                         }
                     }

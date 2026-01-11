@@ -5,7 +5,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
-            structs::{Playlist, PlaylistMetadata, TrackMetadata},
+            structs::{Playlist, PlaylistMetadata, TrackDownloadData},
         },
     },
     util::sync::ReceiverHandle,
@@ -38,6 +38,14 @@ pub enum Message {
         id: Id,
         receiver_handle: ReceiverHandle<TaskResponse>,
     },
+    // A playlist download request was received and started, but it hasn't actually stopped yet. Provided: the playlist id.
+    PlaylistDownloadCancelStarted {
+        id: Id,
+    },
+    // A playlist download ended. Provided: the playlist Id.
+    DownloadPlaylistEnded {
+        id: Id,
+    },
     // An action was performed. Usually occurs when the user triggers something.
     Action(Action),
     // A special message for when nothing should happen
@@ -49,6 +57,7 @@ pub enum Action {
     // In the player menu, the home button was activated.
     Home,
     DownloadPlaylist { playlist_id: Id },
+    StopPlaylistDownload { playlist_id: Id },
     OrganizePlaylist { playlist_id: Id },
     ShufflePlaylist { playlist_id: Id },
     PreviousTrack { playlist_id: Id },
@@ -77,6 +86,7 @@ pub enum TaskResponse {
     PlaylistInitStatus(PlaylistInitStatus),
     // A single track has downloaded. Given: the id of the track.
     TrackDownloaded(Id),
+    TrackDownloadStatus { id: Id, data: TrackDownloadData },
 }
 
 // for app-wide messages (usually more important)

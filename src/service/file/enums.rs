@@ -1,5 +1,7 @@
 use std::{io, path::PathBuf};
 
+use serde::{Deserialize, Serialize};
+use strum_macros::EnumString;
 use tokio::sync::oneshot;
 
 use super::structs::BinApps;
@@ -12,4 +14,16 @@ pub enum FileMessage {
     GetBinApps {
         reply: oneshot::Sender<BinApps>,
     },
+}
+
+#[derive(Debug, Deserialize, Serialize, EnumString)]
+pub enum SizeUnit {
+    #[strum(serialize = "KiB")]
+    Kibibyte,
+    #[strum(serialize = "MiB")]
+    Mebibyte,
+    #[strum(serialize = "KB")]
+    Kilobyte,
+    #[strum(serialize = "MB")]
+    Megabyte,
 }

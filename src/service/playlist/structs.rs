@@ -1,13 +1,17 @@
 use anyhow::anyhow;
+use futures::future::BoxFuture;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
-use tokio::time::sleep;
+use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::service::{
-    file::{self, structs::BinApps},
+    file::{
+        self,
+        structs::{BinApps, DataSize},
+    },
     id::{enums::Platform, structs::Id},
     playlist::{
         download,
@@ -94,10 +98,8 @@ pub struct PlaylistTrackJson {
 }
 
 #[derive(Debug, Deserialize)]
-// created on track download 
-pub struct TrackDownloadJson {
-    
-}
+// created on track download
+pub struct TrackDownloadJson {}
 
 #[derive(Debug)]
 pub struct DownloadTrackJson {}
@@ -116,7 +118,15 @@ pub struct TrackMetadata {
     pub title: Arc<str>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct TrackDownloadData {
+    pub progress: f32,
+    pub download_size: DataSize,
+    pub download_speed: DataSize,
+    pub eta: Duration,
+}
+
+#[derive(Debug, Clone)]
 pub struct TrackOrder {
     index_order: Vec<u64>,
 }
@@ -129,6 +139,9 @@ impl TrackOrder {
             index_order: (0..=length - 1).collect(),
         }
     }
+    pub fn length(&self) -> usize {
+        self.index_order.len()
+    }
     pub fn randomize(&mut self) {
         // get mut reference to the internal vec
         let slice = &mut self.index_order;
@@ -136,66 +149,92 @@ impl TrackOrder {
         let mut rng = rand::rng();
         slice.shuffle(&mut rng);
     }
-    pub fn iter_playlist<'a>(
-        &self,
-        playlist: &'a Playlist,
-    ) -> anyhow::Result<impl Iterator<Item = &'a Track>> {
-        if self.index_order.len() as u64 != playlist.length() {
-            return Err(anyhow!(
-                "Own index order and playlist length are different ({} vs {})",
-                self.index_order.len(),
-                playlist.length()
-            ));
+    pub fn order(&self) -> &Vec<u64> {
+        &self.index_order
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TrackList {
+    order: TrackOrder,
+    tracks: Arc<Vec<Track>>,
+}
+impl TrackList {
+    pub fn new(order: TrackOrder, tracks: Vec<Track>) -> anyhow::Result<Self> {
+        // verify the length is the same between the track order and the tracks provided
+        if order.length() != tracks.len() {
+            return Err(anyhow!("Length of TrackOrder and tracks vec are not equal"));
         }
-        let iter = self
-            .index_order
+        Ok(Self {
+            order,
+            tracks: Arc::new(tracks),
+        })
+    }
+    pub fn from_playlist_ref(playlist: &Playlist) -> Self {
+        Self::new(
+            TrackOrder::from_playlist(&playlist),
+            playlist.tracks.clone(),
+        )
+        .expect("Track order from playlist should have same length as playlist itself")
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Track> {
+        self.order
+            .order()
             .iter()
-            .map(|index| &playlist.tracks[*index as usize]);
-        Ok(iter)
+            .map(|index| &self.tracks[*index as usize])
     }
 }
 
 pub struct PlaylistDownloadManager {
-    playlist: Arc<Playlist>,
-    track_order: TrackOrder,
-    cancel_token: CancellationToken,
+    tracklist: TrackList,
+    join_handle: Option<JoinHandle<()>>,
 }
 impl PlaylistDownloadManager {
-    pub fn new(
-        playlist: Arc<Playlist>,
-        track_order: TrackOrder,
-        cancel_token: CancellationToken,
-    ) -> Self {
+    pub fn new(tracklist: TrackList) -> Self {
         Self {
-            playlist,
-            track_order,
-            cancel_token,
+            tracklist,
+            join_handle: None,
         }
     }
-    pub async fn run<F1: AsyncFnMut(Id), F2: AsyncFnOnce(bool)>(
-        self,
+    pub fn run<F1, F2>(
+        &mut self,
         mut on_track_download: F1,
         on_finish: F2,
         process_sender: ProcessSender,
         bin_apps: BinApps,
-    ) {
-        // run the playlist downloading logic
-        println!("running playlist downloading logic lol");
-        for track in self.track_order.iter_playlist(&self.playlist).unwrap() {
-            println!("Downloading track {}..", track.title);
-            download::download_track(
-                &track.download_url,
-                file::util::track_dir_path().unwrap(),
-                track.id().to_string(),
-                bin_apps.clone(),
-                &process_sender,
-                // status_sender,
-            )
-            .await
-            .unwrap();
-            on_track_download(track.id().clone()).await;
-        }
+    ) where
+        F1: FnMut(Id) -> BoxFuture<'static, ()> + Send + 'static,
+        F2: FnOnce(bool) -> BoxFuture<'static, ()> + Send + 'static,
+    {
+        let tracklist = self.tracklist.clone();
+        let join_handle = tokio::spawn(async move {
+            // run the playlist downloading logic
+            println!("running playlist downloading logic lol");
+            for track in tracklist.iter() {
+                println!("Downloading track {}..", track.title);
+                download::download_track(
+                    &track.download_url,
+                    file::util::track_dir_path().unwrap(),
+                    track.id().to_string(),
+                    bin_apps.clone(),
+                    &process_sender,
+                    // status_sender,
+                )
+                .await
+                .unwrap();
+                on_track_download(track.id().clone()).await;
+            }
 
-        on_finish(false).await;
+            println!("finished downloading");
+            on_finish(false).await;
+        });
+
+        self.join_handle = Some(join_handle);
+    }
+    pub fn cancel(&mut self) {
+        println!("Cancelling manager..");
+        if let Some(handle) = &self.join_handle {
+            handle.abort();
+        }
     }
 }

@@ -81,11 +81,25 @@ pub fn player(app: &App) -> Column<'_, Message> {
     let album_next = row![scrollable(column(tracklist))].height(Length::Fill);
 
     let current_playlist_id = app.current_playlist.as_ref().unwrap().id();
+
+    let download_button = if app.downloading_playlists.contains(&current_playlist_id) {
+        button("stop download").on_press(Message::Action(Action::StopPlaylistDownload {
+            playlist_id: current_playlist_id.clone(),
+        }))
+    } else if app
+        .download_stopping_playlists
+        .contains(&current_playlist_id)
+    {
+        button("stopping..")
+    } else {
+        button("SODAA 🗣🔥").on_press(Message::Action(Action::DownloadPlaylist {
+            playlist_id: current_playlist_id.clone(),
+        }))
+    };
+
     let controls = row![
         // all the buttons lol
-        button("SODAA 🗣🔥").on_press(Message::Action(Action::DownloadPlaylist {
-            playlist_id: current_playlist_id.clone()
-        })),
+        download_button,
         button("orgnze").on_press(Message::Action(Action::OrganizePlaylist {
             playlist_id: current_playlist_id.clone()
         })),
@@ -147,4 +161,16 @@ pub async fn download_playlist(
         id,
         receiver_handle,
     })
+}
+
+pub async fn stop_playlist_download(id: Id, playlist_sender: PlaylistSender) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::CancelDownloadPlaylist {
+            id,
+            result_sender: tx,
+        })
+        .await?;
+    let _ = rx.await??;
+    Ok(())
 }

@@ -1,4 +1,4 @@
-use std::process::ExitStatus;
+use std::{process::ExitStatus, time::Duration};
 
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
@@ -6,12 +6,13 @@ use tokio::sync::{mpsc, oneshot};
 use url::Url;
 
 use crate::service::{
+    file::structs::DataSize,
     gui::enums::TaskResponse,
     id::structs::Id,
-    playlist::structs::{Playlist, PlaylistMetadata, TrackDownloadJson},
+    playlist::structs::{Playlist, PlaylistMetadata, TrackDownloadData, TrackDownloadJson},
 };
 
-use super::structs::{DownloadTrackJson, PlaylistTrackJson};
+use super::structs::PlaylistTrackJson;
 
 pub enum PlaylistMessage {
     InitializePlaylist {
@@ -58,7 +59,7 @@ pub enum ExtractorLineOut {
     InitTrackData(PlaylistTrackJson),
     DownloadTrackData(TrackDownloadJson),
     // eta: min::sec
-    DownloadProgress { progress: f32, download_size: f32, download_speed: f32, eta: (u64, u64) },
+    DownloadProgress(TrackDownloadData),
     PlaylistInitDone(String),
     Exit(ExitStatus),
     Standard(String),
