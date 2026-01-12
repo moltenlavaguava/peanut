@@ -116,6 +116,13 @@ pub struct PlaylistMetadata {
     pub id: Id,
 }
 
+// Stores a TrackList but with a playlist metadata as well. Used when cloning a playlist may be expensive but the id is still needed.
+#[derive(Debug, Clone)]
+pub struct PTrackList {
+    pub list: TrackList,
+    pub metadata: PlaylistMetadata,
+}
+
 // Stores a `Track`'s 'metadata.' mostly just used for gui buttons to only redraw the button when important information changes.
 #[derive(Debug, Hash, Clone)]
 pub struct TrackMetadata {

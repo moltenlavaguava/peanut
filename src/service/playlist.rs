@@ -177,9 +177,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     result_sender.send(Ok(())).unwrap();
                 }
             }
-            PlaylistMessage::RequestPlaylist { id, result_sender } => {
+            PlaylistMessage::RequestTracklist { id, result_sender } => {
                 if let Some(playlist) = self.playlists.get(&id) {
-                    result_sender.send(Some(playlist.clone())).unwrap();
+                    let tracklist = TrackList::from_playlist_ref(&playlist);
+                    result_sender.send(Some(tracklist)).unwrap();
                 } else {
                     result_sender.send(None).unwrap()
                 }
@@ -241,6 +242,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 result_sender.send(self.downloaded_tracks.clone()).unwrap();
             }
             PlaylistMessage::TrackDownloadDone { id } => {
+                // update local downloaded cache
+                self.downloaded_tracks.insert(id.clone());
+
+                // then update the gui
                 self.event_sender
                     .send(EventMessage::TrackDownloadFinished { id })
                     .await
@@ -250,6 +255,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let downloaded = self.downloaded_tracks.contains(&id);
                 result_sender.send(downloaded).unwrap();
             }
+            PlaylistMessage::ShufflePlaylist {
+                playlist_id: _,
+                result_sender: _,
+            } => {}
         }
     }
 }

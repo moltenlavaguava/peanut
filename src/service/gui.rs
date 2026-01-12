@@ -11,7 +11,7 @@ use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
-use crate::service::playlist::structs::{Playlist, PlaylistMetadata};
+use crate::service::playlist::structs::{PTrackList, PlaylistMetadata};
 use crate::util::sync::ReceiverHandle;
 use enums::{EventMessage, Message, Page};
 use util::{home, player};
@@ -36,7 +36,7 @@ struct App {
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
     downloaded_tracks: HashSet<Id>,
     downloading_tracks: HashSet<Id>,
-    current_playlist: Option<Playlist>,
+    current_ptracklist: Option<PTrackList>,
     track_playing_state: PlayingState,
     download_stopping_playlists: HashSet<Id>,
     downloading_playlists: HashSet<Id>,
@@ -65,7 +65,7 @@ impl App {
                 total_tracks: 0,
                 page: Page::Home,
                 loaded_playlist_metadata: Vec::new(),
-                current_playlist: None,
+                current_ptracklist: None,
                 downloaded_tracks: HashSet::new(),
                 track_playing_state: PlayingState::Stopped,
                 downloading_playlists: HashSet::new(),
@@ -162,13 +162,18 @@ impl App {
                 // request playlist
                 let playlist_sender_clone = self.playlist_sender.clone();
                 Task::perform(
-                    util::request_playlist(playlist_metadata.id, playlist_sender_clone),
-                    |output| Message::PlaylistSelectAccepted(output.unwrap().unwrap()),
+                    util::request_playlist(playlist_metadata.id.clone(), playlist_sender_clone),
+                    |output| {
+                        Message::PlaylistSelectAccepted(PTrackList {
+                            metadata: playlist_metadata,
+                            list: output.unwrap().unwrap(),
+                        })
+                    },
                 )
             }
-            Message::PlaylistSelectAccepted(playlist) => {
+            Message::PlaylistSelectAccepted(ptracklist) => {
                 // change the page + set the current playlist
-                self.current_playlist = Some(playlist);
+                self.current_ptracklist = Some(ptracklist);
                 self.page = Page::Player;
                 Task::none()
             }
@@ -181,7 +186,7 @@ impl App {
                 match action {
                     Action::Home => {
                         // reset everything player-wise
-                        self.current_playlist = None;
+                        self.current_ptracklist = None;
                         self.page = Page::Home;
                         Task::none()
                     }

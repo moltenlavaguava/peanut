@@ -8,7 +8,9 @@ use url::Url;
 use crate::service::{
     gui::enums::Message,
     id::structs::Id,
-    playlist::structs::{Playlist, PlaylistMetadata, TrackDownloadData, TrackDownloadJson},
+    playlist::structs::{
+        Playlist, PlaylistMetadata, TrackDownloadData, TrackDownloadJson, TrackList,
+    },
 };
 
 use super::structs::PlaylistTrackJson;
@@ -22,9 +24,9 @@ pub enum PlaylistMessage {
         playlist: Playlist,
         result_sender: oneshot::Sender<anyhow::Result<()>>,
     },
-    RequestPlaylist {
+    RequestTracklist {
         id: Id,
-        result_sender: oneshot::Sender<Option<Playlist>>,
+        result_sender: oneshot::Sender<Option<TrackList>>,
     },
     DownloadPlaylist {
         id: Id,
@@ -47,6 +49,10 @@ pub enum PlaylistMessage {
     CheckTrackDownloaded {
         id: Id,
         result_sender: oneshot::Sender<bool>,
+    },
+    ShufflePlaylist {
+        playlist_id: Id,
+        result_sender: oneshot::Sender<TrackList>,
     },
 }
 

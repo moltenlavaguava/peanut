@@ -186,7 +186,7 @@ pub async fn download_track(
         .await;
 
     while let Some(msg) = rx.recv().await {
-        println!("Received msg from download: {msg:?}");
+        // println!("Received msg from download: {msg:?}");
         let line = parse_output(msg, ExtractorContext::Download);
         println!("got line from download: {line:?}");
         on_extractor_line_out

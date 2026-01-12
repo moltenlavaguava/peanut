@@ -13,7 +13,7 @@ use crate::service::gui::enums::{Action, PlayingState};
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::PlaylistMessage;
-use crate::service::playlist::structs::{Playlist, TrackMetadata};
+use crate::service::playlist::structs::{TrackList, TrackMetadata};
 use crate::util::sync::ReceiverHandle;
 
 use super::App;
@@ -50,18 +50,18 @@ pub fn home(app: &App) -> Column<'_, Message> {
 }
 
 pub fn player(app: &App) -> Column<'_, Message> {
-    if let None = app.current_playlist {
+    if let None = app.current_ptracklist {
         return column![text(
             "somehow there's no playlist to load on this screen lol"
         )];
     }
-    let current_playlist = app.current_playlist.as_ref().unwrap();
+    let current_ptracklist = app.current_ptracklist.as_ref().unwrap();
 
-    let title = text(&current_playlist.title);
+    let title = text(&current_ptracklist.metadata.title);
     let home_button = button("home").on_press(Message::Action(Action::Home));
     let header = row![home_button, title];
 
-    let tracklist = current_playlist.tracks.iter().map(|track| {
+    let tracklist = current_ptracklist.list.iter().map(|track| {
         // create a metadata object for each track to know when important information changes between renders
         let track_downloaded = app.downloaded_tracks.contains(&track.id());
         let track_downloading = app.downloading_tracks.contains(&track.id());
@@ -75,10 +75,10 @@ pub fn player(app: &App) -> Column<'_, Message> {
             button(text(format!(
                 "{}{}",
                 metadata.title.to_string(),
-                if metadata.downloaded {
-                    " ✅"
-                } else if metadata.downloading {
+                if metadata.downloading {
                     " ⬇️"
+                } else if metadata.downloaded {
+                    " ✅"
                 } else {
                     ""
                 }
@@ -88,7 +88,7 @@ pub fn player(app: &App) -> Column<'_, Message> {
     });
     let album_next = row![scrollable(column(tracklist))].height(Length::Fill);
 
-    let current_playlist_id = app.current_playlist.as_ref().unwrap().id();
+    let current_playlist_id = app.current_ptracklist.as_ref().unwrap().metadata.id.clone();
 
     let download_button = if app.downloading_playlists.contains(&current_playlist_id) {
         button("stop download").on_press(Message::Action(Action::StopPlaylistDownload {
@@ -140,10 +140,10 @@ pub fn player(app: &App) -> Column<'_, Message> {
 pub async fn request_playlist(
     id: Id,
     playlist_sender: PlaylistSender,
-) -> anyhow::Result<Option<Playlist>> {
+) -> anyhow::Result<Option<TrackList>> {
     let (tx, rx) = oneshot::channel();
     playlist_sender
-        .send(PlaylistMessage::RequestPlaylist {
+        .send(PlaylistMessage::RequestTracklist {
             id,
             result_sender: tx,
         })
