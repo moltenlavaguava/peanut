@@ -36,10 +36,11 @@ struct App {
     page: Page,
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
     downloaded_tracks: HashSet<Id>,
+    downloading_tracks: HashSet<Id>,
     current_playlist: Option<Playlist>,
     track_playing_state: PlayingState,
-    download_stopping_playlists: Vec<Id>,
-    downloading_playlists: Vec<Id>,
+    download_stopping_playlists: HashSet<Id>,
+    downloading_playlists: HashSet<Id>,
 }
 
 #[derive(Clone)]
@@ -67,8 +68,9 @@ impl App {
                 current_playlist: None,
                 downloaded_tracks: HashSet::new(),
                 track_playing_state: PlayingState::Stopped,
-                downloading_playlists: Vec::new(),
-                download_stopping_playlists: Vec::new(),
+                downloading_playlists: HashSet::new(),
+                download_stopping_playlists: HashSet::new(),
+                downloading_tracks: HashSet::new(),
             },
             Task::perform(file::util::get_downloaded_tracks(), |maybe_tracks| {
                 if let Ok(tracks) = maybe_tracks {
@@ -223,36 +225,44 @@ impl App {
                 // start the (listening) task
                 self.tasks.insert(receiver_handle.id(), receiver_handle);
                 // mark this playlist as downloading
-                self.downloading_playlists.push(id);
+                self.downloading_playlists.insert(id);
                 Task::none()
             }
             Message::DownloadPlaylistEnded { id } => {
-                if let Some(index) = self
-                    .download_stopping_playlists
-                    .iter()
-                    .position(|x| *x == id)
-                {
-                    self.download_stopping_playlists.remove(index);
-                }
+                self.downloading_playlists.remove(&id);
+                self.download_stopping_playlists.remove(&id);
+                println!(
+                    "Download ended. Downloading playlists: {:?}; Stopping playlists: {:?}",
+                    self.downloading_playlists, self.download_stopping_playlists
+                );
                 Task::none()
             }
             Message::PlaylistDownloadCancelStarted { id } => {
-                if let Some(index) = self.downloading_playlists.iter().position(|x| *x == id) {
-                    self.downloading_playlists.remove(index);
-                }
-                self.download_stopping_playlists.push(id);
+                self.downloading_playlists.remove(&id);
+                self.download_stopping_playlists.insert(id);
+                println!(
+                    "Cancel started. Downloading playlists: {:?}; Stopping playlists: {:?}",
+                    self.downloading_playlists, self.download_stopping_playlists
+                );
                 Task::none()
             }
-            Message::TrackDownloadFinished { id: _ } => {
+            Message::TrackDownloadFinished { id } => {
                 // a given track finished downloading.
+                println!("Track download finished");
+                // add downloaded track to list and remove it from the downloading tracks list
+                self.downloading_tracks.remove(&id);
+                self.downloaded_tracks.insert(id);
                 Task::none()
             }
-            Message::TrackDownloadStarted { id: _ } => {
+            Message::TrackDownloadStarted { id } => {
                 // a given track started downloading.
+                println!("track download started");
+                self.downloading_tracks.insert(id);
                 Task::none()
             }
             Message::TrackDownloadStatus { id: _, data: _ } => {
                 // A given track's download status updated.
+                println!("Track download progress");
                 Task::none()
             }
             Message::None => Task::none(),

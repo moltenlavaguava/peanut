@@ -57,7 +57,6 @@ pub enum ExtractorLineOut {
     InitProgress { current: u32, total: u32 },
     InitTrackData(PlaylistTrackJson),
     DownloadTrackData(TrackDownloadJson),
-    // eta: min::sec
     DownloadProgress(TrackDownloadData),
     PlaylistInitDone(String),
     Exit(ExitStatus),
@@ -93,4 +92,17 @@ impl Artist {
 pub enum ExtractorContext {
     Initialize,
     Download,
+}
+
+pub enum DownloadEndType {
+    Cancelled,
+    Finished,
+    Stopped,
+}
+
+pub enum PlaylistDownloadEventType {
+    TrackDownloadStart { id: Id },
+    TrackDownloadEnd { id: Id },
+    ExtractorLineOut { id: Id, line: ExtractorLineOut },
+    PlaylistDownloadEnd { playlist_id: Id, cancelled: bool },
 }

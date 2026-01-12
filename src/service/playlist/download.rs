@@ -132,10 +132,12 @@ pub async fn initialize_playlist(
 
 pub async fn download_track(
     url: &Url,
+    track_id: Id,
     download_directory: PathBuf,
     file_name: String,
     bin_apps: BinApps,
     process_sender: &ProcessSender,
+    on_extractor_line_out: &mpsc::Sender<(Id, ExtractorLineOut)>,
     // status_sender: &mpsc::Sender<TaskResponse>,
 ) -> Result<Option<Track>> {
     let cmd = bin_apps.yt_dlp.into_os_string();
@@ -187,6 +189,10 @@ pub async fn download_track(
         println!("Received msg from download: {msg:?}");
         let line = parse_output(msg, ExtractorContext::Download);
         println!("got line from download: {line:?}");
+        on_extractor_line_out
+            .send((track_id.clone(), line))
+            .await
+            .unwrap();
     }
 
     Ok(None)

@@ -100,9 +100,11 @@ pub async fn get_downloaded_tracks() -> anyhow::Result<Vec<Id>> {
     let mut paths = fs::read_dir(track_dir).await?;
     while let Some(path) = paths.next_entry().await.ok().flatten() {
         if path.path().is_file() {
-            // check to see if the name of the file is a valid track id
-            let file_name = path.file_name().into_string();
-            if let Ok(s) = file_name {
+            // check to see if the name of the file is a valid track id (removing filename)
+            let path = path.path().with_extension("");
+            let file_name = path.file_stem();
+            if let Some(osstr) = file_name {
+                let s = osstr.to_string_lossy().into_owned();
                 // try to parse to id
                 let id = Id::from_string(s);
                 if let Ok(id) = id {

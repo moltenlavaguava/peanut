@@ -36,7 +36,8 @@ pub struct PlaylistService {
     // Store playlists in an arc to make 'managing' them easier
     playlists: HashMap<Id, Playlist>,
     bin_files: Option<BinApps>,
-    download_managers: HashMap<Id, PlaylistDownloadManager>,
+    // Contains gui listener as well to send notifications back
+    download_managers: HashMap<Id, (PlaylistDownloadManager, mpsc::Sender<Message>)>,
 }
 
 pub struct PlaylistFlags {
@@ -185,8 +186,8 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     return;
                 }
                 // setup reply channel
-                let (metadata_t, metadata_r) = mpsc::channel(100);
-                reply_stream.send(metadata_r).unwrap();
+                let (reply_t, reply_r) = mpsc::channel(100);
+                reply_stream.send(reply_r).unwrap();
                 // setup and start a new download manager
                 // locate the playlist to download
                 let playlist = self.playlists.get(&id);
@@ -198,44 +199,20 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let playlist_sender = self.playlist_sender.clone();
                 let process_sender = self.process_sender.clone();
                 let bin_apps = self.bin_files.clone().unwrap();
-                let id_clone = id.clone();
 
                 // temporary: manage the download order later
                 let tracklist = TrackList::from_playlist_ref(&playlist);
 
-                let mut manager = PlaylistDownloadManager::new(tracklist);
-                manager.run(
-                    move |track_id| {
-                        let metadata_t = metadata_t.clone();
-                        Box::pin(async move {
-                            metadata_t
-                                .send(Message::TrackDownloadFinished { id: track_id })
-                                .await
-                                .unwrap();
-                        })
-                    },
-                    |success| {
-                        Box::pin(async move {
-                            playlist_sender
-                                .send(PlaylistMessage::PlaylistDownloadDone {
-                                    success,
-                                    id: id_clone,
-                                })
-                                .await
-                                .unwrap();
-                        })
-                    },
-                    process_sender,
-                    bin_apps,
-                );
+                let mut manager = PlaylistDownloadManager::new(tracklist, playlist.id().clone());
+                manager.run(reply_t.clone(), playlist_sender, process_sender, bin_apps);
 
-                self.download_managers.insert(id, manager);
+                self.download_managers.insert(id, (manager, reply_t));
             }
             PlaylistMessage::CancelDownloadPlaylist { id, result_sender } => {
                 println!("Cancelling playlist?");
-                if let Some(mgr) = self.download_managers.get_mut(&id) {
+                if let Some((mgr, _gui_reply_t)) = self.download_managers.get_mut(&id) {
                     // send the cancel signal
-                    mgr.cancel();
+                    mgr.stop();
                     result_sender.send(Ok(())).unwrap();
                 } else {
                     result_sender
@@ -245,7 +222,14 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             }
             PlaylistMessage::PlaylistDownloadDone { success: _, id } => {
                 println!("playlist download done");
-                self.download_managers.remove(&id);
+                if let Some((mgr, gui_reply_stream)) = self.download_managers.remove(&id) {
+                    gui_reply_stream
+                        .send(Message::DownloadPlaylistEnded {
+                            id: mgr.get_playlist_id().clone(),
+                        })
+                        .await
+                        .unwrap();
+                }
             }
         }
     }

@@ -63,8 +63,10 @@ pub fn player(app: &App) -> Column<'_, Message> {
     let tracklist = current_playlist.tracks.iter().map(|track| {
         // create a metadata object for each track to know when important information changes between renders
         let track_downloaded = app.downloaded_tracks.contains(&track.id());
+        let track_downloading = app.downloading_tracks.contains(&track.id());
         let track_metadata = TrackMetadata {
             downloaded: track_downloaded,
+            downloading: track_downloading,
             title: Arc::from(track.title.as_str()),
         };
         // create a lazy button
@@ -72,7 +74,13 @@ pub fn player(app: &App) -> Column<'_, Message> {
             button(text(format!(
                 "{}{}",
                 metadata.title.to_string(),
-                if metadata.downloaded { " ✅" } else { "" }
+                if metadata.downloaded {
+                    " ✅"
+                } else if metadata.downloading {
+                    " ⬇️"
+                } else {
+                    ""
+                }
             )))
         })
         .into()

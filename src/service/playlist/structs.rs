@@ -1,9 +1,15 @@
 use anyhow::anyhow;
-use futures::future::BoxFuture;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
-use std::{sync::Arc, time::Duration};
-use tokio::task::JoinHandle;
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::service::{
@@ -11,10 +17,11 @@ use crate::service::{
         self,
         structs::{BinApps, DataSize},
     },
+    gui::enums::Message,
     id::{enums::Platform, structs::Id},
     playlist::{
         download,
-        enums::{Artist, MediaType},
+        enums::{Artist, DownloadEndType, ExtractorLineOut, MediaType, PlaylistMessage},
     },
     process::ProcessSender,
 };
@@ -113,6 +120,7 @@ pub struct PlaylistMetadata {
 #[derive(Debug, Hash, Clone)]
 pub struct TrackMetadata {
     pub downloaded: bool,
+    pub downloading: bool,
     // needed to prevent unnecessary copying
     pub title: Arc<str>,
 }
@@ -186,54 +194,118 @@ impl TrackList {
 
 pub struct PlaylistDownloadManager {
     tracklist: TrackList,
-    join_handle: Option<JoinHandle<()>>,
+    playlist_id: Id,
+    cancel_token: CancellationToken,
+    stop_flag: Arc<AtomicBool>,
 }
 impl PlaylistDownloadManager {
-    pub fn new(tracklist: TrackList) -> Self {
+    pub fn new(tracklist: TrackList, playlist_id: Id) -> Self {
         Self {
             tracklist,
-            join_handle: None,
+            playlist_id,
+            cancel_token: CancellationToken::new(),
+            stop_flag: Arc::new(AtomicBool::new(false)),
         }
     }
-    pub fn run<F1, F2>(
+    pub fn run(
         &mut self,
-        mut on_track_download: F1,
-        on_finish: F2,
+        gui_reply_stream: mpsc::Sender<Message>,
+        on_playlist_download_end: mpsc::Sender<PlaylistMessage>,
         process_sender: ProcessSender,
         bin_apps: BinApps,
-    ) where
-        F1: FnMut(Id) -> BoxFuture<'static, ()> + Send + 'static,
-        F2: FnOnce(bool) -> BoxFuture<'static, ()> + Send + 'static,
-    {
+    ) {
+        // create mini task to map extractor lines to gui messages
+        let (map_t, mut map_r) = mpsc::channel(100);
+        let gui_reply_stream_clone = gui_reply_stream.clone();
+        tokio::spawn(async move {
+            let reply_stream = gui_reply_stream_clone.clone();
+            while let Some((id, line)) = map_r.recv().await {
+                match line {
+                    ExtractorLineOut::DownloadProgress(data) => {
+                        reply_stream
+                            .send(Message::TrackDownloadStatus { id, data })
+                            .await
+                            .unwrap();
+                    }
+                    _ => {}
+                }
+            }
+        });
+
         let tracklist = self.tracklist.clone();
-        let join_handle = tokio::spawn(async move {
+        let playlist_id = self.playlist_id.clone();
+        let stop_flag = self.stop_flag.clone();
+        let stop_flag_clone = stop_flag.clone();
+        let async_block = async move {
             // run the playlist downloading logic
             println!("running playlist downloading logic lol");
             for track in tracklist.iter() {
+                // check to see if a stop was requested
+                if stop_flag_clone.load(Ordering::Relaxed) {
+                    break;
+                }
+                // Track Download Start message
+                gui_reply_stream
+                    .send(Message::TrackDownloadStarted {
+                        id: track.id().clone(),
+                    })
+                    .await
+                    .unwrap();
+
                 println!("Downloading track {}..", track.title);
                 download::download_track(
                     &track.download_url,
+                    track.id().clone(),
                     file::util::track_dir_path().unwrap(),
                     track.id().to_string(),
                     bin_apps.clone(),
                     &process_sender,
-                    // status_sender,
+                    &map_t,
                 )
                 .await
                 .unwrap();
-                on_track_download(track.id().clone()).await;
+
+                // Track Download End message
+                gui_reply_stream
+                    .send(Message::TrackDownloadFinished {
+                        id: track.id().clone(),
+                    })
+                    .await
+                    .unwrap();
             }
+        };
+
+        let cancel_token_clone = self.cancel_token.clone();
+        let _ = tokio::spawn(async move {
+            let stop_kind = tokio::select! {
+                _ = cancel_token_clone.cancelled() => {DownloadEndType::Cancelled},
+                _ = async_block => {if stop_flag.load(Ordering::Relaxed) {DownloadEndType::Stopped} else {DownloadEndType::Finished}},
+            };
 
             println!("finished downloading");
-            on_finish(false).await;
-        });
 
-        self.join_handle = Some(join_handle);
+            // Playlist Download End Message
+            on_playlist_download_end
+                .send(PlaylistMessage::PlaylistDownloadDone {
+                    success: if let DownloadEndType::Finished = stop_kind {
+                        true
+                    } else {
+                        false
+                    },
+                    id: playlist_id,
+                })
+                .await
+                .unwrap();
+        });
+    }
+    pub fn stop(&mut self) {
+        self.stop_flag.store(true, Ordering::Relaxed);
     }
     pub fn cancel(&mut self) {
         println!("Cancelling manager..");
-        if let Some(handle) = &self.join_handle {
-            handle.abort();
-        }
+        self.cancel_token.cancel();
+    }
+    pub fn get_playlist_id(&self) -> &Id {
+        &self.playlist_id
     }
 }
