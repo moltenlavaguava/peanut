@@ -1,5 +1,6 @@
 // page factory functions
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use iced::Length;
@@ -148,6 +149,18 @@ pub async fn request_playlist(
         })
         .await?;
     rx.await.map_err(|err| anyhow::Error::from(err))
+}
+
+pub async fn request_downloaded_tracks(
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<HashSet<Id>> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::GetDownloadedTracks { result_sender: tx })
+        .await?;
+
+    let tracks = rx.await?;
+    Ok(tracks)
 }
 
 pub async fn download_playlist(

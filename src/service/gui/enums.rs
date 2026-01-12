@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use tokio::sync::mpsc;
 
 use crate::{
@@ -30,7 +32,7 @@ pub enum Message {
     // A playlist that was selected received playlist data to render.
     PlaylistSelectAccepted(Playlist),
     // The list of tracks that was downloaded before the program started. Given: the list of track ids
-    DownloadedTrackListReceived(Vec<Id>),
+    DownloadedTrackListReceived(HashSet<Id>),
     // A playlist download request succeeded and caused a playlist to start downloading. Provided: the playlist Id and its ReceiverHandle for information.
     DownloadPlaylistStarted {
         id: Id,
@@ -42,10 +44,6 @@ pub enum Message {
     },
     // fired when new track info is received for a playlist init
     PlaylistInitStatus(PlaylistInitStatus),
-    // A single track has downloaded. Given: the id of the track.
-    TrackDownloadFinished {
-        id: Id,
-    },
     // A single track download started. Given: the id of the track.
     TrackDownloadStarted {
         id: Id,
@@ -96,6 +94,9 @@ pub enum PlayingState {
 #[derive(Debug, Clone)]
 pub enum EventMessage {
     InitialPlaylistsInitalized(Vec<PlaylistMetadata>),
+    // A single track has downloaded. Given: the id of the track.
+    // This is an EventMessage because it is generally independent of a playlist.
+    TrackDownloadFinished { id: Id },
 }
 
 pub type EventSender = mpsc::Sender<EventMessage>;

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     service::{
@@ -33,9 +33,10 @@ pub struct PlaylistService {
     event_sender: EventSender,
     process_sender: ProcessSender,
     playlist_sender: PlaylistSender,
-    // Store playlists in an arc to make 'managing' them easier
     playlists: HashMap<Id, Playlist>,
     bin_files: Option<BinApps>,
+    // cache downloaded tracks to prevent re-downloading
+    downloaded_tracks: HashSet<Id>,
     // Contains gui listener as well to send notifications back
     download_managers: HashMap<Id, (PlaylistDownloadManager, mpsc::Sender<Message>)>,
 }
@@ -55,6 +56,7 @@ impl PlaylistService {
             bin_files: None,
             playlist_sender: flags.playlist_sender,
             download_managers: HashMap::new(),
+            downloaded_tracks: HashSet::new(),
         }
     }
 }
@@ -85,6 +87,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             ))
             .await
             .unwrap();
+
+        // cache downloaded tracks
+        let downloaded_tracks = file::util::get_downloaded_tracks().await.unwrap();
+        self.downloaded_tracks = downloaded_tracks;
 
         Ok(())
     }
@@ -230,6 +236,19 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         .await
                         .unwrap();
                 }
+            }
+            PlaylistMessage::GetDownloadedTracks { result_sender } => {
+                result_sender.send(self.downloaded_tracks.clone()).unwrap();
+            }
+            PlaylistMessage::TrackDownloadDone { id } => {
+                self.event_sender
+                    .send(EventMessage::TrackDownloadFinished { id })
+                    .await
+                    .unwrap();
+            }
+            PlaylistMessage::CheckTrackDownloaded { id, result_sender } => {
+                let downloaded = self.downloaded_tracks.contains(&id);
+                result_sender.send(downloaded).unwrap();
             }
         }
     }

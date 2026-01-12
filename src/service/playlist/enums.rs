@@ -1,4 +1,4 @@
-use std::process::ExitStatus;
+use std::{collections::HashSet, process::ExitStatus};
 
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
@@ -37,6 +37,16 @@ pub enum PlaylistMessage {
     PlaylistDownloadDone {
         success: bool,
         id: Id,
+    },
+    GetDownloadedTracks {
+        result_sender: oneshot::Sender<HashSet<Id>>,
+    },
+    TrackDownloadDone {
+        id: Id,
+    },
+    CheckTrackDownloaded {
+        id: Id,
+        result_sender: oneshot::Sender<bool>,
     },
 }
 

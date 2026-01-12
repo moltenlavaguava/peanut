@@ -6,7 +6,6 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
-use crate::service::file;
 use crate::service::gui::enums::{Action, PlayingState};
 use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
@@ -53,6 +52,7 @@ struct GuiFlags {
 
 impl App {
     fn new(flags: GuiFlags) -> (Self, Task<Message>) {
+        let playlist_sender_clone = flags.playlist_sender.clone();
         (
             Self {
                 _shutdown_token: flags.shutdown_token,
@@ -72,13 +72,16 @@ impl App {
                 download_stopping_playlists: HashSet::new(),
                 downloading_tracks: HashSet::new(),
             },
-            Task::perform(file::util::get_downloaded_tracks(), |maybe_tracks| {
-                if let Ok(tracks) = maybe_tracks {
-                    Message::DownloadedTrackListReceived(tracks)
-                } else {
-                    Message::DownloadedTrackListReceived(Vec::new())
-                }
-            }),
+            Task::perform(
+                util::request_downloaded_tracks(playlist_sender_clone),
+                |maybe_tracks| {
+                    if let Ok(tracks) = maybe_tracks {
+                        Message::DownloadedTrackListReceived(tracks)
+                    } else {
+                        Message::DownloadedTrackListReceived(HashSet::new())
+                    }
+                },
+            ),
         )
     }
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -108,6 +111,13 @@ impl App {
                 match msg {
                     EventMessage::InitialPlaylistsInitalized(playlist_data) => {
                         self.loaded_playlist_metadata = playlist_data;
+                    }
+                    EventMessage::TrackDownloadFinished { id } => {
+                        // a given track finished downloading.
+                        println!("Track download finished");
+                        // add downloaded track to list and remove it from the downloading tracks list
+                        self.downloading_tracks.remove(&id);
+                        self.downloaded_tracks.insert(id);
                     }
                 };
                 Task::none()
@@ -244,14 +254,6 @@ impl App {
                     "Cancel started. Downloading playlists: {:?}; Stopping playlists: {:?}",
                     self.downloading_playlists, self.download_stopping_playlists
                 );
-                Task::none()
-            }
-            Message::TrackDownloadFinished { id } => {
-                // a given track finished downloading.
-                println!("Track download finished");
-                // add downloaded track to list and remove it from the downloading tracks list
-                self.downloading_tracks.remove(&id);
-                self.downloaded_tracks.insert(id);
                 Task::none()
             }
             Message::TrackDownloadStarted { id } => {

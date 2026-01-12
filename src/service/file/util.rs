@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::path::PathBuf;
 
@@ -92,11 +92,11 @@ pub fn track_file_exists(id: &Id) -> bool {
     matches!(track_file_path_from_id(&id), Ok(_))
 }
 
-pub async fn get_downloaded_tracks() -> anyhow::Result<Vec<Id>> {
+pub async fn get_downloaded_tracks() -> anyhow::Result<HashSet<Id>> {
     // get the track data dir
     let track_dir = track_dir_path()?;
     // go through the directory and search for valid playlist files and add any successful files to a vec
-    let mut track_ids = Vec::new();
+    let mut track_ids = HashSet::new();
     let mut paths = fs::read_dir(track_dir).await?;
     while let Some(path) = paths.next_entry().await.ok().flatten() {
         if path.path().is_file() {
@@ -110,7 +110,7 @@ pub async fn get_downloaded_tracks() -> anyhow::Result<Vec<Id>> {
                 if let Ok(id) = id {
                     // valid id, check if it is a track id
                     if let MediaType::Track = id.media_type {
-                        track_ids.push(id);
+                        track_ids.insert(id);
                     }
                 }
             }

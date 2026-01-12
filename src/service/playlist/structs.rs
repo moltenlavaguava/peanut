@@ -8,7 +8,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
@@ -209,8 +209,10 @@ impl PlaylistDownloadManager {
     }
     pub fn run(
         &mut self,
+        // gui reply stream: directly gets track download start + progress
         gui_reply_stream: mpsc::Sender<Message>,
-        on_playlist_download_end: mpsc::Sender<PlaylistMessage>,
+        // playlist sender: directly gets track download finish + playlist download finish
+        playlist_sender: mpsc::Sender<PlaylistMessage>,
         process_sender: ProcessSender,
         bin_apps: BinApps,
     ) {
@@ -236,6 +238,7 @@ impl PlaylistDownloadManager {
         let playlist_id = self.playlist_id.clone();
         let stop_flag = self.stop_flag.clone();
         let stop_flag_clone = stop_flag.clone();
+        let playlist_sender_clone = playlist_sender.clone();
         let async_block = async move {
             // run the playlist downloading logic
             println!("running playlist downloading logic lol");
@@ -244,6 +247,24 @@ impl PlaylistDownloadManager {
                 if stop_flag_clone.load(Ordering::Relaxed) {
                     break;
                 }
+                // check to see if this current track was already downloaded
+                let (downloaded_t, downloaded_r) = oneshot::channel();
+                // send the request
+                playlist_sender_clone
+                    .send(PlaylistMessage::CheckTrackDownloaded {
+                        id: track.id().clone(),
+                        result_sender: downloaded_t,
+                    })
+                    .await
+                    .unwrap();
+                if let Ok(result) = downloaded_r.await {
+                    // check the result
+                    if result {
+                        // track was downloaded; skip it
+                        continue;
+                    }
+                }
+
                 // Track Download Start message
                 gui_reply_stream
                     .send(Message::TrackDownloadStarted {
@@ -266,8 +287,8 @@ impl PlaylistDownloadManager {
                 .unwrap();
 
                 // Track Download End message
-                gui_reply_stream
-                    .send(Message::TrackDownloadFinished {
+                playlist_sender_clone
+                    .send(PlaylistMessage::TrackDownloadDone {
                         id: track.id().clone(),
                     })
                     .await
@@ -285,7 +306,7 @@ impl PlaylistDownloadManager {
             println!("finished downloading");
 
             // Playlist Download End Message
-            on_playlist_download_end
+            playlist_sender
                 .send(PlaylistMessage::PlaylistDownloadDone {
                     success: if let DownloadEndType::Finished = stop_kind {
                         true
