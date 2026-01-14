@@ -197,6 +197,9 @@ impl TrackList {
             .iter()
             .map(|index| &self.tracks[*index as usize])
     }
+    pub fn randomize_order(&mut self) {
+        self.order.randomize();
+    }
 }
 
 pub struct PlaylistDownloadManager {
@@ -204,6 +207,7 @@ pub struct PlaylistDownloadManager {
     playlist_id: Id,
     cancel_token: CancellationToken,
     stop_flag: Arc<AtomicBool>,
+    restart_flag: bool,
 }
 impl PlaylistDownloadManager {
     pub fn new(tracklist: TrackList, playlist_id: Id) -> Self {
@@ -212,6 +216,7 @@ impl PlaylistDownloadManager {
             playlist_id,
             cancel_token: CancellationToken::new(),
             stop_flag: Arc::new(AtomicBool::new(false)),
+            restart_flag: false,
         }
     }
     pub fn run(
@@ -241,11 +246,18 @@ impl PlaylistDownloadManager {
             }
         });
 
+        // restart stop flag
+        self.stop_flag.store(true, Ordering::Relaxed);
+
         let tracklist = self.tracklist.clone();
         let playlist_id = self.playlist_id.clone();
         let stop_flag = self.stop_flag.clone();
         let stop_flag_clone = stop_flag.clone();
         let playlist_sender_clone = playlist_sender.clone();
+        let gui_reply_stream_clone = gui_reply_stream.clone();
+        let process_sender = process_sender.clone();
+        let map_t = map_t.clone();
+        let bin_apps = bin_apps.clone();
         let async_block = async move {
             // run the playlist downloading logic
             println!("running playlist downloading logic lol");
@@ -273,7 +285,7 @@ impl PlaylistDownloadManager {
                 }
 
                 // Track Download Start message
-                gui_reply_stream
+                gui_reply_stream_clone
                     .send(Message::TrackDownloadStarted {
                         id: track.id().clone(),
                     })
@@ -335,5 +347,16 @@ impl PlaylistDownloadManager {
     }
     pub fn get_playlist_id(&self) -> &Id {
         &self.playlist_id
+    }
+    pub fn get_tracklist(&self) -> &TrackList {
+        &self.tracklist
+    }
+    pub fn restart(&mut self) {
+        self.restart_flag = true;
+        self.stop();
+    }
+    pub fn restart_with_tracklist(&mut self, tracklist: TrackList) {
+        self.tracklist = tracklist;
+        self.restart();
     }
 }

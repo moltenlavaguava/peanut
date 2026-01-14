@@ -230,6 +230,23 @@ impl App {
                             },
                         )
                     }
+                    Action::ShufflePlaylist { playlist_id } => {
+                        println!("shuffle playlist on gui end");
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::shuffle_playlist(playlist_id.clone(), playlist_sender_clone),
+                            |result| {
+                                if let Ok(tracklist) = result {
+                                    Message::PlaylistOrderUpdated {
+                                        id: playlist_id,
+                                        tracklist,
+                                    }
+                                } else {
+                                    Message::None
+                                }
+                            },
+                        )
+                    }
                     _ => Task::none(),
                 }
             }
@@ -270,6 +287,17 @@ impl App {
             Message::TrackDownloadStatus { id: _, data: _ } => {
                 // A given track's download status updated.
                 println!("Track download progress");
+                Task::none()
+            }
+            Message::PlaylistOrderUpdated { id: _, tracklist } => {
+                println!("Playlist order updated");
+                // construct the new ptracklist
+                let oldptracklist = self.current_ptracklist.take().unwrap();
+                let ptracklist = PTrackList {
+                    list: tracklist,
+                    metadata: oldptracklist.metadata,
+                };
+                self.current_ptracklist = Some(ptracklist);
                 Task::none()
             }
             Message::None => Task::none(),

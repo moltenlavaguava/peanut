@@ -7,7 +7,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
-            structs::{PTrackList, PlaylistMetadata, TrackDownloadData},
+            structs::{PTrackList, PlaylistMetadata, TrackDownloadData, TrackList},
         },
     },
     util::sync::ReceiverHandle,
@@ -56,6 +56,11 @@ pub enum Message {
     // A playlist download ended. Provided: the playlist Id.
     DownloadPlaylistEnded {
         id: Id,
+    },
+    // A playlist tracklist updated. Provided: the playlist id and the list.
+    PlaylistOrderUpdated {
+        id: Id,
+        tracklist: TrackList,
     },
     // An action was performed. Usually occurs when the user triggers something.
     Action(Action),

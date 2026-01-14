@@ -185,7 +185,11 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     result_sender.send(None).unwrap()
                 }
             }
-            PlaylistMessage::DownloadPlaylist { id, reply_stream } => {
+            PlaylistMessage::DownloadPlaylist {
+                id,
+                reply_stream,
+                tracklist,
+            } => {
                 // first, check to see if there's already a current downloading playlist.
                 // if there is, then do nothing.
                 if !self.download_managers.is_empty() {
@@ -208,7 +212,11 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let bin_apps = self.bin_files.clone().unwrap();
 
                 // temporary: manage the download order later
-                let tracklist = TrackList::from_playlist_ref(&playlist);
+                let tracklist = if let Some(t) = tracklist {
+                    t
+                } else {
+                    TrackList::from_playlist_ref(&playlist)
+                };
 
                 let mut manager = PlaylistDownloadManager::new(tracklist, playlist.id().clone());
                 manager.run(reply_t.clone(), playlist_sender, process_sender, bin_apps);
@@ -256,9 +264,21 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 result_sender.send(downloaded).unwrap();
             }
             PlaylistMessage::ShufflePlaylist {
-                playlist_id: _,
-                result_sender: _,
-            } => {}
+                playlist_id,
+                result_sender,
+            } => {
+                println!("Shuffling playlist on plalyist end");
+                // take the active mgr if it exists and do some goofy shuffling
+                if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
+                    println!("Sending all the requests");
+                    let mut tracklist = mgr.get_tracklist().clone();
+                    // shuffle it
+                    tracklist.randomize_order();
+                    result_sender.send(tracklist.clone()).unwrap();
+                    // add it back to the mgr and restart it
+                    mgr.restart_with_tracklist(tracklist);
+                }
+            }
         }
     }
 }

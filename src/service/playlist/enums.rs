@@ -24,12 +24,14 @@ pub enum PlaylistMessage {
         playlist: Playlist,
         result_sender: oneshot::Sender<anyhow::Result<()>>,
     },
+    // Returns a new (organized) tracklist from the given playlist id.
     RequestTracklist {
         id: Id,
         result_sender: oneshot::Sender<Option<TrackList>>,
     },
     DownloadPlaylist {
         id: Id,
+        tracklist: Option<TrackList>,
         reply_stream: oneshot::Sender<mpsc::Receiver<Message>>,
     },
     CancelDownloadPlaylist {

@@ -172,6 +172,7 @@ pub async fn download_playlist(
     playlist_sender
         .send(PlaylistMessage::DownloadPlaylist {
             id: id.clone(),
+            tracklist: None,
             reply_stream: tx,
         })
         .await?;
@@ -193,4 +194,20 @@ pub async fn stop_playlist_download(id: Id, playlist_sender: PlaylistSender) -> 
         .await?;
     let _ = rx.await??;
     Ok(())
+}
+
+pub async fn shuffle_playlist(
+    id: Id,
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<TrackList> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::ShufflePlaylist {
+            playlist_id: id,
+            result_sender: tx,
+        })
+        .await?;
+
+    let tracklist = rx.await?;
+    Ok(tracklist)
 }
