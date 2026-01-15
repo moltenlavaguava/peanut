@@ -166,6 +166,9 @@ impl TrackOrder {
     pub fn order(&self) -> &Vec<u64> {
         &self.index_order
     }
+    pub fn sort(&mut self) {
+        self.index_order.sort_unstable();
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -199,6 +202,9 @@ impl TrackList {
     }
     pub fn randomize_order(&mut self) {
         self.order.randomize();
+    }
+    pub fn sort(&mut self) {
+        self.order.sort();
     }
 }
 

@@ -214,3 +214,21 @@ pub async fn shuffle_playlist(
     let tracklist = rx.await?;
     Ok(tracklist)
 }
+
+pub async fn organize_playlist(
+    id: Id,
+    playlist_sender: PlaylistSender,
+    tracklist: Option<TrackList>,
+) -> anyhow::Result<TrackList> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::OrganizePlaylist {
+            playlist_id: id,
+            result_sender: tx,
+            tracklist,
+        })
+        .await?;
+
+    let tracklist = rx.await?;
+    Ok(tracklist)
+}

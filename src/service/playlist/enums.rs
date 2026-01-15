@@ -57,6 +57,11 @@ pub enum PlaylistMessage {
         tracklist: Option<TrackList>,
         result_sender: oneshot::Sender<TrackList>,
     },
+    OrganizePlaylist {
+        playlist_id: Id,
+        tracklist: Option<TrackList>,
+        result_sender: oneshot::Sender<TrackList>,
+    },
 }
 
 #[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]

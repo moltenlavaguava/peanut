@@ -254,6 +254,27 @@ impl App {
                             },
                         )
                     }
+                    Action::OrganizePlaylist { playlist_id } => {
+                        println!("organize playlist on gui end");
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::organize_playlist(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                                None,
+                            ),
+                            |result| {
+                                if let Ok(tracklist) = result {
+                                    Message::PlaylistOrderUpdated {
+                                        id: playlist_id,
+                                        tracklist,
+                                    }
+                                } else {
+                                    Message::None
+                                }
+                            },
+                        )
+                    }
                     _ => Task::none(),
                 }
             }

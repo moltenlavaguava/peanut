@@ -287,6 +287,37 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     mgr.restart_with_tracklist(tracklist);
                 }
             }
+            PlaylistMessage::OrganizePlaylist {
+                playlist_id,
+                tracklist,
+                result_sender,
+            } => {
+                println!("sorting playlist on plalyist end");
+                // either take the current tracklist given or create one from the playlist
+                let playlist = self.playlists.get(&playlist_id);
+                let playlist = match playlist {
+                    None => {
+                        println!(
+                            "failed to shuffle playlist; playlist id did not return a playlist"
+                        );
+                        return;
+                    }
+                    Some(playlist) => playlist,
+                };
+                let mut tracklist = match tracklist {
+                    Some(tracklist) => tracklist,
+                    None => TrackList::from_playlist_ref(&playlist),
+                };
+                tracklist.sort();
+                result_sender.send(tracklist.clone()).unwrap();
+
+                // take the active mgr if it exists and do some goofy shuffling
+                if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
+                    println!("Sending all the requests");
+                    // restart mgr with new tracklist
+                    mgr.restart_with_tracklist(tracklist);
+                }
+            }
         }
     }
 }
