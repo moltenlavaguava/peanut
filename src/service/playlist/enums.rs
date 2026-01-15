@@ -31,7 +31,7 @@ pub enum PlaylistMessage {
     },
     DownloadPlaylist {
         id: Id,
-        tracklist: Option<TrackList>,
+        tracklist: TrackList,
         reply_stream: oneshot::Sender<mpsc::Receiver<Message>>,
     },
     CancelDownloadPlaylist {
@@ -54,6 +54,7 @@ pub enum PlaylistMessage {
     },
     ShufflePlaylist {
         playlist_id: Id,
+        tracklist: Option<TrackList>,
         result_sender: oneshot::Sender<TrackList>,
     },
 }

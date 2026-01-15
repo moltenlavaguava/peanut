@@ -194,11 +194,14 @@ impl App {
                         // send request to playlist service to download
                         let playlist_sender_clone = self.playlist_sender.clone();
                         let next_id = self.id_counter.next();
+                        // get the current tracklist for this playlist
+                        let tracklist = self.current_ptracklist.clone().unwrap().list;
                         Task::perform(
                             util::download_playlist(
                                 playlist_id,
                                 playlist_sender_clone.clone(),
                                 next_id,
+                                tracklist,
                             ),
                             |maybe_msg| {
                                 if let Ok(msg) = maybe_msg {
@@ -234,7 +237,11 @@ impl App {
                         println!("shuffle playlist on gui end");
                         let playlist_sender_clone = self.playlist_sender.clone();
                         Task::perform(
-                            util::shuffle_playlist(playlist_id.clone(), playlist_sender_clone),
+                            util::shuffle_playlist(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                                None,
+                            ),
                             |result| {
                                 if let Ok(tracklist) = result {
                                     Message::PlaylistOrderUpdated {

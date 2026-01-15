@@ -8,7 +8,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, watch};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
@@ -208,6 +208,9 @@ pub struct PlaylistDownloadManager {
     cancel_token: CancellationToken,
     stop_flag: Arc<AtomicBool>,
     restart_flag: bool,
+    internal_t: Option<watch::Sender<Option<TrackList>>>,
+    dead: bool,
+    running: bool,
 }
 impl PlaylistDownloadManager {
     pub fn new(tracklist: TrackList, playlist_id: Id) -> Self {
@@ -217,6 +220,9 @@ impl PlaylistDownloadManager {
             cancel_token: CancellationToken::new(),
             stop_flag: Arc::new(AtomicBool::new(false)),
             restart_flag: false,
+            internal_t: None,
+            dead: false,
+            running: false,
         }
     }
     pub fn run(
@@ -228,6 +234,14 @@ impl PlaylistDownloadManager {
         process_sender: ProcessSender,
         bin_apps: BinApps,
     ) {
+        if self.dead() {
+            return;
+        }
+        if self.running {
+            println!("cannot run same playlist manager twice");
+        }
+        self.running = true;
+
         // create mini task to map extractor lines to gui messages
         let (map_t, mut map_r) = mpsc::channel(100);
         let gui_reply_stream_clone = gui_reply_stream.clone();
@@ -246,10 +260,12 @@ impl PlaylistDownloadManager {
             }
         });
 
-        // restart stop flag
-        self.stop_flag.store(true, Ordering::Relaxed);
+        // setup internal communication to the task at hand
+        let (internal_t, mut internal_r) = watch::channel(None);
+        // send first value
+        internal_t.send(Some(self.tracklist.clone())).unwrap();
 
-        let tracklist = self.tracklist.clone();
+        self.internal_t = Some(internal_t);
         let playlist_id = self.playlist_id.clone();
         let stop_flag = self.stop_flag.clone();
         let stop_flag_clone = stop_flag.clone();
@@ -259,59 +275,77 @@ impl PlaylistDownloadManager {
         let map_t = map_t.clone();
         let bin_apps = bin_apps.clone();
         let async_block = async move {
-            // run the playlist downloading logic
-            println!("running playlist downloading logic lol");
-            for track in tracklist.iter() {
-                // check to see if a stop was requested
-                if stop_flag_clone.load(Ordering::Relaxed) {
-                    break;
-                }
-                // check to see if this current track was already downloaded
-                let (downloaded_t, downloaded_r) = oneshot::channel();
-                // send the request
-                playlist_sender_clone
-                    .send(PlaylistMessage::CheckTrackDownloaded {
-                        id: track.id().clone(),
-                        result_sender: downloaded_t,
-                    })
-                    .await
-                    .unwrap();
-                if let Ok(result) = downloaded_r.await {
-                    // check the result
-                    if result {
-                        // track was downloaded; skip it
-                        continue;
+            while internal_r.has_changed().unwrap_or(false) {
+                println!("starting new loop in download");
+                // pull the tracklist from the watch channel
+                let tracklist = {
+                    let t = internal_r.borrow_and_update().clone();
+                    if let Some(t) = t {
+                        t
+                    } else {
+                        println!("tracklist was None, breaking");
+                        break;
                     }
+                };
+
+                // restart stop flag
+                stop_flag_clone.store(false, Ordering::Relaxed);
+
+                // run the playlist downloading logic
+                println!("running playlist downloading logic lol");
+                for track in tracklist.iter() {
+                    // check to see if a stop was requested
+                    if stop_flag_clone.load(Ordering::Relaxed) {
+                        println!("breaking playlist download");
+                        break;
+                    }
+                    // check to see if this current track was already downloaded
+                    let (downloaded_t, downloaded_r) = oneshot::channel();
+                    // send the request
+                    playlist_sender_clone
+                        .send(PlaylistMessage::CheckTrackDownloaded {
+                            id: track.id().clone(),
+                            result_sender: downloaded_t,
+                        })
+                        .await
+                        .unwrap();
+                    if let Ok(result) = downloaded_r.await {
+                        // check the result
+                        if result {
+                            // track was downloaded; skip it
+                            continue;
+                        }
+                    }
+
+                    // Track Download Start message
+                    gui_reply_stream_clone
+                        .send(Message::TrackDownloadStarted {
+                            id: track.id().clone(),
+                        })
+                        .await
+                        .unwrap();
+
+                    println!("Downloading track {}..", track.title);
+                    download::download_track(
+                        &track.download_url,
+                        track.id().clone(),
+                        file::util::track_dir_path().unwrap(),
+                        track.id().to_string(),
+                        bin_apps.clone(),
+                        &process_sender,
+                        &map_t,
+                    )
+                    .await
+                    .unwrap();
+
+                    // Track Download End message
+                    playlist_sender_clone
+                        .send(PlaylistMessage::TrackDownloadDone {
+                            id: track.id().clone(),
+                        })
+                        .await
+                        .unwrap();
                 }
-
-                // Track Download Start message
-                gui_reply_stream_clone
-                    .send(Message::TrackDownloadStarted {
-                        id: track.id().clone(),
-                    })
-                    .await
-                    .unwrap();
-
-                println!("Downloading track {}..", track.title);
-                download::download_track(
-                    &track.download_url,
-                    track.id().clone(),
-                    file::util::track_dir_path().unwrap(),
-                    track.id().to_string(),
-                    bin_apps.clone(),
-                    &process_sender,
-                    &map_t,
-                )
-                .await
-                .unwrap();
-
-                // Track Download End message
-                playlist_sender_clone
-                    .send(PlaylistMessage::TrackDownloadDone {
-                        id: track.id().clone(),
-                    })
-                    .await
-                    .unwrap();
             }
         };
 
@@ -339,24 +373,52 @@ impl PlaylistDownloadManager {
         });
     }
     pub fn stop(&mut self) {
+        if self.dead() {
+            return;
+        }
+        // send signal that no more tracks are coming
+        if let Some(internal_t) = &self.internal_t {
+            internal_t.send(None).unwrap();
+        }
+        // stop the current track download
         self.stop_flag.store(true, Ordering::Relaxed);
+        self.dead = true;
     }
     pub fn cancel(&mut self) {
+        if self.dead() {
+            return;
+        }
+        self.dead = true;
+
         println!("Cancelling manager..");
         self.cancel_token.cancel();
     }
     pub fn get_playlist_id(&self) -> &Id {
         &self.playlist_id
     }
-    pub fn get_tracklist(&self) -> &TrackList {
-        &self.tracklist
-    }
     pub fn restart(&mut self) {
+        if self.dead() {
+            return;
+        }
+
         self.restart_flag = true;
-        self.stop();
+        // stop the current track download to prepare for the next
+        self.stop_flag.store(true, Ordering::Relaxed);
     }
     pub fn restart_with_tracklist(&mut self, tracklist: TrackList) {
-        self.tracklist = tracklist;
+        if self.dead() {
+            return;
+        }
+
+        if let Some(internal_t) = &self.internal_t {
+            internal_t.send(Some(tracklist)).unwrap();
+        }
         self.restart();
+    }
+    fn dead(&self) -> bool {
+        if self.dead {
+            println!("cannot run methods on dead playlist manager");
+        }
+        self.dead
     }
 }

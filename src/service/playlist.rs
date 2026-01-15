@@ -211,13 +211,6 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let process_sender = self.process_sender.clone();
                 let bin_apps = self.bin_files.clone().unwrap();
 
-                // temporary: manage the download order later
-                let tracklist = if let Some(t) = tracklist {
-                    t
-                } else {
-                    TrackList::from_playlist_ref(&playlist)
-                };
-
                 let mut manager = PlaylistDownloadManager::new(tracklist, playlist.id().clone());
                 manager.run(reply_t.clone(), playlist_sender, process_sender, bin_apps);
 
@@ -266,16 +259,31 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             PlaylistMessage::ShufflePlaylist {
                 playlist_id,
                 result_sender,
+                tracklist,
             } => {
                 println!("Shuffling playlist on plalyist end");
+                // either take the current tracklist given or create one from the playlist
+                let playlist = self.playlists.get(&playlist_id);
+                let playlist = match playlist {
+                    None => {
+                        println!(
+                            "failed to shuffle playlist; playlist id did not return a playlist"
+                        );
+                        return;
+                    }
+                    Some(playlist) => playlist,
+                };
+                let mut tracklist = match tracklist {
+                    Some(tracklist) => tracklist,
+                    None => TrackList::from_playlist_ref(&playlist),
+                };
+                tracklist.randomize_order();
+                result_sender.send(tracklist.clone()).unwrap();
+
                 // take the active mgr if it exists and do some goofy shuffling
                 if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
                     println!("Sending all the requests");
-                    let mut tracklist = mgr.get_tracklist().clone();
-                    // shuffle it
-                    tracklist.randomize_order();
-                    result_sender.send(tracklist.clone()).unwrap();
-                    // add it back to the mgr and restart it
+                    // restart mgr with new tracklist
                     mgr.restart_with_tracklist(tracklist);
                 }
             }
