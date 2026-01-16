@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     service::{
+        audio::AudioSender,
         file::{self, structs::BinApps},
         gui::enums::{EventMessage, EventSender, Message},
         id::structs::Id,
@@ -33,6 +34,7 @@ pub struct PlaylistService {
     event_sender: EventSender,
     process_sender: ProcessSender,
     playlist_sender: PlaylistSender,
+    audio_sender: AudioSender,
     playlists: HashMap<Id, Playlist>,
     bin_files: Option<BinApps>,
     // cache downloaded tracks to prevent re-downloading
@@ -44,6 +46,7 @@ pub struct PlaylistService {
 pub struct PlaylistFlags {
     pub event_sender: EventSender,
     pub process_sender: ProcessSender,
+    pub audio_sender: AudioSender,
     pub playlist_sender: PlaylistSender,
 }
 
@@ -52,6 +55,7 @@ impl PlaylistService {
         Self {
             event_sender: flags.event_sender,
             process_sender: flags.process_sender,
+            audio_sender: flags.audio_sender,
             playlists: HashMap::new(),
             bin_files: None,
             playlist_sender: flags.playlist_sender,
