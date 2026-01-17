@@ -62,6 +62,14 @@ pub enum PlaylistMessage {
         tracklist: Option<TrackList>,
         result_sender: oneshot::Sender<TrackList>,
     },
+    PlaylistAudioManagementDone {
+        id: Id,
+    },
+    PlayPlaylist {
+        id: Id,
+        tracklist: Option<TrackList>,
+        progress_sender: mpsc::Sender<Message>,
+    },
 }
 
 #[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]

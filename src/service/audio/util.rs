@@ -24,7 +24,7 @@ const AUDIO_HEARTBEAT_RATE: u64 = 100;
 
 pub fn play_audio(
     track_id: Id,
-    progress_sender: mpsc::Sender<AudioProgress>,
+    progress_sender: mpsc::Sender<(Id, AudioProgress)>,
     on_end: mpsc::Sender<AudioMessage>,
     _audio_config: AudioConfig,
     audio_manager: &mut AudioManager,
@@ -32,7 +32,9 @@ pub fn play_audio(
     // get the file path from the track id
     let path = file::util::track_file_path_from_id(&track_id)?;
     // do audio things
+    println!("doing data");
     let data = StreamingSoundData::from_file(path)?;
+    println!("got data");
     let duration = data.duration();
 
     // play the audio and get its handle
@@ -59,7 +61,7 @@ pub fn play_audio(
                 // send the update
                 let progress = AudioProgress::new(Duration::from_secs_f64(pos), duration.clone());
                 // if the recv was dropped, then stop heartbeating
-                if let Err(_) = progress_sender.send(progress).await {
+                if let Err(_) = progress_sender.send((track_id.clone(), progress)).await {
                     dropped = true;
                 }
             }

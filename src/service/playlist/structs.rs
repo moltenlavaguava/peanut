@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use parking_lot::Mutex;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -13,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::service::{
+    audio::{AudioSender, enums::AudioMessage, structs::AudioConfig},
     file::{
         self,
         structs::{BinApps, DataSize},
@@ -252,11 +254,10 @@ impl PlaylistDownloadManager {
         let (map_t, mut map_r) = mpsc::channel(100);
         let gui_reply_stream_clone = gui_reply_stream.clone();
         tokio::spawn(async move {
-            let reply_stream = gui_reply_stream_clone.clone();
             while let Some((id, line)) = map_r.recv().await {
                 match line {
                     ExtractorLineOut::DownloadProgress(data) => {
-                        reply_stream
+                        gui_reply_stream_clone
                             .send(Message::TrackDownloadStatus { id, data })
                             .await
                             .unwrap();
@@ -420,6 +421,262 @@ impl PlaylistDownloadManager {
             internal_t.send(Some(tracklist)).unwrap();
         }
         self.restart();
+    }
+    fn dead(&self) -> bool {
+        if self.dead {
+            println!("cannot run methods on dead playlist manager");
+        }
+        self.dead
+    }
+}
+
+pub struct PlaylistAudioManager {
+    tracklist: TrackList,
+    playlist_id: Id,
+    cancel_token: CancellationToken,
+    stop_flag: Arc<AtomicBool>,
+    restart_flag: bool,
+    internal_t: Option<watch::Sender<Option<TrackList>>>,
+    current_track_id: Arc<Mutex<Option<Id>>>,
+    dead: bool,
+    running: bool,
+    audio_sender: Option<AudioSender>,
+}
+impl PlaylistAudioManager {
+    pub fn new(tracklist: TrackList, playlist_id: Id) -> Self {
+        Self {
+            tracklist,
+            playlist_id,
+            cancel_token: CancellationToken::new(),
+            stop_flag: Arc::new(AtomicBool::new(false)),
+            restart_flag: false,
+            internal_t: None,
+            dead: false,
+            running: false,
+            current_track_id: Arc::new(Mutex::new(None)),
+            audio_sender: None,
+        }
+    }
+    pub fn run(
+        &mut self,
+        // gui reply stream: directly audio progress updates, audio starts, and audio ends
+        gui_progress_sender: mpsc::Sender<Message>,
+        // playlist sender: directly gets playlist playing finish
+        playlist_sender: mpsc::Sender<PlaylistMessage>,
+        audio_sender: mpsc::Sender<AudioMessage>,
+    ) {
+        if self.dead() {
+            return;
+        }
+        if self.running {
+            println!("cannot run same playlist manager twice");
+        }
+        self.running = true;
+
+        self.audio_sender = Some(audio_sender);
+
+        // create mini task to map extractor lines to gui messages
+        let (map_t, mut map_r) = mpsc::channel(100);
+        let gui_progress_sender_clone = gui_progress_sender.clone();
+        tokio::spawn(async move {
+            while let Some((id, progress)) = map_r.recv().await {
+                gui_progress_sender_clone
+                    .send(Message::TrackAudioProgress { id, progress })
+                    .await
+                    .unwrap();
+            }
+        });
+
+        // setup internal communication to the task at hand
+        let (internal_t, mut internal_r) = watch::channel(None);
+        // send first value
+        internal_t.send(Some(self.tracklist.clone())).unwrap();
+        self.internal_t = Some(internal_t);
+
+        // all the cloning
+        let playlist_id = self.playlist_id.clone();
+        let stop_flag = self.stop_flag.clone();
+        let stop_flag_clone = stop_flag.clone();
+        let playlist_sender_clone = playlist_sender.clone();
+        let gui_reply_stream_clone = gui_progress_sender.clone();
+        let cancel_token = self.cancel_token.clone();
+        let current_track_id = Arc::clone(&self.current_track_id);
+        let audio_sender = self.audio_sender.clone().unwrap();
+
+        // spawn async process
+        tokio::spawn(async move {
+            while internal_r.has_changed().unwrap_or(false) {
+                println!("starting new loop in audio player");
+                // pull the tracklist from the watch channel
+                let tracklist = {
+                    let t = internal_r.borrow_and_update().clone();
+                    if let Some(t) = t {
+                        t
+                    } else {
+                        println!("tracklist was None, breaking");
+                        break;
+                    }
+                };
+
+                // restart stop flag
+                stop_flag_clone.store(false, Ordering::Relaxed);
+
+                // run the playlist downloading logic
+                println!("running playlist playing logic lol");
+                for track in tracklist.iter() {
+                    // check to see if a stop was requested
+                    if stop_flag_clone.load(Ordering::Relaxed) {
+                        println!("breaking playlist playing");
+                        break;
+                    }
+                    // check to see if this current track was already downloaded
+                    let (downloaded_t, downloaded_r) = oneshot::channel();
+                    // send the request
+                    if let Err(_) = playlist_sender_clone
+                        .send(PlaylistMessage::CheckTrackDownloaded {
+                            id: track.id().clone(),
+                            result_sender: downloaded_t,
+                        })
+                        .await
+                    {
+                        break;
+                    }
+                    if let Ok(result) = downloaded_r.await {
+                        // check the result
+                        if !result {
+                            // track is not downloaded; skip it
+                            println!("Track {} skipped: not downloaded", track.title);
+                            continue;
+                        }
+                    }
+
+                    // Track Audio Start message
+                    gui_reply_stream_clone
+                        .send(Message::TrackAudioStart {
+                            id: track.id().clone(),
+                        })
+                        .await
+                        .unwrap();
+
+                    println!("Playing track {}..", track.title);
+                    // audio playing logic
+
+                    let audio_config = AudioConfig::new();
+                    let (end_t, end_r) = oneshot::channel();
+
+                    let audio_message = AudioMessage::PlayAudio {
+                        id: track.id().clone(),
+                        audio_config,
+                        progress_sender: map_t.clone(),
+                        on_end: end_t,
+                    };
+
+                    // send the request
+                    audio_sender.send(audio_message).await.unwrap();
+
+                    // update the current track id so it can be controlled from the outside
+                    {
+                        let mut guard = current_track_id.lock();
+                        *guard = Some(track.id().clone());
+                    }
+
+                    // play audio unless cancelled (audio mgr shut down)
+                    tokio::select! {
+                        _ = cancel_token.cancelled() => {
+                            println!("Playlist audio manager cancelled");
+                            break;
+                        }
+                        _ = end_r => {
+                            println!("Track finished in mgr.");
+                            // reset current track
+                            let mut guard = current_track_id.lock();
+                            *guard = None;
+                        }
+                    }
+                }
+            }
+            // end of while loop; management finished
+            playlist_sender
+                .send(PlaylistMessage::PlaylistAudioManagementDone { id: playlist_id })
+                .await
+                .unwrap();
+        });
+    }
+    // Only cancel exists here, as there's no point in waiting for the audio to stop playing
+    pub fn cancel(&mut self) {
+        if self.dead() {
+            return;
+        }
+        self.dead = true;
+
+        println!("Cancelling manager..");
+        self.cancel_token.cancel();
+    }
+    pub fn get_playlist_id(&self) -> &Id {
+        &self.playlist_id
+    }
+    pub fn restart(&mut self) {
+        if self.dead() {
+            return;
+        }
+
+        self.restart_flag = true;
+        // stop the current track download to prepare for the next
+        self.stop_flag.store(true, Ordering::Relaxed);
+    }
+    pub fn restart_with_tracklist(&mut self, tracklist: TrackList) {
+        if self.dead() {
+            return;
+        }
+
+        if let Some(internal_t) = &self.internal_t {
+            internal_t.send(Some(tracklist)).unwrap();
+        }
+        self.restart();
+    }
+    pub fn pause_current_track(&mut self) {
+        if let Some(sender) = &self.audio_sender {
+            // get the current track id if it exists
+            let track_id: Option<Id> = {
+                let guard = self.current_track_id.lock();
+                guard.clone()
+            };
+            if let Some(track_id) = track_id {
+                let sender_clone = sender.clone();
+                tokio::spawn(async move {
+                    let (tx, _) = oneshot::channel();
+                    let _ = sender_clone
+                        .clone()
+                        .send(AudioMessage::PauseAudio {
+                            id: track_id,
+                            result: tx,
+                        })
+                        .await;
+                });
+            }
+        }
+    }
+    pub fn resume_current_track(&mut self) {
+        if let Some(sender) = &self.audio_sender {
+            // get the current track id if it exists
+            let track_id: Option<Id> = {
+                let guard = self.current_track_id.lock();
+                guard.clone()
+            };
+            if let Some(track_id) = track_id {
+                let sender_clone = sender.clone();
+                tokio::spawn(async move {
+                    let (tx, _) = oneshot::channel();
+                    let _ = sender_clone
+                        .clone()
+                        .send(AudioMessage::ResumeAudio {
+                            id: track_id,
+                            result: tx,
+                        })
+                        .await;
+                });
+            }
+        }
     }
     fn dead(&self) -> bool {
         if self.dead {

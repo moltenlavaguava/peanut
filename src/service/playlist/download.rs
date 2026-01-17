@@ -156,9 +156,9 @@ pub async fn download_track(
         OsString::from("-o"),
         OsString::from(format!("{}.%(ext)s", file_name)),
         OsString::from("-f"),
-        OsString::from("bestaudio"),
-        OsString::from("--audio-format"),
-        OsString::from("opus"),
+        OsString::from("bestaudio[ext=m4a]"),
+        // OsString::from("--audio-format"),
+        // OsString::from("opus"),
         OsString::from("--no-simulate"),
         OsString::from(url.as_str()),
     ];

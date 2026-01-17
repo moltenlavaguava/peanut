@@ -7,7 +7,7 @@ use iced::Length;
 use iced::widget::{
     Column, Space, button, column, container, lazy, row, scrollable, text, text_input,
 };
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::service::gui::enums::{Action, PlayingState};
 use crate::service::id::structs::Id;
@@ -115,7 +115,7 @@ pub fn player(app: &App) -> Column<'_, Message> {
             playlist_id: current_playlist_id.clone()
         })),
         if let PlayingState::Playing = app.track_playing_state {
-            button("pause").on_press(Message::Action(Action::PlayTrack {
+            button("pause").on_press(Message::Action(Action::ResumeTrack {
                 playlist_id: current_playlist_id.clone(),
             }))
         } else {
@@ -231,4 +231,24 @@ pub async fn organize_playlist(
 
     let tracklist = rx.await?;
     Ok(tracklist)
+}
+
+pub async fn play_playlist(
+    playlist_id: Id,
+    task_id: u64,
+    playlist_sender: PlaylistSender,
+    tracklist: Option<TrackList>,
+) -> anyhow::Result<ReceiverHandle<Message>> {
+    // create a receiver handle for progress updates
+    let (tx, rx) = mpsc::channel(100);
+    let handle = ReceiverHandle::new(task_id, rx);
+
+    playlist_sender
+        .send(PlaylistMessage::PlayPlaylist {
+            id: playlist_id,
+            tracklist,
+            progress_sender: tx,
+        })
+        .await?;
+    Ok(handle)
 }

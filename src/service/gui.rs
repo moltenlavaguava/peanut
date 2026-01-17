@@ -172,10 +172,22 @@ impl App {
                 )
             }
             Message::PlaylistSelectAccepted(ptracklist) => {
-                // change the page + set the current playlist
+                // change the page + set the current playlist + start 'playing' the playlist
+                let task = Task::perform(
+                    util::play_playlist(
+                        ptracklist.metadata.id.clone(),
+                        self.id_counter.next(),
+                        self.playlist_sender.clone(),
+                        None,
+                    ),
+                    |handle| Message::TaskStarted {
+                        handle: handle.unwrap(),
+                    },
+                );
+
                 self.current_ptracklist = Some(ptracklist);
                 self.page = Page::Player;
-                Task::none()
+                task
             }
             Message::DownloadedTrackListReceived(tracks) => {
                 // add to the list of downloaded tracks
@@ -326,6 +338,22 @@ impl App {
                     metadata: oldptracklist.metadata,
                 };
                 self.current_ptracklist = Some(ptracklist);
+                Task::none()
+            }
+            Message::TrackAudioProgress { id: _, progress: _ } => {
+                println!("track audio progress");
+                Task::none()
+            }
+            Message::TrackAudioStart { id: _ } => {
+                println!("track audio start");
+                Task::none()
+            }
+            Message::TrackAudioEnd { id: _ } => {
+                println!("track audio end");
+                Task::none()
+            }
+            Message::TaskStarted { handle } => {
+                self.tasks.insert(handle.id(), handle);
                 Task::none()
             }
             Message::None => Task::none(),

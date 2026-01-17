@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
-use kira::{AudioManager, AudioManagerSettings};
+use kira::{AudioManager, AudioManagerSettings, Tween};
 use tokio::sync::mpsc;
+
+use anyhow::anyhow;
 
 use crate::{
     service::{
@@ -13,7 +15,7 @@ use crate::{
 };
 
 pub mod enums;
-mod structs;
+pub mod structs;
 mod util;
 
 pub type AudioSender = mpsc::Sender<AudioMessage>;
@@ -84,6 +86,26 @@ impl ServiceLogic<AudioMessage> for AudioService {
                     let _ = handle.on_end.send(result);
                 }
             }
+            AudioMessage::PauseAudio { id, result } => match self.playing_cache.get(&id) {
+                Some(wrapper) => {
+                    let mut guard = wrapper.handle.lock();
+                    guard.pause(Tween::default());
+                    let _ = result.send(Ok(()));
+                }
+                None => {
+                    let _ = result.send(Err(anyhow!("Audio not currently playing")));
+                }
+            },
+            AudioMessage::ResumeAudio { id, result } => match self.playing_cache.get(&id) {
+                Some(wrapper) => {
+                    let mut guard = wrapper.handle.lock();
+                    guard.resume(Tween::default());
+                    result.send(Ok(())).unwrap();
+                }
+                None => {
+                    let _ = result.send(Err(anyhow!("Audio not currently playing")));
+                }
+            },
         }
     }
 }

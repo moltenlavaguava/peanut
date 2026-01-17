@@ -14,7 +14,7 @@ const OUTPUT_DIR: &str = "output";
 const TRACK_DIR: &str = "track";
 const DATA_DIR: &str = "data";
 
-const TRACK_EXTENSION: &str = "webm";
+const TRACK_EXTENSION: &str = "m4a";
 const DATA_EXTENSION: &str = "json";
 
 /// Returns the current project root. If in debug mode, returns the root directory for the project. Otherwise, returns the directory the executable is in.

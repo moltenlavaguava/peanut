@@ -4,6 +4,7 @@ use tokio::sync::mpsc;
 
 use crate::{
     service::{
+        audio::structs::AudioProgress,
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
@@ -62,6 +63,23 @@ pub enum Message {
         id: Id,
         tracklist: TrackList,
     },
+    // A track's audio progressed. Provided: the track id and the progress.
+    TrackAudioProgress {
+        id: Id,
+        progress: AudioProgress,
+    },
+    // A track started playing its audio.
+    TrackAudioStart {
+        id: Id,
+    },
+    // A track finished playing its audio.
+    TrackAudioEnd {
+        id: Id,
+    },
+    // A generic message for when a task starts. Provided: the handle for the task.
+    TaskStarted {
+        handle: ReceiverHandle<Message>,
+    },
     // An action was performed. Usually occurs when the user triggers something.
     Action(Action),
     // A special message for when nothing should happen
@@ -77,7 +95,7 @@ pub enum Action {
     OrganizePlaylist { playlist_id: Id },
     ShufflePlaylist { playlist_id: Id },
     PreviousTrack { playlist_id: Id },
-    PlayTrack { playlist_id: Id },
+    ResumeTrack { playlist_id: Id },
     PauseTrack { playlist_id: Id },
     NextTrack { playlist_id: Id },
     LoopTrack { playlist_id: Id },

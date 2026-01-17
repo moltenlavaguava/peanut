@@ -8,7 +8,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             download::initialize_playlist,
-            structs::{PlaylistDownloadManager, PlaylistMetadata, TrackList},
+            structs::{PlaylistAudioManager, PlaylistDownloadManager, PlaylistMetadata, TrackList},
         },
         process::ProcessSender,
     },
@@ -41,6 +41,7 @@ pub struct PlaylistService {
     downloaded_tracks: HashSet<Id>,
     // Contains gui listener as well to send notifications back
     download_managers: HashMap<Id, (PlaylistDownloadManager, mpsc::Sender<Message>)>,
+    audio_managers: HashMap<Id, PlaylistAudioManager>,
 }
 
 pub struct PlaylistFlags {
@@ -61,6 +62,7 @@ impl PlaylistService {
             playlist_sender: flags.playlist_sender,
             download_managers: HashMap::new(),
             downloaded_tracks: HashSet::new(),
+            audio_managers: HashMap::new(),
         }
     }
 }
@@ -320,6 +322,42 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     println!("Sending all the requests");
                     // restart mgr with new tracklist
                     mgr.restart_with_tracklist(tracklist);
+                }
+            }
+            PlaylistMessage::PlaylistAudioManagementDone { id: _ } => {
+                println!("playlist audio management done");
+            }
+            PlaylistMessage::PlayPlaylist {
+                id,
+                tracklist,
+                progress_sender,
+            } => {
+                // create a playlist audio manager and immediately start playing it.
+                if !self.audio_managers.contains_key(&id) {
+                    let tracklist = match tracklist {
+                        Some(tracklist) => tracklist,
+                        None => {
+                            if let Some(playlist) = self.playlists.get(&id) {
+                                TrackList::from_playlist_ref(&playlist)
+                            } else {
+                                println!(
+                                    "Can't start playing playlist without track and without playlist"
+                                );
+                                return;
+                            }
+                        }
+                    };
+                    let mut mgr = PlaylistAudioManager::new(tracklist, id.clone());
+
+                    mgr.run(
+                        progress_sender,
+                        self.playlist_sender.clone(),
+                        self.audio_sender.clone(),
+                    );
+
+                    self.audio_managers.insert(id, mgr);
+                } else {
+                    println!("Playlist already playing; doing nothing");
                 }
             }
         }

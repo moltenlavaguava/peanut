@@ -17,6 +17,7 @@ pub struct AudioHandleWrapper {
     pub on_end: oneshot::Sender<anyhow::Result<()>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct AudioProgress {
     current: Duration,
     total: Duration,
