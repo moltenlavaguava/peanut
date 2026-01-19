@@ -415,7 +415,6 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 playlist_id,
                 result_sender,
             } => {
-                println!("Playlist mgr: pause current track");
                 if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
                     mgr.pause_current_track();
                     let _ = result_sender.send(Ok(()));
@@ -429,7 +428,6 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 result_sender,
                 seek_location,
             } => {
-                println!("Playlist mgr: resume current track");
                 if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
                     let current_track_id = mgr.get_current_track().unwrap().id().clone();
                     if let Some(progress) = seek_location

@@ -102,11 +102,11 @@ pub async fn play_audio(
                 // apparently the audio engine lags, and this ensures
                 // we don't do anything if the lag is too crazy
                 let lag = (pos - last_known_pos).abs();
+                local_seek_count = start_seek_count;
 
                 if lag > 0.5 {
                     continue;
                 }
-                local_seek_count = start_seek_count;
             } else {
                 // standard loop detection. cushion added for weird floating point stuff
                 if pos < last_known_pos - 0.5 {
