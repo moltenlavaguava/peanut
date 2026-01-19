@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 use iced::Subscription;
 use iced::{Task, widget::Column};
@@ -6,7 +7,9 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
-use crate::service::gui::enums::{Action, PlayingState};
+use crate::service::audio::enums::LoopPolicy;
+use crate::service::audio::structs::AudioProgress;
+use crate::service::gui::enums::Action;
 use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
@@ -37,9 +40,14 @@ struct App {
     downloaded_tracks: HashSet<Id>,
     downloading_tracks: HashSet<Id>,
     current_ptracklist: Option<PTrackList>,
-    track_playing_state: PlayingState,
     download_stopping_playlists: HashSet<Id>,
     downloading_playlists: HashSet<Id>,
+    playing_playlists: HashSet<Id>,
+    paused_playlists: HashSet<Id>,
+    playlist_loop_policies: HashMap<Id, LoopPolicy>,
+    track_progress: AudioProgress,
+    track_seeking: bool,
+    volume: f64,
 }
 
 #[derive(Clone)]
@@ -67,10 +75,15 @@ impl App {
                 loaded_playlist_metadata: Vec::new(),
                 current_ptracklist: None,
                 downloaded_tracks: HashSet::new(),
-                track_playing_state: PlayingState::Stopped,
                 downloading_playlists: HashSet::new(),
                 download_stopping_playlists: HashSet::new(),
                 downloading_tracks: HashSet::new(),
+                playing_playlists: HashSet::new(),
+                paused_playlists: HashSet::new(),
+                track_progress: AudioProgress::new(Duration::from_secs(0), Duration::from_secs(0)),
+                playlist_loop_policies: HashMap::new(),
+                track_seeking: false,
+                volume: 1.0,
             },
             Task::perform(
                 util::request_downloaded_tracks(playlist_sender_clone),
@@ -107,7 +120,6 @@ impl App {
                 }
             }
             Message::EventRecieved(msg) => {
-                println!("Recieved event message: {msg:?}");
                 match msg {
                     EventMessage::InitialPlaylistsInitalized(playlist_data) => {
                         self.loaded_playlist_metadata = playlist_data;
@@ -185,6 +197,7 @@ impl App {
                     },
                 );
 
+                self.paused_playlists.insert(ptracklist.metadata.id.clone());
                 self.current_ptracklist = Some(ptracklist);
                 self.page = Page::Player;
                 task
@@ -287,7 +300,142 @@ impl App {
                             },
                         )
                     }
-                    _ => Task::none(),
+                    Action::ResumeTrack { playlist_id } => {
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::resume_current_playlist_track(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                                None,
+                            ),
+                            |_result| Message::TrackAudioResumeResult { playlist_id },
+                        )
+                    }
+                    Action::PauseTrack { playlist_id } => {
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::pause_current_playlist_track(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                            ),
+                            |_result| Message::TrackAudioPauseResult { playlist_id },
+                        )
+                    }
+                    Action::NextTrack { playlist_id } => {
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::skip_current_playlist_track(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                            ),
+                            |_result| Message::TrackAudioResumeResult { playlist_id },
+                        )
+                    }
+                    Action::PreviousTrack { playlist_id } => {
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::previous_current_playlist_track(
+                                playlist_id.clone(),
+                                playlist_sender_clone,
+                            ),
+                            |_result| Message::TrackAudioResumeResult { playlist_id },
+                        )
+                    }
+                    Action::PlayTrack {
+                        playlist_id,
+                        track_index,
+                    } => {
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        Task::perform(
+                            util::play_track_in_playlist(
+                                playlist_id,
+                                playlist_sender_clone,
+                                track_index,
+                            ),
+                            |_result| Message::PlayTrackResult,
+                        )
+                    }
+                    Action::SeekAudio {
+                        playlist_id,
+                        progress,
+                    } => {
+                        // set the internal progress
+                        self.track_progress.update_progress(progress);
+                        self.track_seeking = true;
+
+                        // if the playlist is currently playing, pause it
+                        if self.playing_playlists.contains(&playlist_id) {
+                            let playlist_sender_clone = self.playlist_sender.clone();
+                            return Task::perform(
+                                util::pause_current_playlist_track(
+                                    playlist_id.clone(),
+                                    playlist_sender_clone,
+                                ),
+                                |_result| Message::TrackAudioPauseResult { playlist_id },
+                            );
+                        }
+                        Task::none()
+                    }
+                    Action::StopSeekingAudio { playlist_id } => {
+                        // if the playlist is currently paused, then resume it
+                        let progress = self.track_progress.progress();
+                        if self.paused_playlists.contains(&playlist_id) {
+                            let playlist_sender_clone = self.playlist_sender.clone();
+                            return Task::perform(
+                                util::resume_current_playlist_track(
+                                    playlist_id.clone(),
+                                    playlist_sender_clone,
+                                    Some(progress),
+                                ),
+                                |_result| Message::TrackAudioResumeResult { playlist_id },
+                            );
+                        }
+                        Task::none()
+                    }
+                    Action::LoopTrack { playlist_id } => {
+                        // loop button pressed; advance policy to next one
+                        let current_policy = {
+                            match self.playlist_loop_policies.remove(&playlist_id) {
+                                Some(policy) => policy,
+                                None => LoopPolicy::NoLooping,
+                            }
+                        };
+                        let next_policy = current_policy.next();
+
+                        // send request to playlist service
+                        let playlist_sender_clone = self.playlist_sender.clone();
+                        let playlist_id_clone = playlist_id.clone();
+                        let task = Task::perform(
+                            util::set_playlist_loop_policy(
+                                playlist_id.clone(),
+                                next_policy.clone(),
+                                playlist_sender_clone,
+                            ),
+                            |_r| Message::SetPlaylistLoopPolicyResult {
+                                playlist_id: playlist_id_clone,
+                            },
+                        );
+
+                        if !matches!(next_policy, LoopPolicy::NoLooping) {
+                            self.playlist_loop_policies.insert(playlist_id, next_policy);
+                        }
+                        task
+                    }
+                    Action::SetVolume { volume } => {
+                        // if the volume here is different, send a req
+                        if self.volume != volume {
+                            let playlist_sender_clone = self.playlist_sender.clone();
+                            self.volume = volume;
+                            return Task::perform(
+                                util::update_volume_in_playlist_service(
+                                    volume,
+                                    playlist_sender_clone,
+                                ),
+                                |_r| Message::SetGlobalVolumeResult,
+                            );
+                        }
+                        Task::none()
+                    }
                 }
             }
             Message::DownloadPlaylistStarted {
@@ -326,10 +474,9 @@ impl App {
             }
             Message::TrackDownloadStatus { id: _, data: _ } => {
                 // A given track's download status updated.
-                println!("Track download progress");
                 Task::none()
             }
-            Message::PlaylistOrderUpdated { id: _, tracklist } => {
+            Message::PlaylistOrderUpdated { id, tracklist } => {
                 println!("Playlist order updated");
                 // construct the new ptracklist
                 let oldptracklist = self.current_ptracklist.take().unwrap();
@@ -338,24 +485,78 @@ impl App {
                     metadata: oldptracklist.metadata,
                 };
                 self.current_ptracklist = Some(ptracklist);
+                // mark the playlist as playing because thats what happens
+                self.paused_playlists.remove(&id);
+                self.playing_playlists.insert(id);
                 Task::none()
             }
-            Message::TrackAudioProgress { id: _, progress: _ } => {
-                println!("track audio progress");
+            Message::TrackAudioProgress { id: _, progress } => {
+                // if the user is currently seeking, ignore this
+                if self.track_seeking {
+                    return Task::none();
+                }
+                self.track_progress = progress;
                 Task::none()
             }
             Message::TrackAudioStart { id: _ } => {
                 println!("track audio start");
                 Task::none()
             }
-            Message::TrackAudioEnd { id: _ } => {
+            Message::TrackAudioEnd {
+                id: _,
+                maybe_playlist_id,
+            } => {
                 println!("track audio end");
+                // remove the loop policy from the playlist this was in if it exists
+                if let Some(playlist_id) = maybe_playlist_id {
+                    self.playlist_loop_policies.remove(&playlist_id);
+                }
                 Task::none()
             }
             Message::TaskStarted { handle } => {
                 self.tasks.insert(handle.id(), handle);
                 Task::none()
             }
+            Message::TrackAudioPauseResult { playlist_id } => {
+                self.playing_playlists.remove(&playlist_id);
+                self.paused_playlists.insert(playlist_id);
+                Task::none()
+            }
+            Message::TrackAudioPreviousResult { playlist_id: _ } => Task::none(),
+            Message::TrackAudioSkipResult { playlist_id: _ } => Task::none(),
+            Message::TrackAudioResumeResult { playlist_id } => {
+                // when playing audio seeking cannot happen,
+                // so to make sure the progress bar doesn't feel
+                // weird this can be enabled after audio continues.
+                self.track_seeking = false;
+                self.paused_playlists.remove(&playlist_id);
+                self.playing_playlists.insert(playlist_id);
+                Task::none()
+            }
+            Message::PlayPlaylistEnded { playlist_id } => {
+                self.playing_playlists.remove(&playlist_id);
+                self.paused_playlists.remove(&playlist_id);
+                Task::none()
+            }
+            Message::TrackLooped {
+                maybe_playlist_id,
+                track_id: _,
+            } => {
+                if let Some(playlist_id) = maybe_playlist_id {
+                    // decrement the loop for gui showing
+                    if let Some(prev_policy) = self.playlist_loop_policies.remove(&playlist_id) {
+                        let new_policy = prev_policy.looped();
+                        if !matches!(new_policy, LoopPolicy::NoLooping) {
+                            // put the new policy back in
+                            self.playlist_loop_policies.insert(playlist_id, new_policy);
+                        }
+                    }
+                }
+                Task::none()
+            }
+            Message::PlayTrackResult => Task::none(),
+            Message::SetGlobalVolumeResult => Task::none(),
+            Message::SetPlaylistLoopPolicyResult { playlist_id: _ } => Task::none(),
             Message::None => Task::none(),
         }
     }

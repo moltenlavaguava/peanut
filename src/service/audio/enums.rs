@@ -3,14 +3,18 @@ use tokio::sync::{mpsc, oneshot};
 use crate::service::{
     audio::structs::{AudioConfig, AudioProgress},
     id::structs::Id,
+    playlist::PlaylistSender,
 };
 
+#[derive(Debug)]
 pub enum AudioMessage {
     PlayAudio {
         id: Id,
+        maybe_playlist_id: Option<Id>,
         audio_config: AudioConfig,
         progress_sender: mpsc::Sender<(Id, AudioProgress)>,
         on_end: oneshot::Sender<anyhow::Result<()>>,
+        on_loop: PlaylistSender,
     },
     AudioFinished {
         id: Id,
@@ -24,4 +28,52 @@ pub enum AudioMessage {
         id: Id,
         result: oneshot::Sender<anyhow::Result<()>>,
     },
+    StopAudio {
+        id: Id,
+        result: oneshot::Sender<anyhow::Result<()>>,
+    },
+    SeekAudio {
+        id: Id,
+        percentage: f64,
+        result: oneshot::Sender<anyhow::Result<()>>,
+    },
+    SetAudioLoop {
+        id: Id,
+        loop_policy: LoopPolicy,
+        result: oneshot::Sender<anyhow::Result<()>>,
+    },
+    AudioLooped {
+        id: Id,
+    },
+    SetAudioVolume {
+        id: Id,
+        volume: f64,
+        result: oneshot::Sender<anyhow::Result<()>>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum LoopPolicy {
+    NoLooping,
+    Once,
+    Infinite,
+}
+impl LoopPolicy {
+    // takes the current policy and moves to the next one in the list
+    // when activated by the loop button.
+    pub fn next(self) -> Self {
+        match self {
+            Self::Infinite => Self::NoLooping,
+            Self::NoLooping => Self::Once,
+            Self::Once => Self::Infinite,
+        }
+    }
+    // returns the new looping policy for when this policy looped.
+    // basically a 'downgrade.'
+    pub fn looped(self) -> Self {
+        match self {
+            Self::Infinite => Self::Infinite,
+            _ => Self::NoLooping,
+        }
+    }
 }

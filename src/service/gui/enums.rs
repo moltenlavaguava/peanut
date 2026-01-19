@@ -75,11 +75,36 @@ pub enum Message {
     // A track finished playing its audio.
     TrackAudioEnd {
         id: Id,
+        maybe_playlist_id: Option<Id>,
+    },
+    TrackAudioResumeResult {
+        playlist_id: Id,
+    },
+    TrackAudioPauseResult {
+        playlist_id: Id,
+    },
+    TrackAudioSkipResult {
+        playlist_id: Id,
+    },
+    TrackAudioPreviousResult {
+        playlist_id: Id,
     },
     // A generic message for when a task starts. Provided: the handle for the task.
     TaskStarted {
         handle: ReceiverHandle<Message>,
     },
+    PlayPlaylistEnded {
+        playlist_id: Id,
+    },
+    PlayTrackResult,
+    SetPlaylistLoopPolicyResult {
+        playlist_id: Id,
+    },
+    TrackLooped {
+        maybe_playlist_id: Option<Id>,
+        track_id: Id,
+    },
+    SetGlobalVolumeResult,
     // An action was performed. Usually occurs when the user triggers something.
     Action(Action),
     // A special message for when nothing should happen
@@ -99,6 +124,10 @@ pub enum Action {
     PauseTrack { playlist_id: Id },
     NextTrack { playlist_id: Id },
     LoopTrack { playlist_id: Id },
+    PlayTrack { playlist_id: Id, track_index: u64 },
+    SeekAudio { playlist_id: Id, progress: f32 },
+    StopSeekingAudio { playlist_id: Id },
+    SetVolume { volume: f64 },
 }
 
 // represents each possible major page the gui can be
@@ -106,11 +135,6 @@ pub enum Action {
 pub enum Page {
     Home,
     Player,
-}
-
-pub enum PlayingState {
-    Playing,
-    Stopped,
 }
 
 // for app-wide messages (usually more important)

@@ -6,6 +6,7 @@ use tokio::sync::{mpsc, oneshot};
 use url::Url;
 
 use crate::service::{
+    audio::enums::LoopPolicy,
     gui::enums::Message,
     id::structs::Id,
     playlist::structs::{
@@ -68,7 +69,63 @@ pub enum PlaylistMessage {
     PlayPlaylist {
         id: Id,
         tracklist: Option<TrackList>,
-        progress_sender: mpsc::Sender<Message>,
+        // Sends individual track progress updates and when the playlist finishes.
+        data_sender: mpsc::Sender<Message>,
+    },
+    PauseCurrentTrack {
+        playlist_id: Id,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    ResumeCurrentTrack {
+        playlist_id: Id,
+        seek_location: Option<f32>,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    SkipCurrentTrack {
+        playlist_id: Id,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    PreviousCurrentTrack {
+        playlist_id: Id,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    // Used by playlist audio managers. used to check if the playlist is currently downloading,
+    // and if it is, then waits for its respective track to download.
+    IfPlaylistDownloadingWait {
+        playlist_id: Id,
+        track_id_to_wait: Id,
+        result_sender: oneshot::Sender<Option<oneshot::Receiver<anyhow::Result<()>>>>,
+    },
+    // Selects the given index in the given playlist manager to download next.
+    // (and continuing down)
+    SelectDownloadIndex {
+        playlist_id: Id,
+        index: u64,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    // Invoked by the gui. Selects the track for playing in the audio mgr and downloading in the download mgr, if appropariate.
+    SelectPlaylistIndex {
+        playlist_id: Id,
+        track_index: u64,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    SeekTrackAudioInPlaylist {
+        playlist_id: Id,
+        percentage: f64,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    SetPlaylistLoopPolicy {
+        playlist_id: Id,
+        policy: LoopPolicy,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    TrackLooped {
+        maybe_playlist_id: Option<Id>,
+        track_id: Id,
+    },
+    UpdateGlobalVolume {
+        volume: f64,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
     },
 }
 

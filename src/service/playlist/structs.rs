@@ -1,15 +1,17 @@
 use anyhow::anyhow;
+use atomic_float::AtomicF64;
+use futures::FutureExt;
 use parking_lot::Mutex;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::Duration,
 };
-use tokio::sync::{mpsc, oneshot, watch};
+use tokio::sync::{Notify, mpsc, oneshot, watch};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
@@ -22,7 +24,7 @@ use crate::service::{
     gui::enums::Message,
     id::{enums::Platform, structs::Id},
     playlist::{
-        download,
+        PlaylistSender, download,
         enums::{Artist, DownloadEndType, ExtractorLineOut, MediaType, PlaylistMessage},
     },
     process::ProcessSender,
@@ -202,6 +204,7 @@ impl TrackList {
             .iter()
             .map(|index| &self.tracks[*index as usize])
     }
+
     pub fn randomize_order(&mut self) {
         self.order.randomize();
     }
@@ -215,7 +218,8 @@ pub struct PlaylistDownloadManager {
     playlist_id: Id,
     cancel_token: CancellationToken,
     stop_flag: Arc<AtomicBool>,
-    restart_flag: bool,
+    start_pos_flag: Arc<AtomicU64>,
+    restart_flag: Arc<AtomicBool>,
     internal_t: Option<watch::Sender<Option<TrackList>>>,
     dead: bool,
     running: bool,
@@ -227,7 +231,8 @@ impl PlaylistDownloadManager {
             playlist_id,
             cancel_token: CancellationToken::new(),
             stop_flag: Arc::new(AtomicBool::new(false)),
-            restart_flag: false,
+            start_pos_flag: Arc::new(AtomicU64::new(0)),
+            restart_flag: Arc::new(AtomicBool::new(false)),
             internal_t: None,
             dead: false,
             running: false,
@@ -281,8 +286,12 @@ impl PlaylistDownloadManager {
         let process_sender = process_sender.clone();
         let map_t = map_t.clone();
         let bin_apps = bin_apps.clone();
+        let start_pos_flag = Arc::clone(&self.start_pos_flag);
+        let restart_flag = Arc::clone(&self.restart_flag);
+
         let async_block = async move {
-            while internal_r.has_changed().unwrap_or(false) {
+            while internal_r.has_changed().unwrap_or(false) || restart_flag.load(Ordering::Relaxed)
+            {
                 println!("starting new loop in download");
                 // pull the tracklist from the watch channel
                 let tracklist = {
@@ -295,12 +304,22 @@ impl PlaylistDownloadManager {
                     }
                 };
 
-                // restart stop flag
+                // restart stop + restart flags
                 stop_flag_clone.store(false, Ordering::Relaxed);
+                restart_flag.store(false, Ordering::Relaxed);
 
                 // run the playlist downloading logic
                 println!("running playlist downloading logic lol");
-                for track in tracklist.iter() {
+
+                // if there's a custom start pos then use that
+                let mut tracklist_iter = tracklist.iter();
+                let start_pos = start_pos_flag.load(Ordering::Relaxed);
+                if start_pos > 0 {
+                    println!("Downloading playlist with custom index {start_pos}");
+                    tracklist_iter.nth(start_pos as usize - 1);
+                }
+
+                for track in tracklist_iter {
                     // check to see if a stop was requested
                     if stop_flag_clone.load(Ordering::Relaxed) {
                         println!("breaking playlist download");
@@ -408,7 +427,7 @@ impl PlaylistDownloadManager {
             return;
         }
 
-        self.restart_flag = true;
+        self.restart_flag.store(true, Ordering::Relaxed);
         // stop the current track download to prepare for the next
         self.stop_flag.store(true, Ordering::Relaxed);
     }
@@ -422,6 +441,18 @@ impl PlaylistDownloadManager {
         }
         self.restart();
     }
+    pub fn skip_to_index(&mut self, pos: u64) {
+        if self.dead() {
+            return;
+        }
+        if pos >= self.tracklist.order.length() as u64 {
+            println!("failed to restart with start pos; greater than tracklist length");
+            return;
+        }
+
+        self.start_pos_flag.store(pos, Ordering::Relaxed);
+        self.restart();
+    }
     fn dead(&self) -> bool {
         if self.dead {
             println!("cannot run methods on dead playlist manager");
@@ -431,39 +462,55 @@ impl PlaylistDownloadManager {
 }
 
 pub struct PlaylistAudioManager {
-    tracklist: TrackList,
+    tracklist: Option<watch::Receiver<Option<TrackList>>>,
     playlist_id: Id,
     cancel_token: CancellationToken,
-    stop_flag: Arc<AtomicBool>,
-    restart_flag: bool,
+    restart_flag: Arc<AtomicBool>,
     internal_t: Option<watch::Sender<Option<TrackList>>>,
     current_track_id: Arc<Mutex<Option<Id>>>,
+    current_pos: Arc<AtomicU64>,
     dead: bool,
     running: bool,
+    start_index: Option<Arc<watch::Sender<Option<u64>>>>,
     audio_sender: Option<AudioSender>,
+    playlist_sender: Option<PlaylistSender>,
+    previous_until_valid_flag: Arc<AtomicBool>,
+    stop_waiting_on_track_notify: Arc<Notify>,
+    playing_flag: Arc<AtomicBool>,
+    start_audio_looped: Arc<AtomicBool>,
+    volume: Arc<AtomicF64>,
 }
 impl PlaylistAudioManager {
-    pub fn new(tracklist: TrackList, playlist_id: Id) -> Self {
+    pub fn new(playlist_id: Id) -> Self {
         Self {
-            tracklist,
+            tracklist: None,
             playlist_id,
             cancel_token: CancellationToken::new(),
-            stop_flag: Arc::new(AtomicBool::new(false)),
-            restart_flag: false,
+            restart_flag: Arc::new(AtomicBool::new(false)),
+            previous_until_valid_flag: Arc::new(AtomicBool::new(false)),
             internal_t: None,
             dead: false,
             running: false,
             current_track_id: Arc::new(Mutex::new(None)),
+            current_pos: Arc::new(AtomicU64::new(0)),
             audio_sender: None,
+            start_index: None,
+            playlist_sender: None,
+            stop_waiting_on_track_notify: Arc::new(Notify::new()),
+            playing_flag: Arc::new(AtomicBool::new(false)),
+            start_audio_looped: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicF64::new(1.0)),
         }
     }
     pub fn run(
         &mut self,
+        tracklist: TrackList,
         // gui reply stream: directly audio progress updates, audio starts, and audio ends
         gui_progress_sender: mpsc::Sender<Message>,
         // playlist sender: directly gets playlist playing finish
         playlist_sender: mpsc::Sender<PlaylistMessage>,
         audio_sender: mpsc::Sender<AudioMessage>,
+        autoplay_first_track: bool,
     ) {
         if self.dead() {
             return;
@@ -474,40 +521,51 @@ impl PlaylistAudioManager {
         self.running = true;
 
         self.audio_sender = Some(audio_sender);
+        self.playlist_sender = Some(playlist_sender.clone());
+
+        // create the start index watch channel
+        let (start_index_t, mut start_index_r) = watch::channel(None);
+        let arc_start_index = Arc::new(start_index_t);
+        self.start_index = Some(Arc::clone(&arc_start_index));
 
         // create mini task to map extractor lines to gui messages
         let (map_t, mut map_r) = mpsc::channel(100);
         let gui_progress_sender_clone = gui_progress_sender.clone();
         tokio::spawn(async move {
             while let Some((id, progress)) = map_r.recv().await {
-                gui_progress_sender_clone
+                let _ = gui_progress_sender_clone
                     .send(Message::TrackAudioProgress { id, progress })
-                    .await
-                    .unwrap();
+                    .await;
             }
         });
 
         // setup internal communication to the task at hand
         let (internal_t, mut internal_r) = watch::channel(None);
         // send first value
-        internal_t.send(Some(self.tracklist.clone())).unwrap();
+        internal_t.send(Some(tracklist)).unwrap();
         self.internal_t = Some(internal_t);
+        self.tracklist = Some(internal_r.clone());
 
         // all the cloning
         let playlist_id = self.playlist_id.clone();
-        let stop_flag = self.stop_flag.clone();
-        let stop_flag_clone = stop_flag.clone();
         let playlist_sender_clone = playlist_sender.clone();
         let gui_reply_stream_clone = gui_progress_sender.clone();
         let cancel_token = self.cancel_token.clone();
         let current_track_id = Arc::clone(&self.current_track_id);
         let audio_sender = self.audio_sender.clone().unwrap();
+        let restart_flag = Arc::clone(&self.restart_flag);
+        let current_pos_arc = Arc::clone(&self.current_pos);
+        let previous_until_valid_arc = Arc::clone(&self.previous_until_valid_flag);
+        let stop_waiting_on_track_notify = Arc::clone(&self.stop_waiting_on_track_notify);
+        let playing_flag = self.playing_flag.clone();
+        let volume_arc = Arc::clone(&self.volume);
 
         // spawn async process
         tokio::spawn(async move {
-            while internal_r.has_changed().unwrap_or(false) {
+            let mut first_pass = true;
+            while internal_r.has_changed().unwrap_or(false) || restart_flag.load(Ordering::Relaxed)
+            {
                 println!("starting new loop in audio player");
-                // pull the tracklist from the watch channel
                 let tracklist = {
                     let t = internal_r.borrow_and_update().clone();
                     if let Some(t) = t {
@@ -518,14 +576,38 @@ impl PlaylistAudioManager {
                     }
                 };
 
-                // restart stop flag
-                stop_flag_clone.store(false, Ordering::Relaxed);
+                // reset restart flag
+                restart_flag.store(false, Ordering::Relaxed);
 
                 // run the playlist downloading logic
                 println!("running playlist playing logic lol");
-                for track in tracklist.iter() {
+                let mut current_pos: i64 = -1;
+                let playlist_length = tracklist.order.length() as u64;
+
+                // check if a specific position was requested
+                if start_index_r.has_changed().unwrap_or(false) {
+                    println!("start index has changed");
+                    // get value and skip to that point in the tracklist
+                    let start_pos = start_index_r.borrow_and_update();
+                    if let Some(pos) = *start_pos
+                        && pos > 0
+                    {
+                        println!("start index changed; index: {pos}");
+                        current_pos = pos as i64 - 1;
+                    }
+                }
+                while current_pos < playlist_length as i64 - 1 {
+                    // advance the pos
+                    current_pos += 1;
+                    current_pos_arc.store(current_pos as u64, Ordering::Relaxed);
+                    // get the current track
+                    let playlist_loc = tracklist.order.index_order[current_pos as usize];
+                    let track = &tracklist.tracks[playlist_loc as usize];
+
+                    println!("[Track] On track {}", track.title);
+
                     // check to see if a stop was requested
-                    if stop_flag_clone.load(Ordering::Relaxed) {
+                    if restart_flag.load(Ordering::Relaxed) {
                         println!("breaking playlist playing");
                         break;
                     }
@@ -541,27 +623,116 @@ impl PlaylistAudioManager {
                     {
                         break;
                     }
+
                     if let Ok(result) = downloaded_r.await {
                         // check the result
+                        let search_previous = previous_until_valid_arc.load(Ordering::Relaxed);
                         if !result {
-                            // track is not downloaded; skip it
-                            println!("Track {} skipped: not downloaded", track.title);
-                            continue;
+                            if search_previous && current_pos == 0 {
+                                // couldn't find downloaded track before; giving up
+                                println!("Failed to find previous track that was downloaded");
+                                previous_until_valid_arc.store(false, Ordering::Relaxed);
+                            } else if search_previous {
+                                // go up the tree and hope something is found (skipping 2 b/c on track start
+                                // pos increments by one)
+                                current_pos -= 2;
+                                continue;
+                            } else {
+                                // check if this playlist is being downloaded
+                                let (tx, rx) = oneshot::channel();
+                                let _ = playlist_sender
+                                    .send(PlaylistMessage::IfPlaylistDownloadingWait {
+                                        playlist_id: playlist_id.clone(),
+                                        track_id_to_wait: track.id().clone(),
+                                        result_sender: tx,
+                                    })
+                                    .await;
+                                let result = rx.await;
+                                match result {
+                                    Err(_) => {
+                                        println!(
+                                            "an error occured while checking playlist downloading status"
+                                        );
+                                        continue;
+                                    }
+                                    Ok(result) => match result {
+                                        None => {
+                                            // track is not downloaded; skip it
+                                            // (and downloader is not active)
+                                            println!(
+                                                "Track {} skipped: not downloaded",
+                                                track.title
+                                            );
+                                            continue;
+                                        }
+                                        Some(rx) => {
+                                            // send request to playlist for this track to download next
+                                            let (rt, rr) = oneshot::channel();
+
+                                            let _ = playlist_sender
+                                                .send(PlaylistMessage::SelectDownloadIndex {
+                                                    playlist_id: playlist_id.clone(),
+                                                    index: current_pos as u64,
+                                                    result_sender: rt,
+                                                })
+                                                .await;
+                                            let req_r = rr.await;
+                                            if let Err(_) = req_r {
+                                                println!(
+                                                    "An error occured while waiting for track download request"
+                                                );
+                                            }
+
+                                            println!(
+                                                "Waiting for track: {} to download",
+                                                track.title
+                                            );
+                                            // reset the notify
+                                            stop_waiting_on_track_notify.notified().now_or_never();
+
+                                            let result = tokio::select! {
+                                                recv_result = rx => {
+                                                    // do gross error mapping
+                                                    recv_result.map_err(anyhow::Error::from).and_then(|inner| inner.map_err(anyhow::Error::from))
+                                                },
+                                                _ = stop_waiting_on_track_notify.notified() => {
+                                                    Err(anyhow!("Download wait skipped"))
+                                                }
+                                            };
+                                            match result {
+                                                Ok(_) => {
+                                                    // everything was ok; continue as normal
+                                                }
+                                                Err(_) => {
+                                                    // something went wrong (ie. cancelled)
+                                                    // continue
+                                                    continue;
+                                                }
+                                            }
+                                        }
+                                    },
+                                }
+                            }
+                        } else if search_previous {
+                            println!("Found previous track that was downloaded");
+                            previous_until_valid_arc.store(false, Ordering::Relaxed);
                         }
                     }
 
                     // Track Audio Start message
-                    gui_reply_stream_clone
+                    let _ = gui_reply_stream_clone
                         .send(Message::TrackAudioStart {
                             id: track.id().clone(),
                         })
-                        .await
-                        .unwrap();
+                        .await;
 
                     println!("Playing track {}..", track.title);
                     // audio playing logic
-
-                    let audio_config = AudioConfig::new();
+                    let start_paused = first_pass && !autoplay_first_track;
+                    // immediately change first pass
+                    first_pass = false;
+                    let audio_config =
+                        AudioConfig::new(start_paused, volume_arc.load(Ordering::Relaxed));
                     let (end_t, end_r) = oneshot::channel();
 
                     let audio_message = AudioMessage::PlayAudio {
@@ -569,10 +740,14 @@ impl PlaylistAudioManager {
                         audio_config,
                         progress_sender: map_t.clone(),
                         on_end: end_t,
+                        on_loop: playlist_sender.clone(),
+                        maybe_playlist_id: Some(playlist_id.clone()),
                     };
 
+                    playing_flag.store(true, Ordering::Relaxed);
+
                     // send the request
-                    audio_sender.send(audio_message).await.unwrap();
+                    let _ = audio_sender.send(audio_message).await;
 
                     // update the current track id so it can be controlled from the outside
                     {
@@ -593,13 +768,22 @@ impl PlaylistAudioManager {
                             *guard = None;
                         }
                     }
+
+                    // this track ended
+                    let _ = gui_reply_stream_clone
+                        .send(Message::TrackAudioEnd {
+                            id: track.id().clone(),
+                            maybe_playlist_id: Some(playlist_id.clone()),
+                        })
+                        .await;
+
+                    playing_flag.store(false, Ordering::Relaxed);
                 }
             }
             // end of while loop; management finished
-            playlist_sender
+            let _ = playlist_sender
                 .send(PlaylistMessage::PlaylistAudioManagementDone { id: playlist_id })
-                .await
-                .unwrap();
+                .await;
         });
     }
     // Only cancel exists here, as there's no point in waiting for the audio to stop playing
@@ -610,6 +794,7 @@ impl PlaylistAudioManager {
         self.dead = true;
 
         println!("Cancelling manager..");
+        self.stop_waiting_on_track_notify.notify_one();
         self.cancel_token.cancel();
     }
     pub fn get_playlist_id(&self) -> &Id {
@@ -619,10 +804,34 @@ impl PlaylistAudioManager {
         if self.dead() {
             return;
         }
+        self.restart_flag.store(true, Ordering::Relaxed);
+        self.stop_waiting_on_track_notify.notify_one();
+        self.stop_current_track();
+    }
+    pub fn stop_current_track(&mut self) {
+        if self.dead() {
+            return;
+        }
 
-        self.restart_flag = true;
-        // stop the current track download to prepare for the next
-        self.stop_flag.store(true, Ordering::Relaxed);
+        if let Some(sender) = &self.audio_sender {
+            let track_id = {
+                let guard = self.current_track_id.lock();
+                guard.clone()
+            };
+            if let Some(track_id) = track_id {
+                let sender_clone = sender.clone();
+                tokio::spawn(async move {
+                    let (tx, _) = oneshot::channel();
+                    let _ = sender_clone
+                        .clone()
+                        .send(AudioMessage::StopAudio {
+                            id: track_id,
+                            result: tx,
+                        })
+                        .await;
+                });
+            }
+        }
     }
     pub fn restart_with_tracklist(&mut self, tracklist: TrackList) {
         if self.dead() {
@@ -635,6 +844,10 @@ impl PlaylistAudioManager {
         self.restart();
     }
     pub fn pause_current_track(&mut self) {
+        if self.dead() {
+            return;
+        }
+
         if let Some(sender) = &self.audio_sender {
             // get the current track id if it exists
             let track_id: Option<Id> = {
@@ -657,6 +870,10 @@ impl PlaylistAudioManager {
         }
     }
     pub fn resume_current_track(&mut self) {
+        if self.dead() {
+            return;
+        }
+
         if let Some(sender) = &self.audio_sender {
             // get the current track id if it exists
             let track_id: Option<Id> = {
@@ -677,6 +894,79 @@ impl PlaylistAudioManager {
                 });
             }
         }
+    }
+    pub fn skip_to_index(&mut self, index: u64) {
+        if self.dead() {
+            return;
+        }
+
+        // change the start index and 'restart' the playlist
+        // check to make sure its in the bounds though
+        let current_tracklist = {
+            if let Some(tracklist_watch) = &self.tracklist {
+                let maybe_tracklist = tracklist_watch.borrow().clone();
+                if let Some(tracklist) = maybe_tracklist {
+                    tracklist
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        };
+        let length = current_tracklist.order.length() as u64;
+        if index < length
+            && let Some(start_pos) = &self.start_index
+        {
+            let _ = start_pos.send(Some(index));
+            self.restart();
+        } else if index >= length {
+            // just end the playlist
+            self.cancel();
+        }
+    }
+    pub fn skip_current_track(&mut self) {
+        // just end this track
+        self.stop_current_track();
+    }
+    pub fn previous_current_track(&mut self) {
+        // get the current index and skip to the previous one
+        let mut current_pos = self.current_pos.load(Ordering::Relaxed);
+        if current_pos == 0 {
+            current_pos = 1
+        }
+        println!("going to pos: {}", current_pos - 1);
+        // set the flag to not stop until a downloaded track is found (or the start)
+        self.previous_until_valid_flag
+            .store(true, Ordering::Relaxed);
+        self.skip_to_index(current_pos - 1);
+    }
+    pub fn get_current_track(&self) -> Option<Track> {
+        // try to find the current track being played
+        let current_pos = self.current_pos.load(Ordering::Relaxed);
+        if let Some(tracklist_watch) = &self.tracklist {
+            let guard = tracklist_watch.borrow();
+            if let Some(tracklist) = guard.as_ref() {
+                return tracklist
+                    .tracks
+                    .get(tracklist.order.index_order[current_pos as usize] as usize)
+                    .cloned();
+            }
+        }
+
+        None
+    }
+    pub fn loaded_track(&self) -> bool {
+        self.playing_flag.load(Ordering::Relaxed)
+    }
+    pub fn set_audio_loop(&self, loop_audio: bool) {
+        // set the flag for future tracks
+        self.start_audio_looped.store(loop_audio, Ordering::Relaxed);
+    }
+    /// updates the manager's internal volume. Note: it does not update
+    /// any current track's volume.
+    pub fn update_volume(&mut self, volume: f64) {
+        self.volume.store(volume, Ordering::Relaxed);
     }
     fn dead(&self) -> bool {
         if self.dead {

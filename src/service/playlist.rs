@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     service::{
-        audio::AudioSender,
+        audio::{AudioSender, enums::AudioMessage},
         file::{self, structs::BinApps},
         gui::enums::{EventMessage, EventSender, Message},
         id::structs::Id,
@@ -41,7 +41,8 @@ pub struct PlaylistService {
     downloaded_tracks: HashSet<Id>,
     // Contains gui listener as well to send notifications back
     download_managers: HashMap<Id, (PlaylistDownloadManager, mpsc::Sender<Message>)>,
-    audio_managers: HashMap<Id, PlaylistAudioManager>,
+    audio_managers: HashMap<Id, (PlaylistAudioManager, mpsc::Sender<Message>)>,
+    download_waiting_tracks: HashMap<Id, Vec<oneshot::Sender<anyhow::Result<()>>>>,
 }
 
 pub struct PlaylistFlags {
@@ -63,6 +64,7 @@ impl PlaylistService {
             download_managers: HashMap::new(),
             downloaded_tracks: HashSet::new(),
             audio_managers: HashMap::new(),
+            download_waiting_tracks: HashMap::new(),
         }
     }
 }
@@ -252,6 +254,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 // update local downloaded cache
                 self.downloaded_tracks.insert(id.clone());
 
+                // then send any oks to any waiting audio mgrs
+                if let Some(senders) = self.download_waiting_tracks.remove(&id) {
+                    for sender in senders {
+                        let _ = sender.send(Ok(()));
+                    }
+                }
+
                 // then update the gui
                 self.event_sender
                     .send(EventMessage::TrackDownloadFinished { id })
@@ -286,10 +295,16 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 tracklist.randomize_order();
                 result_sender.send(tracklist.clone()).unwrap();
 
-                // take the active mgr if it exists and do some goofy shuffling
+                // take the active mgrs if they exists and do some goofy shuffling
                 if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
                     println!("Sending all the requests");
                     // restart mgr with new tracklist
+                    mgr.restart_with_tracklist(tracklist.clone());
+                }
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    println!("Sending all the requests");
+                    // restart mgr with new tracklist
+                    // println!("restarting audio MANAGER with tracklist: {tracklist:?}");
                     mgr.restart_with_tracklist(tracklist);
                 }
             }
@@ -317,20 +332,30 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 tracklist.sort();
                 result_sender.send(tracklist.clone()).unwrap();
 
-                // take the active mgr if it exists and do some goofy shuffling
+                // take the active mgrs if they exists and do some goofy shuffling
                 if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
+                    println!("Sending all the requests");
+                    // restart mgr with new tracklist
+                    mgr.restart_with_tracklist(tracklist.clone());
+                }
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
                     println!("Sending all the requests");
                     // restart mgr with new tracklist
                     mgr.restart_with_tracklist(tracklist);
                 }
             }
-            PlaylistMessage::PlaylistAudioManagementDone { id: _ } => {
+            PlaylistMessage::PlaylistAudioManagementDone { id } => {
                 println!("playlist audio management done");
+                if let Some((_, data_sender)) = self.audio_managers.remove(&id) {
+                    let _ = data_sender
+                        .send(Message::PlayPlaylistEnded { playlist_id: id })
+                        .await;
+                }
             }
             PlaylistMessage::PlayPlaylist {
                 id,
                 tracklist,
-                progress_sender,
+                data_sender,
             } => {
                 // create a playlist audio manager and immediately start playing it.
                 if !self.audio_managers.contains_key(&id) {
@@ -347,18 +372,240 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             }
                         }
                     };
-                    let mut mgr = PlaylistAudioManager::new(tracklist, id.clone());
+                    let mut mgr = PlaylistAudioManager::new(id.clone());
 
                     mgr.run(
-                        progress_sender,
+                        tracklist,
+                        data_sender.clone(),
                         self.playlist_sender.clone(),
                         self.audio_sender.clone(),
+                        false,
                     );
 
-                    self.audio_managers.insert(id, mgr);
+                    self.audio_managers.insert(id, (mgr, data_sender));
                 } else {
                     println!("Playlist already playing; doing nothing");
                 }
+            }
+            PlaylistMessage::SkipCurrentTrack {
+                playlist_id,
+                result_sender,
+            } => {
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    mgr.skip_current_track();
+                    let _ = result_sender.send(Ok(()));
+                } else {
+                    let _ = result_sender
+                        .send(Err(anyhow!("Playlist audio manager does exist for id")));
+                }
+            }
+            PlaylistMessage::PreviousCurrentTrack {
+                playlist_id,
+                result_sender,
+            } => {
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    mgr.previous_current_track();
+                    let _ = result_sender.send(Ok(()));
+                } else {
+                    let _ = result_sender
+                        .send(Err(anyhow!("Playlist audio manager does exist for id")));
+                }
+            }
+            PlaylistMessage::PauseCurrentTrack {
+                playlist_id,
+                result_sender,
+            } => {
+                println!("Playlist mgr: pause current track");
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    mgr.pause_current_track();
+                    let _ = result_sender.send(Ok(()));
+                } else {
+                    let _ = result_sender
+                        .send(Err(anyhow!("Playlist audio manager does exist for id")));
+                }
+            }
+            PlaylistMessage::ResumeCurrentTrack {
+                playlist_id,
+                result_sender,
+                seek_location,
+            } => {
+                println!("Playlist mgr: resume current track");
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    let current_track_id = mgr.get_current_track().unwrap().id().clone();
+                    if let Some(progress) = seek_location
+                        && mgr.loaded_track()
+                    {
+                        // set the audio progress via audio service
+                        let (tx, rx) = oneshot::channel();
+                        let _ = self
+                            .audio_sender
+                            .send(AudioMessage::SeekAudio {
+                                id: current_track_id,
+                                percentage: progress as f64,
+                                result: tx,
+                            })
+                            .await;
+                        let _ = rx.await;
+                    }
+                    mgr.resume_current_track();
+                    let _ = result_sender.send(Ok(()));
+                } else {
+                    let _ = result_sender
+                        .send(Err(anyhow!("Playlist audio manager does exist for id")));
+                }
+            }
+            PlaylistMessage::IfPlaylistDownloadingWait {
+                playlist_id,
+                track_id_to_wait,
+                result_sender,
+            } => {
+                if self.download_managers.contains_key(&playlist_id) {
+                    if self.downloaded_tracks.contains(&playlist_id) {
+                        println!(
+                            "Warning: sending playlist downloading request for track that is already downloaded"
+                        )
+                    } else {
+                        let (tx, rx) = oneshot::channel();
+                        let _ = result_sender.send(Some(rx));
+                        if let Some(waiting_vec) =
+                            self.download_waiting_tracks.get_mut(&playlist_id)
+                        {
+                            waiting_vec.push(tx);
+                        } else {
+                            self.download_waiting_tracks
+                                .insert(track_id_to_wait, vec![tx]);
+                        }
+                    }
+                } else {
+                    let _ = result_sender.send(None);
+                }
+            }
+            PlaylistMessage::SelectDownloadIndex {
+                playlist_id,
+                index,
+                result_sender,
+            } => {
+                if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
+                    mgr.skip_to_index(index);
+                    let _ = result_sender.send(Ok(()));
+                } else {
+                    let _ =
+                        result_sender.send(Err(anyhow!("Playlist is not currently downloading")));
+                }
+            }
+            PlaylistMessage::SelectPlaylistIndex {
+                playlist_id,
+                track_index,
+                result_sender,
+            } => {
+                // select the track in both the audio mgr and download mgr
+                // audio mgr
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    mgr.skip_to_index(track_index);
+                } else {
+                    let _ = result_sender.send(Err(anyhow!("Playlist is not currently playing")));
+                    return;
+                }
+
+                // download mgr
+                if let Some((mgr, _)) = self.download_managers.get_mut(&playlist_id) {
+                    mgr.skip_to_index(track_index);
+                } else {
+                    let _ =
+                        result_sender.send(Err(anyhow!("Playlist is not currently downloading")));
+                    return;
+                }
+                let _ = result_sender.send(Ok(()));
+            }
+            PlaylistMessage::SeekTrackAudioInPlaylist {
+                playlist_id,
+                percentage,
+                result_sender,
+            } => {
+                if let Some((mgr, _)) = self.audio_managers.get_mut(&playlist_id) {
+                    if mgr.loaded_track() {
+                        // send the request to the audio service
+                        let current_track_id = mgr.get_current_track().unwrap().id().clone();
+                        let (tx, _) = oneshot::channel();
+                        let _ = self
+                            .audio_sender
+                            .send(AudioMessage::SeekAudio {
+                                id: current_track_id,
+                                percentage,
+                                result: tx,
+                            })
+                            .await;
+                        let _ = result_sender.send(Ok(()));
+                    } else {
+                        let _ = result_sender.send(Err(anyhow!("No track currently playing")));
+                    }
+                }
+            }
+            PlaylistMessage::SetPlaylistLoopPolicy {
+                playlist_id,
+                policy,
+                result_sender,
+            } => {
+                if let Some((mgr, _)) = self.audio_managers.get(&playlist_id) {
+                    if mgr.loaded_track() {
+                        println!("setting loop policy ({policy:?})");
+                        // track is currently loaded in playlist; send request to audio service
+                        let track_id = mgr.get_current_track().unwrap().id().clone();
+                        let (tx, _) = oneshot::channel();
+                        let _ = self
+                            .audio_sender
+                            .send(AudioMessage::SetAudioLoop {
+                                id: track_id,
+                                loop_policy: policy,
+                                result: tx,
+                            })
+                            .await;
+                    } else {
+                        let _ = result_sender.send(Err(anyhow!("No track currently loaded")));
+                    }
+                } else {
+                    let _ = result_sender.send(Err(anyhow!("Playlist not loaded")));
+                }
+            }
+            PlaylistMessage::TrackLooped {
+                maybe_playlist_id,
+                track_id,
+            } => {
+                if let Some(playlist_id) = maybe_playlist_id {
+                    if let Some((_, gui_sender)) = self.audio_managers.get(&playlist_id) {
+                        // send update to gui that audio looped
+                        let _ = gui_sender
+                            .send(Message::TrackLooped {
+                                maybe_playlist_id: Some(playlist_id),
+                                track_id,
+                            })
+                            .await;
+                    }
+                }
+            }
+            PlaylistMessage::UpdateGlobalVolume {
+                volume,
+                result_sender,
+            } => {
+                // get all the current managers and set all of their volumes
+                for (mgr, _) in self.audio_managers.values_mut() {
+                    mgr.update_volume(volume);
+                    // for each mgr, if they're playing a track,
+                    // update that track's volume
+                    if mgr.loaded_track() {
+                        let track_id = mgr.get_current_track().unwrap().id().clone();
+                        let (tx, _) = oneshot::channel();
+                        let _ = self
+                            .audio_sender
+                            .send(AudioMessage::SetAudioVolume {
+                                id: track_id,
+                                volume,
+                                result: tx,
+                            })
+                            .await;
+                    }
+                }
+                let _ = result_sender.send(Ok(()));
             }
         }
     }

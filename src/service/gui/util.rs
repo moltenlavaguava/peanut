@@ -2,14 +2,16 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
 
 use iced::Length;
 use iced::widget::{
-    Column, Space, button, column, container, lazy, row, scrollable, text, text_input,
+    Column, Space, button, column, container, lazy, row, scrollable, slider, text, text_input,
 };
 use tokio::sync::{mpsc, oneshot};
 
-use crate::service::gui::enums::{Action, PlayingState};
+use crate::service::audio::enums::LoopPolicy;
+use crate::service::gui::enums::Action;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::PlaylistMessage;
@@ -56,39 +58,48 @@ pub fn player(app: &App) -> Column<'_, Message> {
         )];
     }
     let current_ptracklist = app.current_ptracklist.as_ref().unwrap();
+    let current_playlist_id = app.current_ptracklist.as_ref().unwrap().metadata.id.clone();
+    let current_playlist_playing = app.paused_playlists.contains(&current_playlist_id);
 
     let title = text(&current_ptracklist.metadata.title);
     let home_button = button("home").on_press(Message::Action(Action::Home));
     let header = row![home_button, title];
 
-    let tracklist = current_ptracklist.list.iter().map(|track| {
-        // create a metadata object for each track to know when important information changes between renders
-        let track_downloaded = app.downloaded_tracks.contains(&track.id());
-        let track_downloading = app.downloading_tracks.contains(&track.id());
-        let track_metadata = TrackMetadata {
-            downloaded: track_downloaded,
-            downloading: track_downloading,
-            title: Arc::from(track.title.as_str()),
-        };
-        // create a lazy button
-        lazy(track_metadata, |metadata| {
-            button(text(format!(
-                "{}{}",
-                metadata.title.to_string(),
-                if metadata.downloading {
-                    " ⬇️"
-                } else if metadata.downloaded {
-                    " ✅"
-                } else {
-                    ""
-                }
-            )))
-        })
-        .into()
-    });
+    let tracklist = current_ptracklist
+        .list
+        .iter()
+        .enumerate()
+        .map(|(index, track)| {
+            // create a metadata object for each track to know when important information changes between renders
+            let track_downloaded = app.downloaded_tracks.contains(&track.id());
+            let track_downloading = app.downloading_tracks.contains(&track.id());
+            let pid = current_playlist_id.clone();
+            let track_metadata = TrackMetadata {
+                downloaded: track_downloaded,
+                downloading: track_downloading,
+                title: Arc::from(track.title.as_str()),
+            };
+            // create a lazy button
+            lazy(track_metadata, move |metadata| {
+                button(text(format!(
+                    "{}{}",
+                    metadata.title.to_string(),
+                    if metadata.downloading {
+                        " ⬇️"
+                    } else if metadata.downloaded {
+                        " ✅"
+                    } else {
+                        ""
+                    }
+                )))
+                .on_press(Message::Action(Action::PlayTrack {
+                    playlist_id: pid.clone(),
+                    track_index: index as u64,
+                }))
+            })
+            .into()
+        });
     let album_next = row![scrollable(column(tracklist))].height(Length::Fill);
-
-    let current_playlist_id = app.current_ptracklist.as_ref().unwrap().metadata.id.clone();
 
     let download_button = if app.downloading_playlists.contains(&current_playlist_id) {
         button("stop download").on_press(Message::Action(Action::StopPlaylistDownload {
@@ -105,6 +116,17 @@ pub fn player(app: &App) -> Column<'_, Message> {
         }))
     };
 
+    let loop_button_text = format!("loop{}", {
+        match app.playlist_loop_policies.get(&current_playlist_id) {
+            Some(policy) => match policy {
+                LoopPolicy::NoLooping => "",
+                LoopPolicy::Once => " (1x)",
+                LoopPolicy::Infinite => " (inf)",
+            },
+            None => "",
+        }
+    });
+
     let controls = row![
         // all the buttons lol
         download_button,
@@ -114,14 +136,16 @@ pub fn player(app: &App) -> Column<'_, Message> {
         button("prev").on_press(Message::Action(Action::PreviousTrack {
             playlist_id: current_playlist_id.clone()
         })),
-        if let PlayingState::Playing = app.track_playing_state {
-            button("pause").on_press(Message::Action(Action::ResumeTrack {
+        if app.playing_playlists.contains(&current_playlist_id) {
+            button("pause").on_press(Message::Action(Action::PauseTrack {
+                playlist_id: current_playlist_id.clone(),
+            }))
+        } else if current_playlist_playing {
+            button("play").on_press(Message::Action(Action::ResumeTrack {
                 playlist_id: current_playlist_id.clone(),
             }))
         } else {
-            button("play").on_press(Message::Action(Action::PauseTrack {
-                playlist_id: current_playlist_id.clone(),
-            }))
+            button("...")
         },
         button("nxt").on_press(Message::Action(Action::NextTrack {
             playlist_id: current_playlist_id.clone()
@@ -129,11 +153,44 @@ pub fn player(app: &App) -> Column<'_, Message> {
         button("shffle").on_press(Message::Action(Action::ShufflePlaylist {
             playlist_id: current_playlist_id.clone()
         })),
-        button("lop").on_press(Message::Action(Action::LoopTrack {
+        button(text(loop_button_text)).on_press(Message::Action(Action::LoopTrack {
             playlist_id: current_playlist_id.clone()
         })),
     ];
-    column![header, album_next, controls].height(Length::Fill)
+
+    let current_playlist_id_clone = current_playlist_id.clone();
+    let progress_bar_slider = slider(
+        0.0..=100.0,
+        app.track_progress.progress() * 100.0,
+        move |progress| {
+            Message::Action(Action::SeekAudio {
+                playlist_id: current_playlist_id.clone(),
+                progress: progress / 100.0,
+            })
+        },
+    )
+    .on_release(Message::Action(Action::StopSeekingAudio {
+        playlist_id: current_playlist_id_clone,
+    }));
+
+    let current_time = app.track_progress.current();
+    let total_time = app.track_progress.total();
+
+    let current_txt = text(format_duration(current_time));
+    let total_txt = text(format_duration(total_time));
+
+    let progress_bar = row![current_txt, progress_bar_slider, total_txt];
+
+    let volume_text = text("volume?");
+    let volume_bar = slider(0.0..=100.0, app.volume * 100.0, |volume| {
+        Message::Action(Action::SetVolume {
+            volume: volume / 100.0,
+        })
+    });
+
+    let volume_row = row![volume_text, volume_bar];
+
+    column![header, album_next, progress_bar, volume_row, controls].height(Length::Fill)
 }
 
 // requesting methods
@@ -247,8 +304,133 @@ pub async fn play_playlist(
         .send(PlaylistMessage::PlayPlaylist {
             id: playlist_id,
             tracklist,
-            progress_sender: tx,
+            data_sender: tx,
         })
         .await?;
     Ok(handle)
+}
+
+pub async fn pause_current_playlist_track(
+    playlist_id: Id,
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::PauseCurrentTrack {
+            playlist_id,
+            result_sender: tx,
+        })
+        .await
+        .unwrap();
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub async fn resume_current_playlist_track(
+    playlist_id: Id,
+    playlist_sender: PlaylistSender,
+    seek_location: Option<f32>,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::ResumeCurrentTrack {
+            playlist_id,
+            result_sender: tx,
+            seek_location,
+        })
+        .await
+        .unwrap();
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub async fn skip_current_playlist_track(
+    playlist_id: Id,
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::SkipCurrentTrack {
+            playlist_id,
+            result_sender: tx,
+        })
+        .await
+        .unwrap();
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub async fn previous_current_playlist_track(
+    playlist_id: Id,
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::PreviousCurrentTrack {
+            playlist_id,
+            result_sender: tx,
+        })
+        .await
+        .unwrap();
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub async fn play_track_in_playlist(
+    playlist_id: Id,
+    playlist_sender: PlaylistSender,
+    track_index: u64,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    let _ = playlist_sender
+        .send(PlaylistMessage::SelectPlaylistIndex {
+            playlist_id,
+            track_index,
+            result_sender: tx,
+        })
+        .await;
+
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub async fn set_playlist_loop_policy(
+    playlist_id: Id,
+    policy: LoopPolicy,
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::SetPlaylistLoopPolicy {
+            playlist_id,
+            policy,
+            result_sender: tx,
+        })
+        .await
+        .unwrap();
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub async fn update_volume_in_playlist_service(
+    volume: f64,
+    playlist_sender: PlaylistSender,
+) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::UpdateGlobalVolume {
+            volume,
+            result_sender: tx,
+        })
+        .await
+        .unwrap();
+    let _ = rx.await?;
+    Ok(())
+}
+
+pub fn format_duration(duration: &Duration) -> String {
+    let total_seconds = duration.as_secs();
+    let mins = total_seconds / 60;
+    let secs = total_seconds - mins * 60;
+    format!("{}:{:02}", mins, secs)
 }
