@@ -1,9 +1,10 @@
+use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::service::{
     audio::structs::{AudioConfig, AudioProgress},
     id::structs::Id,
-    playlist::PlaylistSender,
+    playlist::{PlaylistSender, structs::Album},
 };
 
 #[derive(Debug)]
@@ -76,4 +77,23 @@ impl LoopPolicy {
             _ => Self::NoLooping,
         }
     }
+}
+
+/// Confidence enum used for scrubbing Youtube track titles.
+/// Each variant has a distinct confidence level:
+/// High: has "official" in title, meaning uploader is likely artist
+/// Medium: standard title split
+/// Low: assume whole title is track title, and uploader is artist
+#[derive(Debug)]
+pub enum ExtractorConfidence {
+    High,
+    Medium,
+    Low,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum AlbumKind {
+    Album(Album),
+    Single,
+    Unknown,
 }

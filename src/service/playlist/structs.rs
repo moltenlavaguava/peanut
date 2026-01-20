@@ -16,7 +16,11 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::service::{
-    audio::{AudioSender, enums::AudioMessage, structs::AudioConfig},
+    audio::{
+        AudioSender,
+        enums::{AlbumKind, AudioMessage},
+        structs::AudioConfig,
+    },
     file::{
         self,
         structs::{BinApps, DataSize},
@@ -63,7 +67,7 @@ pub struct Track {
     pub title: String,
     pub length: Duration,
     pub artist: Artist,
-    pub album: Option<Album>,
+    pub album_kind: AlbumKind,
     pub source_id: Id,
     pub dyn_id: Id,
     pub index: u64,
@@ -77,7 +81,7 @@ impl Track {
             title: ptj.title,
             length: Duration::from_secs(ptj.duration),
             artist: Artist::Community(ptj.channel),
-            album: None,
+            album_kind: AlbumKind::Unknown,
             source_id: id.clone(),
             dyn_id: id,
             index: ptj.playlist_index,
@@ -93,6 +97,7 @@ impl Track {
 pub struct Album {
     pub name: String,
     pub artists: Vec<String>,
+    pub img_url: Url,
 }
 
 #[derive(Debug, Deserialize)]

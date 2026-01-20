@@ -26,6 +26,7 @@ use crate::{
 };
 
 pub mod enums;
+pub mod identification;
 pub mod structs;
 mod util;
 

@@ -8,7 +8,11 @@ use kira::sound::static_sound::StaticSoundHandle;
 use parking_lot::Mutex;
 use tokio::sync::oneshot;
 
-use crate::service::{audio::enums::LoopPolicy, id::structs::Id, playlist::PlaylistSender};
+use crate::service::{
+    audio::enums::{AlbumKind, ExtractorConfidence, LoopPolicy},
+    id::structs::Id,
+    playlist::PlaylistSender,
+};
 
 #[derive(Debug)]
 pub struct AudioConfig {
@@ -64,4 +68,19 @@ impl AudioProgress {
     pub fn update_progress(&mut self, progress: f32) {
         self.current = Duration::from_secs_f32(self.total().as_secs_f32() * progress);
     }
+}
+
+#[derive(Debug)]
+pub struct YoutubeTitleMetadata {
+    pub track_title: String,
+    pub main_artist_string: String,
+    pub extract_confidence: ExtractorConfidence,
+}
+
+// Information about track retreived from online databases
+#[derive(Debug)]
+pub struct UpdatedTrackData {
+    pub title: String,
+    pub album_kind: AlbumKind,
+    pub artists: Vec<String>,
 }
