@@ -5,4 +5,6 @@ use strum_macros::{Display, EnumString};
 pub enum Platform {
     #[strum(serialize = "yt")]
     Youtube,
+    #[strum(serialize = "mb")]
+    MusicBrainz,
 }

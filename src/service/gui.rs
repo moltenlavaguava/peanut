@@ -133,6 +133,23 @@ impl App {
                         self.downloading_tracks.remove(&id);
                         self.downloaded_tracks.insert(id);
                     }
+                    EventMessage::TrackUpdated { track } => {
+                        println!("track updated in gui");
+                        // A track's data just updated. If its in the current playlist, update it for rendering.
+                        if let Some(curr_play) = &mut self.current_owned_playlist {
+                            if let Some(pos) =
+                                curr_play.tracks.iter().position(|t| t.id() == track.id())
+                            {
+                                // replace the current track with the new one
+                                println!("updating playlist @ gui");
+                                curr_play.tracks[pos] = track;
+                                // update tracklist
+                                if let Some(tracklist) = &mut self.current_playlist_tracklist {
+                                    tracklist.replace_tracks(curr_play.tracks.clone());
+                                }
+                            }
+                        }
+                    }
                 };
                 Task::none()
             }

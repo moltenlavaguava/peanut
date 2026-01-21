@@ -149,8 +149,15 @@ impl Track {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Album {
     pub name: String,
+    pub source_id: Id,
+    pub dyn_id: Id,
     pub artists: Vec<String>,
     pub img_url: Url,
+}
+impl Album {
+    pub fn id(&self) -> &Id {
+        &self.dyn_id
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -252,7 +259,9 @@ impl TrackList {
             .iter()
             .map(|index| &self.tracks[*index as usize])
     }
-
+    pub fn replace_tracks(&mut self, new_tracks: Vec<Track>) {
+        self.tracks = Arc::new(new_tracks);
+    }
     pub fn randomize_order(&mut self) {
         self.order.randomize();
     }
@@ -401,7 +410,7 @@ impl PlaylistDownloadManager {
                         .unwrap();
 
                     println!("Downloading track {}..", track.title);
-                    download::download_track(
+                    let maybe_new_track = download::download_track(
                         &track,
                         file::util::track_dir_path().unwrap(),
                         &musicbrainz_client,
@@ -409,9 +418,23 @@ impl PlaylistDownloadManager {
                         bin_apps.clone(),
                         &process_sender,
                         &map_t,
+                        &playlist_sender_clone,
                     )
                     .await
                     .unwrap();
+
+                    // update track logic
+                    if let Some(track) = maybe_new_track {
+                        println!("Found new match for track: {track:?}");
+                        let _ = playlist_sender_clone
+                            .send(PlaylistMessage::UpdateTrack {
+                                playlist_id: None,
+                                track,
+                                restart_audio: false,
+                                restart_download: false,
+                            })
+                            .await;
+                    }
 
                     // Track Download End message
                     playlist_sender_clone

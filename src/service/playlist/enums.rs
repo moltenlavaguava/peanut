@@ -10,7 +10,8 @@ use crate::service::{
     gui::enums::Message,
     id::structs::Id,
     playlist::structs::{
-        OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackDownloadJson, TrackList,
+        Album, OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackDownloadJson,
+        TrackList,
     },
 };
 
@@ -134,6 +135,9 @@ pub enum PlaylistMessage {
         track: Track,
         restart_audio: bool,
         restart_download: bool,
+    },
+    AlbumDataRetreived {
+        album: Album,
     },
 }
 

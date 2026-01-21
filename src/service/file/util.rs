@@ -1,22 +1,28 @@
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::io::Write;
 use std::path::PathBuf;
 
 use crate::service::id::structs::Id;
 use crate::service::playlist::enums::MediaType;
-use crate::service::playlist::structs::{Playlist, Track};
+use crate::service::playlist::structs::{Album, Playlist, Track};
 
 use super::structs::BinApps;
 use anyhow::anyhow;
-use tokio::fs;
+use image::ImageFormat;
+use reqwest::Client;
+use tokio::fs::{self};
 
 const OUTPUT_DIR: &str = "output";
 const TRACK_DIR: &str = "track";
 const DATA_DIR: &str = "data";
+const ALBUM_DIR: &str = "album";
 const TRACK_DATA_FILENAME: &str = "tracks";
+const ALBUM_DATA_FILENAME: &str = "albums";
 
 const TRACK_EXTENSION: &str = "m4a";
 const DATA_EXTENSION: &str = "json";
+const ALBUM_EXTENSION: &str = "jpeg";
 
 /// Returns the current project root. If in debug mode, returns the root directory for the project. Otherwise, returns the directory the executable is in.
 pub fn get_project_root() -> std::io::Result<PathBuf> {
@@ -69,6 +75,10 @@ pub fn track_dir_path() -> anyhow::Result<PathBuf> {
 
 pub fn data_dir_path() -> anyhow::Result<PathBuf> {
     Ok(output_dir_path()?.join(DATA_DIR))
+}
+
+pub fn album_dir_path() -> anyhow::Result<PathBuf> {
+    Ok(output_dir_path()?.join(ALBUM_DIR))
 }
 
 pub fn track_file_path_from_id(id: &Id) -> anyhow::Result<PathBuf> {
@@ -160,6 +170,19 @@ pub async fn get_saved_tracks_file_path() -> anyhow::Result<PathBuf> {
     Ok(tracks_file_path)
 }
 
+pub async fn get_album_data_file_path() -> anyhow::Result<PathBuf> {
+    let mut albums_file_path = data_dir_path()?;
+    albums_file_path.push(ALBUM_DATA_FILENAME);
+    albums_file_path.set_extension(ALBUM_EXTENSION);
+    Ok(albums_file_path)
+}
+
+pub async fn album_filename_from_id(album_id: &Id) -> anyhow::Result<PathBuf> {
+    let mut album_dir_path = album_dir_path()?;
+    album_dir_path.push(album_id.to_string());
+    Ok(album_dir_path)
+}
+
 pub async fn load_saved_tracks() -> anyhow::Result<HashMap<Id, Track>> {
     // get the tracks file path
     let tracks_file_path = get_saved_tracks_file_path().await?;
@@ -175,4 +198,30 @@ pub async fn load_saved_tracks() -> anyhow::Result<HashMap<Id, Track>> {
 
 pub fn track_output_extension() -> &'static str {
     TRACK_EXTENSION
+}
+
+pub async fn download_album(album: &Album, client: &Client) -> anyhow::Result<()> {
+    // download raw image bytes
+    let response = client.get(album.img_url.clone()).send().await?;
+    let bytes = response.bytes().await?.to_vec();
+    let album_filename = album_filename_from_id(&album.id()).await?;
+
+    // spawn heavy stuff in separate thread
+    tokio::task::spawn_blocking(move || {
+        // check if img is jpeg (it probably is)
+        let format = image::guess_format(&bytes).unwrap_or(ImageFormat::Png);
+        if format == ImageFormat::Jpeg {
+            // save the file as is
+            let mut file = std::fs::File::create(album_filename.clone())?;
+            file.write_all(&bytes)?;
+        } else {
+            let img = image::load_from_memory(&bytes)?;
+            let mut file = std::fs::File::create(album_filename)?;
+            img.write_to(&mut file, ImageFormat::Jpeg)?;
+        }
+        Ok::<(), anyhow::Error>(())
+    })
+    .await??;
+
+    Ok(())
 }

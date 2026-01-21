@@ -16,8 +16,9 @@ use crate::service::{
         enums::{AlbumKind, ExtractorConfidence},
         structs::{UpdatedTrackData, YoutubeTitleMetadata},
     },
+    id::{enums::Platform, structs::Id},
     playlist::{
-        enums::Artist,
+        enums::{Artist, MediaType},
         structs::{Album, Track},
     },
 };
@@ -211,7 +212,7 @@ pub async fn verify_track_information(
     let safe_title = title_metadata.track_title.replace("\"", "");
     let safe_artist = title_metadata.main_artist_string.replace("\"", "");
     let query = format!(
-        r#"query=recording:"{}"~ AND artist:"{}""#,
+        r#"query=recording:"{}"~ AND artist:"{}"~"#,
         safe_title, safe_artist
     );
     let result = Recording::search(query)
@@ -258,12 +259,15 @@ fn get_album_from_recording(recording: &Recording) -> AlbumKind {
                     let artists = get_artists(artists);
                     let album_title = r.title.clone();
                     let img_url = Url::from_str(&format!(
-                        "https://coverartarchive.org/release/{}/front",
+                        "https://coverartarchive.org/release/{}/front-500",
                         &r.id
                     ))
                     .unwrap();
+                    let album_id = Id::new(Platform::MusicBrainz, MediaType::Album, r.id.clone());
                     return AlbumKind::Album(Album {
                         name: album_title,
+                        source_id: album_id.clone(),
+                        dyn_id: album_id,
                         artists,
                         img_url,
                     });

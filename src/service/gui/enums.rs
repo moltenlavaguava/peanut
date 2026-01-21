@@ -8,7 +8,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
-            structs::{OwnedPlaylist, PlaylistMetadata, TrackDownloadData, TrackList},
+            structs::{OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackList},
         },
     },
     util::sync::ReceiverHandle,
@@ -146,6 +146,7 @@ pub enum EventMessage {
     // A single track has downloaded. Given: the id of the track.
     // This is an EventMessage because it is generally independent of a playlist.
     TrackDownloadFinished { id: Id },
+    TrackUpdated { track: Track },
 }
 
 pub type EventSender = mpsc::Sender<EventMessage>;

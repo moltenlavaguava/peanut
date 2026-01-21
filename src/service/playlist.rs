@@ -9,7 +9,8 @@ use crate::{
         playlist::{
             download::initialize_playlist,
             structs::{
-                OwnedPlaylist, PlaylistAudioManager, PlaylistDownloadManager, Track, TrackList,
+                Album, OwnedPlaylist, PlaylistAudioManager, PlaylistDownloadManager, Track,
+                TrackList,
             },
         },
         process::ProcessSender,
@@ -43,6 +44,7 @@ pub struct PlaylistService {
     playlists: HashMap<Id, Playlist>,
     tracks: HashMap<Id, Track>,
     downloaded_tracks: HashSet<Id>,
+    albums: HashMap<Id, Album>,
 
     bin_files: Option<BinApps>,
     // cache downloaded tracks to prevent re-downloading
@@ -75,6 +77,7 @@ impl PlaylistService {
             audio_managers: HashMap::new(),
             download_waiting_tracks: HashMap::new(),
             musicbrainz_client: None,
+            albums: HashMap::new(),
         }
     }
 }
@@ -667,14 +670,49 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 }
                 let _ = result_sender.send(Ok(()));
             }
-            // This implementation is messy, maybe have a central list of tracks later?
             PlaylistMessage::UpdateTrack {
-                playlist_id: _,
-                track: _,
-                restart_audio: _,
-                restart_download: _,
+                playlist_id,
+                track,
+                restart_audio,
+                restart_download,
             } => {
-                todo!()
+                println!("track updated in playlist service");
+                match playlist_id {
+                    None => {
+                        // replace the track
+                        self.tracks.insert(track.id().clone(), track.clone());
+                        // save file
+                        let tracks_vec: Vec<Track> = self.tracks.clone().into_values().collect();
+                        let json = serde_json::to_string(&tracks_vec).unwrap();
+                        let path = file::util::get_saved_tracks_file_path().await.unwrap();
+                        fs::write(path, json).await.expect("Failed to save to file");
+
+                        // notify gui
+                        let _ = self
+                            .event_sender
+                            .send(EventMessage::TrackUpdated { track })
+                            .await;
+                    }
+                    // TODO: implement this
+                    Some(_id) => todo!(),
+                }
+                // restart mgrs if needed
+                if restart_audio {
+                    for (mgr, _) in self.audio_managers.values_mut() {
+                        mgr.restart();
+                    }
+                }
+                if restart_download {
+                    for (mgr, _) in self.download_managers.values_mut() {
+                        mgr.restart();
+                    }
+                }
+            }
+            PlaylistMessage::AlbumDataRetreived { album } => {
+                // add the album data in the map if it isn't already in there
+                if !self.albums.contains_key(album.id()) {
+                    self.albums.insert(album.id().clone(), album);
+                }
             }
         }
     }

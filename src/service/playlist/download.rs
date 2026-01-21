@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 use url::Url;
 
 use crate::service::{
-    audio::identification,
+    audio::{enums::AlbumKind, identification},
     file::{
         enums::SizeUnit,
         structs::{BinApps, DataSize},
@@ -21,7 +21,11 @@ use crate::service::{
     gui::enums::Message,
     id::{enums::Platform, structs::Id},
     playlist::{
-        enums::{Artist, ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus},
+        PlaylistSender,
+        enums::{
+            Artist, ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus,
+            PlaylistMessage,
+        },
         structs::{
             OwnedPlaylist, PlaylistMetadata, PlaylistTrackJson, Track, TrackDownloadData,
             TrackDownloadJson,
@@ -143,6 +147,7 @@ pub async fn download_track(
     bin_apps: BinApps,
     process_sender: &ProcessSender,
     on_extractor_line_out: &mpsc::Sender<(Id, ExtractorLineOut)>,
+    playlist_sender: &PlaylistSender,
     // status_sender: &mpsc::Sender<TaskResponse>,
 ) -> Result<Option<Track>> {
     let cmd = bin_apps.yt_dlp.into_os_string();
@@ -204,6 +209,13 @@ pub async fn download_track(
     if let Some(track_data) =
         identification::verify_track_information(metadata, &musicbrainz_client).await
     {
+        if let AlbumKind::Album(album) = &track_data.album_kind {
+            let _ = playlist_sender
+                .send(PlaylistMessage::AlbumDataRetreived {
+                    album: album.clone(),
+                })
+                .await;
+        }
         // construct new track using provided track data
         let track = Track {
             album_kind: track_data.album_kind,
