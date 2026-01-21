@@ -353,11 +353,13 @@ impl App {
                         let playlist_sender_clone = self.playlist_sender.clone();
                         Task::perform(
                             util::play_track_in_playlist(
-                                playlist_id,
+                                playlist_id.clone(),
                                 playlist_sender_clone,
                                 track_index,
                             ),
-                            |_result| Message::PlayTrackResult,
+                            |_result| Message::PlayTrackResult {
+                                playlist_id: Some(playlist_id),
+                            },
                         )
                     }
                     Action::SeekAudio {
@@ -553,7 +555,20 @@ impl App {
                 }
                 Task::none()
             }
-            Message::PlayTrackResult => Task::none(),
+            Message::PlayTrackResult { playlist_id } => {
+                // make sure to set the play button as 'playing'
+                if let Some(pid) = playlist_id
+                    && let Some(cur_playlist) = &self.current_owned_playlist
+                {
+                    let curr_pid = cur_playlist.metadata.id();
+                    if pid == *curr_pid {
+                        // track played was this playlist
+                        self.paused_playlists.remove(curr_pid);
+                        self.playing_playlists.insert(curr_pid.clone());
+                    }
+                }
+                Task::none()
+            }
             Message::SetGlobalVolumeResult => Task::none(),
             Message::SetPlaylistLoopPolicyResult { playlist_id: _ } => Task::none(),
             Message::None => Task::none(),

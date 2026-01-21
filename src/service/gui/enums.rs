@@ -96,7 +96,9 @@ pub enum Message {
     PlayPlaylistEnded {
         playlist_id: Id,
     },
-    PlayTrackResult,
+    PlayTrackResult {
+        playlist_id: Option<Id>,
+    },
     SetPlaylistLoopPolicyResult {
         playlist_id: Id,
     },

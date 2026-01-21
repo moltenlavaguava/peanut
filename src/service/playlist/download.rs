@@ -213,7 +213,6 @@ pub async fn download_track(
             download_url: track.download_url.clone(),
             source_id: track.source_id.clone(),
             dyn_id: track.dyn_id.clone(),
-            index: track.index,
         };
         Ok(Some(track))
     } else {

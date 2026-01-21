@@ -109,6 +109,12 @@ impl OwnedPlaylist {
     pub fn length(&self) -> usize {
         self.tracks.len()
     }
+    pub fn contains_track(&self, track_id: &Id) -> bool {
+        self.tracks
+            .iter()
+            .find(|track| track.id() == track_id)
+            .is_some()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -119,7 +125,6 @@ pub struct Track {
     pub album_kind: AlbumKind,
     pub source_id: Id,
     pub dyn_id: Id,
-    pub index: u64,
     pub download_url: Url,
 }
 
@@ -133,7 +138,6 @@ impl Track {
             album_kind: AlbumKind::Unknown,
             source_id: id.clone(),
             dyn_id: id,
-            index: ptj.playlist_index,
             download_url: ptj.url,
         }
     }
@@ -156,7 +160,6 @@ pub struct PlaylistTrackJson {
     title: String,
     duration: u64,
     channel: String,
-    playlist_index: u64,
     pub playlist_id: String,
     id: String,
 }
