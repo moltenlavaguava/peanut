@@ -1,10 +1,12 @@
 use anyhow::anyhow;
 use atomic_float::AtomicF64;
 use futures::FutureExt;
+use musicbrainz_rs::MusicBrainzClient;
 use parking_lot::Mutex;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -30,35 +32,82 @@ use crate::service::{
     playlist::{
         PlaylistSender, download,
         enums::{Artist, DownloadEndType, ExtractorLineOut, MediaType, PlaylistMessage},
+        util,
     },
     process::ProcessSender,
 };
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Playlist {
-    pub title: String,
+// --- PLAYLIST STRUCTS --- //
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PlaylistMetadata {
+    pub title: String,
     // for both playlists and tracks: source_id is the id for where this originated,
     // and dyn_id is the id for this 'true' playlist or track, and can change. generally, dyn_id is preferred.
     source_id: Id,
     dyn_id: Id,
-    pub tracks: Vec<Track>,
 }
-
-impl Playlist {
-    pub fn new(title: String, tracks: Vec<Track>, source_id: Id) -> Self {
+impl PlaylistMetadata {
+    pub fn new(title: String, source_id: Id, dyn_id: Id) -> Self {
         Self {
             title,
-            tracks,
-            source_id: source_id.clone(),
-            dyn_id: source_id,
+            source_id,
+            dyn_id,
         }
     }
     pub fn id(&self) -> &Id {
         &self.dyn_id
     }
-    pub fn length(&self) -> u64 {
-        self.tracks.len() as u64
+}
+
+/// Standard `Playlist` struct. Does NOT own its tracks.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Playlist {
+    pub metadata: PlaylistMetadata,
+    pub track_ids: Vec<Id>,
+}
+
+impl Playlist {
+    pub fn new(metadata: PlaylistMetadata, track_ids: Vec<Id>) -> Self {
+        Self {
+            metadata,
+            track_ids,
+        }
+    }
+    pub fn id(&self) -> &Id {
+        self.metadata.id()
+    }
+    pub fn length(&self) -> usize {
+        self.track_ids.len()
+    }
+}
+
+/// `Playlist` that owns all of its tracks. Does NOT change when global
+/// tracklist is modified.
+#[derive(Debug, Clone)]
+pub struct OwnedPlaylist {
+    pub metadata: PlaylistMetadata,
+    pub tracks: Vec<Track>,
+}
+impl OwnedPlaylist {
+    pub fn new(metadata: PlaylistMetadata, tracks: Vec<Track>) -> OwnedPlaylist {
+        Self { metadata, tracks }
+    }
+    pub fn with_cache(
+        metadata: PlaylistMetadata,
+        track_ids: Vec<Id>,
+        track_cache: &HashMap<Id, Track>,
+    ) -> Self {
+        let tracks = util::clone_tracks_from_cache(track_ids, &track_cache);
+        Self { metadata, tracks }
+    }
+    pub fn unpack_to_playlist(self) -> (Playlist, Vec<Track>) {
+        let track_ids = self.tracks.iter().map(|t| t.id().clone()).collect();
+        let playlist = Playlist::new(self.metadata, track_ids);
+        (playlist, self.tracks)
+    }
+    pub fn length(&self) -> usize {
+        self.tracks.len()
     }
 }
 
@@ -119,22 +168,9 @@ pub struct TrackDownloadJson {}
 #[derive(Debug)]
 pub struct DownloadTrackJson {}
 
-#[derive(Debug, Clone)]
-pub struct PlaylistMetadata {
-    pub title: String,
-    pub id: Id,
-}
-
-// Stores a TrackList but with a playlist metadata as well. Used when cloning a playlist may be expensive but the id is still needed.
-#[derive(Debug, Clone)]
-pub struct PTrackList {
-    pub list: TrackList,
-    pub metadata: PlaylistMetadata,
-}
-
 // Stores a `Track`'s 'metadata.' mostly just used for gui buttons to only redraw the button when important information changes.
 #[derive(Debug, Hash, Clone)]
-pub struct TrackMetadata {
+pub struct TrackDisplayMetadata {
     pub downloaded: bool,
     pub downloading: bool,
     // needed to prevent unnecessary copying
@@ -154,8 +190,8 @@ pub struct TrackOrder {
     index_order: Vec<u64>,
 }
 impl TrackOrder {
-    pub fn from_playlist(playlist: &Playlist) -> Self {
-        Self::from_length(playlist.length())
+    pub fn from_owned_playlist(playlist: &OwnedPlaylist) -> Self {
+        Self::from_length(playlist.length() as u64)
     }
     pub fn from_length(length: u64) -> Self {
         TrackOrder {
@@ -196,12 +232,16 @@ impl TrackList {
             tracks: Arc::new(tracks),
         })
     }
-    pub fn from_playlist_ref(playlist: &Playlist) -> Self {
+    pub fn from_owned_playlist_ref(playlist: &OwnedPlaylist) -> Self {
         Self::new(
-            TrackOrder::from_playlist(&playlist),
+            TrackOrder::from_owned_playlist(&playlist),
             playlist.tracks.clone(),
         )
         .expect("Track order from playlist should have same length as playlist itself")
+    }
+    pub fn from_tracks_vec(tracks: Vec<Track>) -> Self {
+        Self::new(TrackOrder::from_length(tracks.len() as u64), tracks)
+            .expect("Track order from playlist should have same length as playlist itself")
     }
     pub fn iter(&self) -> impl Iterator<Item = &Track> {
         self.order
@@ -251,6 +291,7 @@ impl PlaylistDownloadManager {
         playlist_sender: mpsc::Sender<PlaylistMessage>,
         process_sender: ProcessSender,
         bin_apps: BinApps,
+        musicbrainz_client: MusicBrainzClient,
     ) {
         if self.dead() {
             return;
@@ -358,9 +399,9 @@ impl PlaylistDownloadManager {
 
                     println!("Downloading track {}..", track.title);
                     download::download_track(
-                        &track.download_url,
-                        track.id().clone(),
+                        &track,
                         file::util::track_dir_path().unwrap(),
+                        &musicbrainz_client,
                         track.id().to_string(),
                         bin_apps.clone(),
                         &process_sender,

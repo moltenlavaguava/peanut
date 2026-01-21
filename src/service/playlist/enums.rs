@@ -10,7 +10,7 @@ use crate::service::{
     gui::enums::Message,
     id::structs::Id,
     playlist::structs::{
-        Playlist, PlaylistMetadata, TrackDownloadData, TrackDownloadJson, TrackList,
+        OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackDownloadJson, TrackList,
     },
 };
 
@@ -22,13 +22,13 @@ pub enum PlaylistMessage {
         reply_stream: oneshot::Sender<mpsc::Receiver<Message>>,
     },
     PlaylistInitDone {
-        playlist: Playlist,
+        owned_playlist: OwnedPlaylist,
         result_sender: oneshot::Sender<anyhow::Result<()>>,
     },
     // Returns a new (organized) tracklist from the given playlist id.
-    RequestTracklist {
+    RequestOwnedPlaylist {
         id: Id,
-        result_sender: oneshot::Sender<Option<TrackList>>,
+        result_sender: oneshot::Sender<Option<OwnedPlaylist>>,
     },
     DownloadPlaylist {
         id: Id,
@@ -126,6 +126,14 @@ pub enum PlaylistMessage {
     UpdateGlobalVolume {
         volume: f64,
         result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
+    UpdateTrack {
+        // Provide playlist id if the modification is for that playlist only.
+        // Otherwise don't provide one
+        playlist_id: Option<Id>,
+        track: Track,
+        restart_audio: bool,
+        restart_download: bool,
     },
 }
 

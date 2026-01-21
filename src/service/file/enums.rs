@@ -27,3 +27,10 @@ pub enum SizeUnit {
     #[strum(serialize = "MB")]
     Megabyte,
 }
+
+#[derive(Debug, Clone, Hash)]
+pub enum TrackDownloadState {
+    NotDownloaded,
+    Downloading,
+    Downloaded,
+}

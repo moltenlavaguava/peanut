@@ -14,7 +14,7 @@ use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
-use crate::service::playlist::structs::{PTrackList, PlaylistMetadata};
+use crate::service::playlist::structs::{OwnedPlaylist, PlaylistMetadata, TrackList};
 use crate::util::sync::ReceiverHandle;
 use enums::{EventMessage, Message, Page};
 use util::{home, player};
@@ -39,7 +39,8 @@ struct App {
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
     downloaded_tracks: HashSet<Id>,
     downloading_tracks: HashSet<Id>,
-    current_ptracklist: Option<PTrackList>,
+    current_owned_playlist: Option<OwnedPlaylist>,
+    current_playlist_tracklist: Option<TrackList>,
     download_stopping_playlists: HashSet<Id>,
     downloading_playlists: HashSet<Id>,
     playing_playlists: HashSet<Id>,
@@ -73,7 +74,8 @@ impl App {
                 total_tracks: 0,
                 page: Page::Home,
                 loaded_playlist_metadata: Vec::new(),
-                current_ptracklist: None,
+                current_owned_playlist: None,
+                current_playlist_tracklist: None,
                 downloaded_tracks: HashSet::new(),
                 downloading_playlists: HashSet::new(),
                 download_stopping_playlists: HashSet::new(),
@@ -174,20 +176,18 @@ impl App {
                 // request playlist
                 let playlist_sender_clone = self.playlist_sender.clone();
                 Task::perform(
-                    util::request_playlist(playlist_metadata.id.clone(), playlist_sender_clone),
-                    |output| {
-                        Message::PlaylistSelectAccepted(PTrackList {
-                            metadata: playlist_metadata,
-                            list: output.unwrap().unwrap(),
-                        })
-                    },
+                    util::request_owned_playlist(
+                        playlist_metadata.id().clone(),
+                        playlist_sender_clone,
+                    ),
+                    |output| Message::PlaylistSelectAccepted(output.unwrap().unwrap()),
                 )
             }
-            Message::PlaylistSelectAccepted(ptracklist) => {
+            Message::PlaylistSelectAccepted(owned_playlist) => {
                 // change the page + set the current playlist + start 'playing' the playlist
                 let task = Task::perform(
                     util::play_playlist(
-                        ptracklist.metadata.id.clone(),
+                        owned_playlist.metadata.id().clone(),
                         self.id_counter.next(),
                         self.playlist_sender.clone(),
                         None,
@@ -197,8 +197,12 @@ impl App {
                     },
                 );
 
-                self.paused_playlists.insert(ptracklist.metadata.id.clone());
-                self.current_ptracklist = Some(ptracklist);
+                let current_tracklist = TrackList::from_owned_playlist_ref(&owned_playlist);
+                self.current_playlist_tracklist = Some(current_tracklist);
+
+                self.paused_playlists
+                    .insert(owned_playlist.metadata.id().clone());
+                self.current_owned_playlist = Some(owned_playlist);
                 self.page = Page::Player;
                 task
             }
@@ -211,7 +215,8 @@ impl App {
                 match action {
                     Action::Home => {
                         // reset everything player-wise
-                        self.current_ptracklist = None;
+                        self.current_owned_playlist = None;
+                        self.current_playlist_tracklist = None;
                         self.page = Page::Home;
                         Task::none()
                     }
@@ -220,7 +225,7 @@ impl App {
                         let playlist_sender_clone = self.playlist_sender.clone();
                         let next_id = self.id_counter.next();
                         // get the current tracklist for this playlist
-                        let tracklist = self.current_ptracklist.clone().unwrap().list;
+                        let tracklist = self.current_playlist_tracklist.clone().unwrap();
                         Task::perform(
                             util::download_playlist(
                                 playlist_id,
@@ -478,13 +483,7 @@ impl App {
             }
             Message::PlaylistOrderUpdated { id, tracklist } => {
                 println!("Playlist order updated");
-                // construct the new ptracklist
-                let oldptracklist = self.current_ptracklist.take().unwrap();
-                let ptracklist = PTrackList {
-                    list: tracklist,
-                    metadata: oldptracklist.metadata,
-                };
-                self.current_ptracklist = Some(ptracklist);
+                self.current_playlist_tracklist = Some(tracklist);
                 // mark the playlist as playing because thats what happens
                 self.paused_playlists.remove(&id);
                 self.playing_playlists.insert(id);

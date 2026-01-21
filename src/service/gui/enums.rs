@@ -8,7 +8,7 @@ use crate::{
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
-            structs::{PTrackList, PlaylistMetadata, TrackDownloadData, TrackList},
+            structs::{OwnedPlaylist, PlaylistMetadata, TrackDownloadData, TrackList},
         },
     },
     util::sync::ReceiverHandle,
@@ -30,8 +30,8 @@ pub enum Message {
     PlaylistInitTaskStarted(u64, ReceiverHandle<Message>),
     // A playlist was selected to be loaded. Provides the selected playlist's metadata.
     PlaylistSelect(PlaylistMetadata),
-    // A playlist that was selected received PTrackList data to render.
-    PlaylistSelectAccepted(PTrackList),
+    // A playlist that was selected received `OwnedPlaylist` data to render.
+    PlaylistSelectAccepted(OwnedPlaylist),
     // The list of tracks that was downloaded before the program started. Given: the list of track ids
     DownloadedTrackListReceived(HashSet<Id>),
     // A playlist download request succeeded and caused a playlist to start downloading. Provided: the playlist Id and its ReceiverHandle for information.

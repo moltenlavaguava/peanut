@@ -8,11 +8,13 @@ use std::{
 
 use atomic_float::AtomicF64;
 use kira::{AudioManager, AudioManagerSettings, Tween};
+use musicbrainz_rs::MusicBrainzClient;
 use tokio::sync::mpsc;
 
 use anyhow::anyhow;
 
 use crate::{
+    APP_VERSION,
     service::{
         audio::{
             enums::{AudioMessage, LoopPolicy},
@@ -38,6 +40,7 @@ pub struct AudioService {
     audio_sender: AudioSender,
     manager: AudioManager,
     playing_cache: HashMap<Id, AudioHandleWrapper>,
+    musicbrainz_client: MusicBrainzClient,
 }
 
 pub struct AudioFlags {
@@ -49,11 +52,20 @@ impl AudioService {
     pub fn new(flags: AudioFlags) -> Self {
         let manager = AudioManager::new(AudioManagerSettings::default())
             .expect("Failed to create audio manager");
+        let mut musicbrainz_client = MusicBrainzClient::default();
+        musicbrainz_client
+            .set_user_agent(&format!(
+                "peanut/{} ( https://github.com/moltenlavaguava/peanut )",
+                APP_VERSION
+            ))
+            .unwrap();
+
         Self {
             manager,
             audio_sender: flags.audio_sender,
             _event_sender: flags.event_sender,
             playing_cache: HashMap::new(),
+            musicbrainz_client,
         }
     }
 }
@@ -240,6 +252,9 @@ impl ServiceLogic<AudioMessage> for AudioService {
                 } else {
                     let _ = result.send(Err(anyhow!("Audio not currently playing")));
                 }
+            }
+            AudioMessage::GetMusicBrainzClient { result } => {
+                let _ = result.send(self.musicbrainz_client.clone());
             }
         }
     }

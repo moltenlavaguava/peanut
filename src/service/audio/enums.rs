@@ -1,3 +1,4 @@
+use musicbrainz_rs::MusicBrainzClient;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
@@ -50,6 +51,9 @@ pub enum AudioMessage {
         id: Id,
         volume: f64,
         result: oneshot::Sender<anyhow::Result<()>>,
+    },
+    GetMusicBrainzClient {
+        result: oneshot::Sender<MusicBrainzClient>,
     },
 }
 

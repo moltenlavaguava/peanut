@@ -8,7 +8,9 @@ use crate::{
         id::structs::Id,
         playlist::{
             download::initialize_playlist,
-            structs::{PlaylistAudioManager, PlaylistDownloadManager, PlaylistMetadata, TrackList},
+            structs::{
+                OwnedPlaylist, PlaylistAudioManager, PlaylistDownloadManager, Track, TrackList,
+            },
         },
         process::ProcessSender,
     },
@@ -16,6 +18,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use enums::PlaylistMessage;
+use musicbrainz_rs::MusicBrainzClient;
 use structs::Playlist;
 use tokio::{
     fs,
@@ -35,14 +38,19 @@ pub struct PlaylistService {
     process_sender: ProcessSender,
     playlist_sender: PlaylistSender,
     audio_sender: AudioSender,
+
+    // cache for storing playlist + track data
     playlists: HashMap<Id, Playlist>,
+    tracks: HashMap<Id, Track>,
+    downloaded_tracks: HashSet<Id>,
+
     bin_files: Option<BinApps>,
     // cache downloaded tracks to prevent re-downloading
-    downloaded_tracks: HashSet<Id>,
     // Contains gui listener as well to send notifications back
     download_managers: HashMap<Id, (PlaylistDownloadManager, mpsc::Sender<Message>)>,
     audio_managers: HashMap<Id, (PlaylistAudioManager, mpsc::Sender<Message>)>,
     download_waiting_tracks: HashMap<Id, Vec<oneshot::Sender<anyhow::Result<()>>>>,
+    musicbrainz_client: Option<MusicBrainzClient>,
 }
 
 pub struct PlaylistFlags {
@@ -59,12 +67,14 @@ impl PlaylistService {
             process_sender: flags.process_sender,
             audio_sender: flags.audio_sender,
             playlists: HashMap::new(),
+            tracks: HashMap::new(),
             bin_files: None,
             playlist_sender: flags.playlist_sender,
             download_managers: HashMap::new(),
             downloaded_tracks: HashSet::new(),
             audio_managers: HashMap::new(),
             download_waiting_tracks: HashMap::new(),
+            musicbrainz_client: None,
         }
     }
 }
@@ -87,10 +97,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             .send(EventMessage::InitialPlaylistsInitalized(
                 self.playlists
                     .values()
-                    .map(|playlist| PlaylistMetadata {
-                        title: playlist.title.clone(),
-                        id: playlist.id().clone(),
-                    })
+                    .map(|playlist| playlist.metadata.clone())
                     .collect(),
             ))
             .await
@@ -99,6 +106,23 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
         // cache downloaded tracks
         let downloaded_tracks = file::util::get_downloaded_tracks().await.unwrap();
         self.downloaded_tracks = downloaded_tracks;
+
+        // cache all tracks
+        let track_cache = match file::util::load_saved_tracks().await {
+            Ok(tracks) => tracks,
+            Err(_) => HashMap::new(),
+        };
+        self.tracks = track_cache;
+
+        // get the music brains client
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .audio_sender
+            .send(AudioMessage::GetMusicBrainzClient { result: tx })
+            .await
+            .unwrap();
+        let client = rx.await.unwrap();
+        self.musicbrainz_client = Some(client);
 
         Ok(())
     }
@@ -122,18 +146,14 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     )
                     .await
                     {
-                        // before playlist is sent, copy title + id to send to gui in case of success
-                        let playlist_title = playlist.title.clone();
-                        let playlist_id = playlist.id().clone();
-                        let playlist_metadata = PlaylistMetadata {
-                            title: playlist_title,
-                            id: playlist_id,
-                        };
+                        // before playlist is sent, copy metadata to send to gui in case of success
+                        let metadata = playlist.metadata.clone();
+
                         // check to see if playlist is duplicate or not
                         let (tx, rx) = oneshot::channel();
                         playlist_sender_copy
                             .send(PlaylistMessage::PlaylistInitDone {
-                                playlist,
+                                owned_playlist: playlist,
                                 result_sender: tx,
                             })
                             .await
@@ -141,14 +161,14 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         if let Err(_) = rx.await.unwrap() {
                             t_init_status
                                 .send(Message::PlaylistInitStatus(
-                                    enums::PlaylistInitStatus::Duplicate(playlist_metadata),
+                                    enums::PlaylistInitStatus::Duplicate(metadata),
                                 ))
                                 .await
                                 .unwrap();
                         } else {
                             t_init_status
                                 .send(Message::PlaylistInitStatus(
-                                    enums::PlaylistInitStatus::Complete(playlist_metadata),
+                                    enums::PlaylistInitStatus::Complete(metadata),
                                 ))
                                 .await
                                 .unwrap();
@@ -163,15 +183,38 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 });
             }
             PlaylistMessage::PlaylistInitDone {
-                playlist,
+                owned_playlist,
                 result_sender,
             } => {
                 // check if playlist is duplicate. otherwise, add to hashmap + save to file
-                if self.playlists.contains_key(&playlist.id()) {
+                if self.playlists.contains_key(&owned_playlist.metadata.id()) {
+                    // Entire playlist is duplicate
+                    // TODO: check to see if the duplicate playlist actually adds anything
                     result_sender
                         .send(Err(anyhow!("Duplicate playlist")))
                         .unwrap();
                 } else {
+                    // Adding tracks to cache
+                    let (playlist, track_vec) = owned_playlist.unpack_to_playlist();
+                    for track in track_vec {
+                        // if its not already in the cache, add it
+                        let mut changed = false;
+                        if !self.tracks.contains_key(&track.id()) {
+                            self.tracks.insert(track.id().clone(), track);
+                            changed = true;
+                        }
+                        // save the tracklist
+                        if changed {
+                            let tracks_vec: Vec<Track> =
+                                self.tracks.clone().into_values().collect();
+                            let json = serde_json::to_string(&tracks_vec).unwrap();
+                            let path = file::util::get_saved_tracks_file_path().await.unwrap();
+                            fs::write(path, json).await.expect("Failed to save to file");
+                        }
+                    }
+
+                    // Playlist saving
+
                     // get playlist json
                     let playlist_json = serde_json::to_string_pretty(&playlist).unwrap();
                     println!("playlist id in string: {}", playlist.id().to_string());
@@ -185,10 +228,14 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     result_sender.send(Ok(())).unwrap();
                 }
             }
-            PlaylistMessage::RequestTracklist { id, result_sender } => {
+            PlaylistMessage::RequestOwnedPlaylist { id, result_sender } => {
                 if let Some(playlist) = self.playlists.get(&id) {
-                    let tracklist = TrackList::from_playlist_ref(&playlist);
-                    result_sender.send(Some(tracklist)).unwrap();
+                    let oplaylist = OwnedPlaylist::with_cache(
+                        playlist.metadata.clone(),
+                        playlist.track_ids.clone(),
+                        &self.tracks,
+                    );
+                    result_sender.send(Some(oplaylist)).unwrap();
                 } else {
                     result_sender.send(None).unwrap()
                 }
@@ -220,7 +267,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let bin_apps = self.bin_files.clone().unwrap();
 
                 let mut manager = PlaylistDownloadManager::new(tracklist, playlist.id().clone());
-                manager.run(reply_t.clone(), playlist_sender, process_sender, bin_apps);
+                manager.run(
+                    reply_t.clone(),
+                    playlist_sender,
+                    process_sender,
+                    bin_apps,
+                    self.musicbrainz_client.clone().unwrap(),
+                );
 
                 self.download_managers.insert(id, (manager, reply_t));
             }
@@ -290,7 +343,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 };
                 let mut tracklist = match tracklist {
                     Some(tracklist) => tracklist,
-                    None => TrackList::from_playlist_ref(&playlist),
+                    None => TrackList::from_tracks_vec(util::clone_tracks_from_cache(
+                        playlist.track_ids.clone(),
+                        &self.tracks,
+                    )),
                 };
                 tracklist.randomize_order();
                 result_sender.send(tracklist.clone()).unwrap();
@@ -327,7 +383,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 };
                 let mut tracklist = match tracklist {
                     Some(tracklist) => tracklist,
-                    None => TrackList::from_playlist_ref(&playlist),
+                    None => TrackList::from_tracks_vec(util::clone_tracks_from_cache(
+                        playlist.track_ids.clone(),
+                        &self.tracks,
+                    )),
                 };
                 tracklist.sort();
                 result_sender.send(tracklist.clone()).unwrap();
@@ -363,7 +422,10 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         Some(tracklist) => tracklist,
                         None => {
                             if let Some(playlist) = self.playlists.get(&id) {
-                                TrackList::from_playlist_ref(&playlist)
+                                TrackList::from_tracks_vec(util::clone_tracks_from_cache(
+                                    playlist.track_ids.clone(),
+                                    &self.tracks,
+                                ))
                             } else {
                                 println!(
                                     "Can't start playing playlist without track and without playlist"
@@ -604,6 +666,15 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     }
                 }
                 let _ = result_sender.send(Ok(()));
+            }
+            // This implementation is messy, maybe have a central list of tracks later?
+            PlaylistMessage::UpdateTrack {
+                playlist_id: _,
+                track: _,
+                restart_audio: _,
+                restart_download: _,
+            } => {
+                todo!()
             }
         }
     }

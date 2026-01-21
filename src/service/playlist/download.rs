@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use musicbrainz_rs::MusicBrainzClient;
 use regex::Regex;
 
 use anyhow::{Result, anyhow};
@@ -12,6 +13,7 @@ use tokio::sync::mpsc;
 use url::Url;
 
 use crate::service::{
+    audio::identification,
     file::{
         enums::SizeUnit,
         structs::{BinApps, DataSize},
@@ -19,8 +21,11 @@ use crate::service::{
     gui::enums::Message,
     id::{enums::Platform, structs::Id},
     playlist::{
-        enums::{ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus},
-        structs::{PlaylistTrackJson, Track, TrackDownloadData, TrackDownloadJson},
+        enums::{Artist, ExtractorContext, ExtractorLineOut, MediaType, PlaylistInitStatus},
+        structs::{
+            OwnedPlaylist, PlaylistMetadata, PlaylistTrackJson, Track, TrackDownloadData,
+            TrackDownloadJson,
+        },
     },
     process::{
         ProcessSender,
@@ -28,14 +33,12 @@ use crate::service::{
     },
 };
 
-use super::structs::Playlist;
-
 pub async fn initialize_playlist(
     url: Url,
     bin_apps: BinApps,
     process_sender: ProcessSender,
     status_sender: &mpsc::Sender<Message>,
-) -> Result<Playlist> {
+) -> Result<OwnedPlaylist> {
     // construct command
     println!("init playlist?");
     let cmd = bin_apps.yt_dlp.into_os_string();
@@ -127,13 +130,15 @@ pub async fn initialize_playlist(
 
     // make the id for the playlist. unwrap here should be fine due to error checking above
     let id = Id::new(Platform::Youtube, MediaType::Playlist, playlist_id.unwrap());
-    Ok(Playlist::new(playlist_name.unwrap(), tracks, id))
+    let playlist_metadata = PlaylistMetadata::new(playlist_name.unwrap(), id.clone(), id);
+
+    Ok(OwnedPlaylist::new(playlist_metadata, tracks))
 }
 
 pub async fn download_track(
-    url: &Url,
-    track_id: Id,
+    track: &Track,
     download_directory: PathBuf,
+    musicbrainz_client: &MusicBrainzClient,
     file_name: String,
     bin_apps: BinApps,
     process_sender: &ProcessSender,
@@ -160,7 +165,7 @@ pub async fn download_track(
         // OsString::from("--audio-format"),
         // OsString::from("opus"),
         OsString::from("--no-simulate"),
-        OsString::from(url.as_str()),
+        OsString::from(track.download_url.as_str()),
     ];
 
     println!(
@@ -189,12 +194,31 @@ pub async fn download_track(
         // println!("Received msg from download: {msg:?}");
         let line = parse_output(msg, ExtractorContext::Download);
         on_extractor_line_out
-            .send((track_id.clone(), line))
+            .send((track.id().clone(), line))
             .await
             .unwrap();
     }
 
-    Ok(None)
+    // retreive info on track via ✨the world wide web✨
+    let metadata = identification::extract_metadata(&track);
+    if let Some(track_data) =
+        identification::verify_track_information(metadata, &musicbrainz_client).await
+    {
+        // construct new track using provided track data
+        let track = Track {
+            album_kind: track_data.album_kind,
+            artist: Artist::Official(track_data.artists),
+            title: track_data.title,
+            length: track.length.clone(),
+            download_url: track.download_url.clone(),
+            source_id: track.source_id.clone(),
+            dyn_id: track.dyn_id.clone(),
+            index: track.index,
+        };
+        Ok(Some(track))
+    } else {
+        Ok(None)
+    }
     // Err(anyhow!("unimplemented"))
 }
 

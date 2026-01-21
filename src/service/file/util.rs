@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::service::id::structs::Id;
 use crate::service::playlist::enums::MediaType;
-use crate::service::playlist::structs::Playlist;
+use crate::service::playlist::structs::{Playlist, Track};
 
 use super::structs::BinApps;
 use anyhow::anyhow;
@@ -13,6 +13,7 @@ use tokio::fs;
 const OUTPUT_DIR: &str = "output";
 const TRACK_DIR: &str = "track";
 const DATA_DIR: &str = "data";
+const TRACK_DATA_FILENAME: &str = "tracks";
 
 const TRACK_EXTENSION: &str = "m4a";
 const DATA_EXTENSION: &str = "json";
@@ -120,11 +121,11 @@ pub async fn get_downloaded_tracks() -> anyhow::Result<HashSet<Id>> {
 }
 
 pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Playlist>> {
-    // get the playlist data dir
-    let playlist_data_dir = data_dir_path()?;
+    // get the data dir
+    let data_dir = data_dir_path()?;
     // go through the directory and search for valid playlist files and add any successful files to a vec
     let mut playlists = HashMap::new();
-    let mut paths = fs::read_dir(playlist_data_dir).await?;
+    let mut paths = fs::read_dir(data_dir).await?;
     while let Some(path) = paths.next_entry().await.ok().flatten() {
         if path.path().is_file() {
             // check to see if the name of the file is a valid playlist id
@@ -150,6 +151,26 @@ pub async fn load_saved_playlists() -> anyhow::Result<HashMap<Id, Playlist>> {
         }
     }
     Ok(playlists)
+}
+
+pub async fn get_saved_tracks_file_path() -> anyhow::Result<PathBuf> {
+    let mut tracks_file_path = data_dir_path()?;
+    tracks_file_path.push(TRACK_DATA_FILENAME);
+    tracks_file_path.set_extension(DATA_EXTENSION);
+    Ok(tracks_file_path)
+}
+
+pub async fn load_saved_tracks() -> anyhow::Result<HashMap<Id, Track>> {
+    // get the tracks file path
+    let tracks_file_path = get_saved_tracks_file_path().await?;
+
+    let file_contents = fs::read_to_string(tracks_file_path).await?;
+    let tracks: Vec<Track> = serde_json::from_str(&file_contents)?;
+    let mut hashmap = HashMap::new();
+    for track in tracks {
+        hashmap.insert(track.id().clone(), track);
+    }
+    Ok(hashmap)
 }
 
 pub fn track_output_extension() -> &'static str {

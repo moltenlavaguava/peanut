@@ -1,7 +1,6 @@
 // page factory functions
 
 use std::collections::HashSet;
-use std::sync::Arc;
 use std::time::Duration;
 
 use iced::Length;
@@ -11,11 +10,13 @@ use iced::widget::{
 use tokio::sync::{mpsc, oneshot};
 
 use crate::service::audio::enums::LoopPolicy;
+use crate::service::file::enums::TrackDownloadState;
 use crate::service::gui::enums::Action;
+use crate::service::gui::structs::TrackRenderData;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::PlaylistMessage;
-use crate::service::playlist::structs::{TrackList, TrackMetadata};
+use crate::service::playlist::structs::{OwnedPlaylist, TrackList};
 use crate::util::sync::ReceiverHandle;
 
 use super::App;
@@ -52,53 +53,59 @@ pub fn home(app: &App) -> Column<'_, Message> {
 }
 
 pub fn player(app: &App) -> Column<'_, Message> {
-    if let None = app.current_ptracklist {
-        return column![text(
-            "somehow there's no playlist to load on this screen lol"
-        )];
-    }
-    let current_ptracklist = app.current_ptracklist.as_ref().unwrap();
-    let current_playlist_id = app.current_ptracklist.as_ref().unwrap().metadata.id.clone();
+    let current_owned_playlist = match &app.current_owned_playlist {
+        None => {
+            return column![text(
+                "somehow there's no playlist to load on this screen lol"
+            )];
+        }
+        Some(p) => p,
+    };
+    let current_tracklist = match &app.current_playlist_tracklist {
+        None => return column![text("Somehow there's no tracklist for this page :p")],
+        Some(t) => t,
+    };
+    let current_playlist_id = current_owned_playlist.metadata.id().clone();
     let current_playlist_playing = app.paused_playlists.contains(&current_playlist_id);
 
-    let title = text(&current_ptracklist.metadata.title);
+    let title = text(&current_owned_playlist.metadata.title);
     let home_button = button("home").on_press(Message::Action(Action::Home));
     let header = row![home_button, title];
 
-    let tracklist = current_ptracklist
-        .list
-        .iter()
-        .enumerate()
-        .map(|(index, track)| {
-            // create a metadata object for each track to know when important information changes between renders
-            let track_downloaded = app.downloaded_tracks.contains(&track.id());
-            let track_downloading = app.downloading_tracks.contains(&track.id());
-            let pid = current_playlist_id.clone();
-            let track_metadata = TrackMetadata {
-                downloaded: track_downloaded,
-                downloading: track_downloading,
-                title: Arc::from(track.title.as_str()),
-            };
-            // create a lazy button
-            lazy(track_metadata, move |metadata| {
-                button(text(format!(
-                    "{}{}",
-                    metadata.title.to_string(),
-                    if metadata.downloading {
-                        " ⬇️"
-                    } else if metadata.downloaded {
-                        " ✅"
-                    } else {
-                        ""
-                    }
-                )))
-                .on_press(Message::Action(Action::PlayTrack {
-                    playlist_id: pid.clone(),
-                    track_index: index as u64,
-                }))
-            })
-            .into()
-        });
+    let tracklist = current_tracklist.iter().enumerate().map(|(index, track)| {
+        // create a metadata object for each track to know when important information changes between renders
+        let track_downloaded = app.downloaded_tracks.contains(&track.id());
+        let track_downloading = app.downloading_tracks.contains(&track.id());
+        let track_download_state = if track_downloading {
+            TrackDownloadState::Downloading
+        } else if track_downloaded {
+            TrackDownloadState::Downloaded
+        } else {
+            TrackDownloadState::NotDownloaded
+        };
+        let pid = current_playlist_id.clone();
+        let render_data = TrackRenderData {
+            download_state: track_download_state,
+            title: track.title.clone(),
+        };
+        // create a lazy button
+        lazy(render_data, move |render_data| {
+            button(text(format!(
+                "{}{}",
+                render_data.title.to_string(),
+                match render_data.download_state {
+                    TrackDownloadState::NotDownloaded => "",
+                    TrackDownloadState::Downloading => " ⬇️",
+                    TrackDownloadState::Downloaded => " ✅",
+                }
+            )))
+            .on_press(Message::Action(Action::PlayTrack {
+                playlist_id: pid.clone(),
+                track_index: index as u64,
+            }))
+        })
+        .into()
+    });
     let album_next = row![scrollable(column(tracklist))].height(Length::Fill);
 
     let download_button = if app.downloading_playlists.contains(&current_playlist_id) {
@@ -194,13 +201,13 @@ pub fn player(app: &App) -> Column<'_, Message> {
 }
 
 // requesting methods
-pub async fn request_playlist(
+pub async fn request_owned_playlist(
     id: Id,
     playlist_sender: PlaylistSender,
-) -> anyhow::Result<Option<TrackList>> {
+) -> anyhow::Result<Option<OwnedPlaylist>> {
     let (tx, rx) = oneshot::channel();
     playlist_sender
-        .send(PlaylistMessage::RequestTracklist {
+        .send(PlaylistMessage::RequestOwnedPlaylist {
             id,
             result_sender: tx,
         })
