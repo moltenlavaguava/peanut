@@ -20,6 +20,7 @@ use crate::{
 use anyhow::anyhow;
 use enums::PlaylistMessage;
 use musicbrainz_rs::MusicBrainzClient;
+use reqwest::Client;
 use structs::Playlist;
 use tokio::{
     fs,
@@ -53,6 +54,7 @@ pub struct PlaylistService {
     audio_managers: HashMap<Id, (PlaylistAudioManager, mpsc::Sender<Message>)>,
     download_waiting_tracks: HashMap<Id, Vec<oneshot::Sender<anyhow::Result<()>>>>,
     musicbrainz_client: Option<MusicBrainzClient>,
+    reqwest_client: Client,
 }
 
 pub struct PlaylistFlags {
@@ -78,6 +80,7 @@ impl PlaylistService {
             download_waiting_tracks: HashMap::new(),
             musicbrainz_client: None,
             albums: HashMap::new(),
+            reqwest_client: Client::new(),
         }
     }
 }
@@ -116,6 +119,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             Err(_) => HashMap::new(),
         };
         self.tracks = track_cache;
+
+        // cache (downloaded) albums
+        let albums = file::util::get_albums().await;
+        match albums {
+            Ok(albums) => self.albums = albums,
+            Err(_) => self.albums = HashMap::new(),
+        }
 
         // get the music brains client
         let (tx, rx) = oneshot::channel();
@@ -709,9 +719,42 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 }
             }
             PlaylistMessage::AlbumDataRetreived { album } => {
-                // add the album data in the map if it isn't already in there
+                // add the album data in the map if it isn't already in there.
+                // if it isn't there, make sure to download it
+                let playlist_sender_clone = self.playlist_sender.clone();
+                let client = self.reqwest_client.clone();
                 if !self.albums.contains_key(album.id()) {
+                    // download the album
+                    tokio::spawn(async move {
+                        let maybe_album = file::util::download_album(&album, &client).await;
+                        match maybe_album {
+                            Err(e) => {
+                                println!("An error occured while downloading an album cover: {e}");
+                            }
+                            Ok(_) => {
+                                let _ = playlist_sender_clone
+                                    .send(PlaylistMessage::AlbumDownloaded { album })
+                                    .await;
+                            }
+                        }
+                    });
+                }
+            }
+            PlaylistMessage::AlbumDownloaded { album } => {
+                // add the album to the album record if it isn't already there
+                if !self.albums.contains_key(album.id()) {
+                    println!("Album download successful");
                     self.albums.insert(album.id().clone(), album);
+                    // save all the album data
+                    let albums_vec: Vec<&Album> = self.albums.values().collect();
+                    let file_text = serde_json::to_string(&albums_vec).unwrap();
+                    tokio::spawn(async {
+                        let album_data_path = file::util::get_album_data_file_path().await.unwrap();
+                        // write to the file
+                        let _ = fs::write(album_data_path, file_text).await;
+                    });
+                } else {
+                    println!("Album not added to list after downloading; this shouldn't happen");
                 }
             }
         }

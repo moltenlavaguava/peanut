@@ -139,6 +139,9 @@ pub enum PlaylistMessage {
     AlbumDataRetreived {
         album: Album,
     },
+    AlbumDownloaded {
+        album: Album,
+    },
 }
 
 #[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]

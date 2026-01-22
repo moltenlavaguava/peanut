@@ -173,13 +173,26 @@ pub async fn get_saved_tracks_file_path() -> anyhow::Result<PathBuf> {
 pub async fn get_album_data_file_path() -> anyhow::Result<PathBuf> {
     let mut albums_file_path = data_dir_path()?;
     albums_file_path.push(ALBUM_DATA_FILENAME);
-    albums_file_path.set_extension(ALBUM_EXTENSION);
+    albums_file_path.set_extension(DATA_EXTENSION);
     Ok(albums_file_path)
+}
+
+// Gets all albums. Note that albums that are in this list should be downloaded.
+pub async fn get_albums() -> anyhow::Result<HashMap<Id, Album>> {
+    let path = get_album_data_file_path().await?;
+    let file_text = fs::read_to_string(path).await?;
+    let albums_vec: Vec<Album> = serde_json::from_str(&file_text)?;
+    let mut map = HashMap::new();
+    for album in albums_vec {
+        map.insert(album.id().clone(), album);
+    }
+    Ok(map)
 }
 
 pub async fn album_filename_from_id(album_id: &Id) -> anyhow::Result<PathBuf> {
     let mut album_dir_path = album_dir_path()?;
     album_dir_path.push(album_id.to_string());
+    album_dir_path.set_extension(ALBUM_EXTENSION);
     Ok(album_dir_path)
 }
 
