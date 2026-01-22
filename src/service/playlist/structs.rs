@@ -420,8 +420,22 @@ impl PlaylistDownloadManager {
                         &map_t,
                         &playlist_sender_clone,
                     )
-                    .await
-                    .unwrap();
+                    .await;
+
+                    let maybe_new_track = match maybe_new_track {
+                        Ok(t) => t,
+                        Err(e) => {
+                            println!("Track download failed: {e}");
+                            // Track Download End message
+                            let _ = playlist_sender_clone
+                                .send(PlaylistMessage::TrackDownloadDone {
+                                    id: track.id().clone(),
+                                    success: false,
+                                })
+                                .await;
+                            continue;
+                        }
+                    };
 
                     // update track logic
                     if let Some(track) = maybe_new_track {
@@ -440,6 +454,7 @@ impl PlaylistDownloadManager {
                     playlist_sender_clone
                         .send(PlaylistMessage::TrackDownloadDone {
                             id: track.id().clone(),
+                            success: true,
                         })
                         .await
                         .unwrap();

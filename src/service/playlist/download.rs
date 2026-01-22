@@ -196,12 +196,23 @@ pub async fn download_track(
         .await;
 
     while let Some(msg) = rx.recv().await {
-        // println!("Received msg from download: {msg:?}");
+        println!("Received msg from download: {msg:?}");
         let line = parse_output(msg, ExtractorContext::Download);
+        let mut err = None;
+        if let ExtractorLineOut::Error(e) = &line {
+            // check to see if this was actually an error
+            if e.starts_with("ERROR") {
+                // println!("track download failed. reason: {e}");
+                err = Some(e.clone());
+            }
+        }
         on_extractor_line_out
             .send((track.id().clone(), line))
             .await
             .unwrap();
+        if let Some(err) = err {
+            return Err(anyhow!(err));
+        }
     }
 
     // retreive info on track via ✨the world wide web✨

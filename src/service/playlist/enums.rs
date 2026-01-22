@@ -49,6 +49,7 @@ pub enum PlaylistMessage {
     },
     TrackDownloadDone {
         id: Id,
+        success: bool,
     },
     CheckTrackDownloaded {
         id: Id,

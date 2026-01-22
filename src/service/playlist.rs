@@ -316,20 +316,22 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             PlaylistMessage::GetDownloadedTracks { result_sender } => {
                 result_sender.send(self.downloaded_tracks.clone()).unwrap();
             }
-            PlaylistMessage::TrackDownloadDone { id } => {
-                // update local downloaded cache
-                self.downloaded_tracks.insert(id.clone());
+            PlaylistMessage::TrackDownloadDone { id, success } => {
+                if success {
+                    // update local downloaded cache
+                    self.downloaded_tracks.insert(id.clone());
 
-                // then send any oks to any waiting audio mgrs
-                if let Some(senders) = self.download_waiting_tracks.remove(&id) {
-                    for sender in senders {
-                        let _ = sender.send(Ok(()));
+                    // then send any oks to any waiting audio mgrs
+                    if let Some(senders) = self.download_waiting_tracks.remove(&id) {
+                        for sender in senders {
+                            let _ = sender.send(Ok(()));
+                        }
                     }
                 }
 
                 // then update the gui
                 self.event_sender
-                    .send(EventMessage::TrackDownloadFinished { id })
+                    .send(EventMessage::TrackDownloadFinished { id, success })
                     .await
                     .unwrap();
             }

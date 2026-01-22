@@ -18,4 +18,5 @@ impl IdCounter {
 pub struct TrackRenderData {
     pub download_state: TrackDownloadState,
     pub title: String,
+    pub index: u64,
 }

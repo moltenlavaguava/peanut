@@ -145,7 +145,7 @@ pub enum EventMessage {
     InitialPlaylistsInitalized(Vec<PlaylistMetadata>),
     // A single track has downloaded. Given: the id of the track.
     // This is an EventMessage because it is generally independent of a playlist.
-    TrackDownloadFinished { id: Id },
+    TrackDownloadFinished { id: Id, success: bool },
     TrackUpdated { track: Track },
 }
 

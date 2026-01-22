@@ -16,12 +16,14 @@ use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
 use crate::service::playlist::structs::{OwnedPlaylist, PlaylistMetadata, TrackList};
 use crate::util::sync::ReceiverHandle;
+use builders::{home, player};
 use enums::{EventMessage, Message, Page};
-use util::{home, player};
 
+mod builders;
 pub mod enums;
 mod structs;
 mod util;
+mod widgets;
 
 struct App {
     // Communication
@@ -126,12 +128,14 @@ impl App {
                     EventMessage::InitialPlaylistsInitalized(playlist_data) => {
                         self.loaded_playlist_metadata = playlist_data;
                     }
-                    EventMessage::TrackDownloadFinished { id } => {
+                    EventMessage::TrackDownloadFinished { id, success } => {
                         // a given track finished downloading.
                         println!("Track download finished");
                         // add downloaded track to list and remove it from the downloading tracks list
                         self.downloading_tracks.remove(&id);
-                        self.downloaded_tracks.insert(id);
+                        if success {
+                            self.downloaded_tracks.insert(id);
+                        }
                     }
                     EventMessage::TrackUpdated { track } => {
                         println!("track updated in gui");
@@ -536,8 +540,9 @@ impl App {
                 Task::none()
             }
             Message::TrackAudioPauseResult { playlist_id } => {
-                self.playing_playlists.remove(&playlist_id);
-                self.paused_playlists.insert(playlist_id);
+                if self.playing_playlists.remove(&playlist_id) {
+                    self.paused_playlists.insert(playlist_id);
+                }
                 Task::none()
             }
             Message::TrackAudioPreviousResult { playlist_id: _ } => Task::none(),
@@ -547,8 +552,9 @@ impl App {
                 // so to make sure the progress bar doesn't feel
                 // weird this can be enabled after audio continues.
                 self.track_seeking = false;
-                self.paused_playlists.remove(&playlist_id);
-                self.playing_playlists.insert(playlist_id);
+                if self.paused_playlists.remove(&playlist_id) {
+                    self.playing_playlists.insert(playlist_id);
+                }
                 Task::none()
             }
             Message::PlayPlaylistEnded { playlist_id } => {
@@ -576,6 +582,7 @@ impl App {
                 // make sure to set the play button as 'playing'
                 if let Some(pid) = playlist_id
                     && let Some(cur_playlist) = &self.current_owned_playlist
+                    && self.paused_playlists.contains(cur_playlist.metadata.id())
                 {
                     let curr_pid = cur_playlist.metadata.id();
                     if pid == *curr_pid {

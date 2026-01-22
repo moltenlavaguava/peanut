@@ -3450,6 +3450,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "atomic_float",
+ "chrono",
  "futures",
  "iced",
  "image",
