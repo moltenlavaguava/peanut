@@ -7,7 +7,7 @@ edition = "2024"
 anyhow = "1.0.100"
 async-trait = "0.1.89"
 futures = "0.3.31"
-iced = { version = "0.14.0", features = ["tokio", "debug", "lazy"] }
+iced = { version = "0.14.0", features = ["tokio", "debug", "lazy", "image"] }
 serde_json = "1.0.145"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
@@ -23,6 +23,6 @@ symphonia = { version = "0.5.5", features = ["isomp4", "aac"] }
 atomic_float = "1.1.0"
 musicbrainz_rs = { version = "0.12", features = ["async"] }
 lazy_static = "1.5.0"
-image = "0.25.9"
+image = { version = "0.25.9", features = ["jpeg", "png", "webp"] }
 reqwest = "0.13.1"
 chrono = "0.4.43"

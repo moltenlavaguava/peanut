@@ -39,7 +39,7 @@ use crate::service::{
 
 // --- PLAYLIST STRUCTS --- //
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PlaylistMetadata {
     pub title: String,
     // for both playlists and tracks: source_id is the id for where this originated,
@@ -146,7 +146,7 @@ impl Track {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Album {
     pub name: String,
     pub source_id: Id,
@@ -267,6 +267,13 @@ impl TrackList {
     }
     pub fn sort(&mut self) {
         self.order.sort();
+    }
+    pub fn get_track_from_index(&self, index: usize) -> Option<&Track> {
+        if index >= self.order.length() {
+            None
+        } else {
+            Some(&self.tracks[index])
+        }
     }
 }
 
@@ -810,6 +817,7 @@ impl PlaylistAudioManager {
                     let _ = gui_reply_stream_clone
                         .send(Message::TrackAudioStart {
                             id: track.id().clone(),
+                            maybe_playlist_id: Some(playlist_id.clone()),
                         })
                         .await;
 

@@ -1,5 +1,3 @@
-use crate::service::file::enums::TrackDownloadState;
-
 #[derive(Clone)]
 pub struct IdCounter {
     id: u64,
@@ -12,11 +10,4 @@ impl IdCounter {
         self.id += 1;
         self.id
     }
-}
-
-#[derive(Hash, Clone, Debug)]
-pub struct TrackRenderData {
-    pub download_state: TrackDownloadState,
-    pub title: String,
-    pub index: u64,
 }

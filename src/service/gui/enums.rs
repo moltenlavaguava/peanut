@@ -1,5 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
+use iced::{Theme, widget::scrollable::Viewport};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -8,7 +9,9 @@ use crate::{
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
-            structs::{OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackList},
+            structs::{
+                Album, OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackList,
+            },
         },
     },
     util::sync::ReceiverHandle,
@@ -26,6 +29,7 @@ pub enum Message {
     EventBusClosed,
     // Task finished. Provides id.
     TaskFinished(u64),
+    TrackSearchTextEdit(String),
     // A playlist init task started. Provides the id and the receiver handle relevant to the task.
     PlaylistInitTaskStarted(u64, ReceiverHandle<Message>),
     // A playlist was selected to be loaded. Provides the selected playlist's metadata.
@@ -71,6 +75,7 @@ pub enum Message {
     // A track started playing its audio.
     TrackAudioStart {
         id: Id,
+        maybe_playlist_id: Option<Id>,
     },
     // A track finished playing its audio.
     TrackAudioEnd {
@@ -105,6 +110,13 @@ pub enum Message {
     TrackLooped {
         maybe_playlist_id: Option<Id>,
         track_id: Id,
+    },
+    TracklistScrolled {
+        playlist_id: Id,
+        scrollable_viewport: Viewport,
+    },
+    ThemeUpdated {
+        theme: Theme,
     },
     SetGlobalVolumeResult,
     // An action was performed. Usually occurs when the user triggers something.
@@ -143,9 +155,11 @@ pub enum Page {
 #[derive(Debug, Clone)]
 pub enum EventMessage {
     InitialPlaylistsInitalized(Vec<PlaylistMetadata>),
+    DownloadedAlbumsReceived(HashMap<Id, Album>),
     // A single track has downloaded. Given: the id of the track.
     // This is an EventMessage because it is generally independent of a playlist.
     TrackDownloadFinished { id: Id, success: bool },
+    AlbumDataDownloaded { album: Album },
     TrackUpdated { track: Track },
 }
 

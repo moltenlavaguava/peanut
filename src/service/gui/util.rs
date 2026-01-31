@@ -1,13 +1,14 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::time::Duration;
 
 use tokio::sync::{mpsc, oneshot};
 
-use crate::service::audio::enums::LoopPolicy;
+use crate::service::audio::enums::{AlbumKind, LoopPolicy};
+use crate::service::gui::App;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
-use crate::service::playlist::enums::PlaylistMessage;
-use crate::service::playlist::structs::{OwnedPlaylist, TrackList};
+use crate::service::playlist::enums::{Artist, PlaylistMessage};
+use crate::service::playlist::structs::{Album, OwnedPlaylist, PlaylistMetadata, Track, TrackList};
 use crate::util::sync::ReceiverHandle;
 
 use super::enums::Message;
@@ -263,4 +264,66 @@ pub fn get_u64_digit_count(mut num: u64) -> u64 {
         count += 1;
     }
     count
+}
+
+pub fn sort_playlist_metadata(metadata_vec: &mut Vec<PlaylistMetadata>) {
+    metadata_vec.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+}
+pub fn update_recent_playlists(
+    recent_playlists: &mut VecDeque<PlaylistMetadata>,
+    new_metadata: PlaylistMetadata,
+) {
+    if let Some(i) = recent_playlists.iter().position(|x| x == &new_metadata) {
+        recent_playlists.remove(i);
+    }
+    recent_playlists.push_front(new_metadata);
+    if recent_playlists.len() > super::RECENT_PLAYLIST_SIZE {
+        recent_playlists.pop_back();
+    }
+}
+pub fn generate_playlist_list(app: &App) -> impl Iterator<Item = &PlaylistMetadata> {
+    app.recent_playlists.iter().chain(
+        app.loaded_playlist_metadata
+            .iter()
+            .take(super::RECENT_PLAYLIST_SIZE - app.recent_playlists.len())
+            .filter(|m| !app.recent_playlists.contains(m)),
+    )
+}
+pub fn sort_albums(albums: &mut Vec<Album>) {
+    albums.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+}
+pub fn track_contains_search_term(track: &Track, term: &str) -> bool {
+    if !term.trim().is_empty() {
+        let term = term.to_lowercase();
+        // test 1: term is in title
+        if track.title.to_lowercase().contains(&term) {
+            return true;
+        }
+        // test 2: term is in artist name
+        match &track.artist {
+            Artist::Community(uploader) => {
+                if uploader.to_lowercase().contains(&term) {
+                    return true;
+                }
+            }
+            // if the search term is found in any of the artists names
+            Artist::Official(artists) => {
+                if artists.join("").to_lowercase().contains(&term) {
+                    return true;
+                }
+            }
+        }
+        // test 3: term is in album name
+        match &track.album_kind {
+            AlbumKind::Album(album) => {
+                if album.name.to_lowercase().contains(&term) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    } else {
+        return true;
+    }
+    false
 }

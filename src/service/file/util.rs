@@ -189,7 +189,7 @@ pub async fn get_albums() -> anyhow::Result<HashMap<Id, Album>> {
     Ok(map)
 }
 
-pub async fn album_filename_from_id(album_id: &Id) -> anyhow::Result<PathBuf> {
+pub fn album_filename_from_id(album_id: &Id) -> anyhow::Result<PathBuf> {
     let mut album_dir_path = album_dir_path()?;
     album_dir_path.push(album_id.to_string());
     album_dir_path.set_extension(ALBUM_EXTENSION);
@@ -215,14 +215,18 @@ pub fn track_output_extension() -> &'static str {
 
 pub async fn download_album(album: &Album, client: &Client) -> anyhow::Result<()> {
     // download raw image bytes
-    let response = client.get(album.img_url.clone()).send().await?;
+    let response = client
+        .get(album.img_url.clone())
+        .send()
+        .await?
+        .error_for_status()?;
     let bytes = response.bytes().await?.to_vec();
-    let album_filename = album_filename_from_id(&album.id()).await?;
+    let album_filename = album_filename_from_id(&album.id())?;
 
     // spawn heavy stuff in separate thread
     tokio::task::spawn_blocking(move || {
         // check if img is jpeg (it probably is)
-        let format = image::guess_format(&bytes).unwrap_or(ImageFormat::Png);
+        let format = image::guess_format(&bytes)?;
         if format == ImageFormat::Jpeg {
             // save the file as is
             let mut file = std::fs::File::create(album_filename.clone())?;

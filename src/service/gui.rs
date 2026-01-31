@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Duration;
 
-use iced::Subscription;
+use iced::{Subscription, Theme};
 use iced::{Task, widget::Column};
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
@@ -14,7 +14,7 @@ use crate::service::gui::structs::IdCounter;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
-use crate::service::playlist::structs::{OwnedPlaylist, PlaylistMetadata, TrackList};
+use crate::service::playlist::structs::{Album, OwnedPlaylist, PlaylistMetadata, Track, TrackList};
 use crate::util::sync::ReceiverHandle;
 use builders::{home, player};
 use enums::{EventMessage, Message, Page};
@@ -22,8 +22,13 @@ use enums::{EventMessage, Message, Page};
 mod builders;
 pub mod enums;
 mod structs;
+mod styling;
 mod util;
+mod widgetbuilder;
 mod widgets;
+
+const RECENT_PLAYLIST_SIZE: usize = 3;
+const ALBUM_DISPLAY_SIZE: usize = 3;
 
 struct App {
     // Communication
@@ -38,19 +43,29 @@ struct App {
     current_track_index: u32,
     total_tracks: u32,
     page: Page,
+    track_search_text: String,
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
+    // caches
     downloaded_tracks: HashSet<Id>,
+    downloaded_albums: Vec<Album>,
     downloading_tracks: HashSet<Id>,
+    recent_playlists: VecDeque<PlaylistMetadata>,
+    playlist_scrolloffsets: HashMap<Id, f32>,
+
     current_owned_playlist: Option<OwnedPlaylist>,
     current_playlist_tracklist: Option<TrackList>,
     download_stopping_playlists: HashSet<Id>,
     downloading_playlists: HashSet<Id>,
+
     playing_playlists: HashSet<Id>,
     paused_playlists: HashSet<Id>,
     playlist_loop_policies: HashMap<Id, LoopPolicy>,
+    playlist_playling_tracks: HashMap<Id, Track>,
+
     track_progress: AudioProgress,
     track_seeking: bool,
     volume: f64,
+    theme: Theme,
 }
 
 #[derive(Clone)]
@@ -86,8 +101,14 @@ impl App {
                 paused_playlists: HashSet::new(),
                 track_progress: AudioProgress::new(Duration::from_secs(0), Duration::from_secs(0)),
                 playlist_loop_policies: HashMap::new(),
+                downloaded_albums: Vec::new(),
                 track_seeking: false,
                 volume: 1.0,
+                playlist_playling_tracks: HashMap::new(),
+                recent_playlists: VecDeque::with_capacity(RECENT_PLAYLIST_SIZE),
+                track_search_text: String::new(),
+                playlist_scrolloffsets: HashMap::new(),
+                theme: Theme::KanagawaDragon,
             },
             Task::perform(
                 util::request_downloaded_tracks(playlist_sender_clone),
@@ -127,6 +148,8 @@ impl App {
                 match msg {
                     EventMessage::InitialPlaylistsInitalized(playlist_data) => {
                         self.loaded_playlist_metadata = playlist_data;
+                        // sort the data
+                        util::sort_playlist_metadata(&mut self.loaded_playlist_metadata);
                     }
                     EventMessage::TrackDownloadFinished { id, success } => {
                         // a given track finished downloading.
@@ -154,6 +177,19 @@ impl App {
                             }
                         }
                     }
+                    EventMessage::DownloadedAlbumsReceived(albums) => {
+                        // convert hashmap to vec
+                        let mut album_vec = albums.into_values().collect();
+                        self.downloaded_albums.append(&mut album_vec);
+                        // sort albums
+                        util::sort_albums(&mut self.downloaded_albums);
+                    }
+                    EventMessage::AlbumDataDownloaded { album } => {
+                        if !self.downloaded_albums.contains(&album) {
+                            self.downloaded_albums.push(album);
+                            util::sort_albums(&mut self.downloaded_albums);
+                        }
+                    }
                 };
                 Task::none()
             }
@@ -179,6 +215,8 @@ impl App {
                     }
                     PlaylistInitStatus::Complete(metadata) => {
                         self.loaded_playlist_metadata.push(metadata);
+                        // sort the data
+                        util::sort_playlist_metadata(&mut self.loaded_playlist_metadata);
                     }
                     PlaylistInitStatus::Fail => {
                         println!("received msg that playlist init failed");
@@ -218,6 +256,12 @@ impl App {
                     },
                 );
 
+                // update the recent playlists
+                util::update_recent_playlists(
+                    &mut self.recent_playlists,
+                    owned_playlist.metadata.clone(),
+                );
+
                 let current_tracklist = TrackList::from_owned_playlist_ref(&owned_playlist);
                 self.current_playlist_tracklist = Some(current_tracklist);
 
@@ -225,6 +269,7 @@ impl App {
                     .insert(owned_playlist.metadata.id().clone());
                 self.current_owned_playlist = Some(owned_playlist);
                 self.page = Page::Player;
+
                 task
             }
             Message::DownloadedTrackListReceived(tracks) => {
@@ -520,8 +565,18 @@ impl App {
                 self.track_progress = progress;
                 Task::none()
             }
-            Message::TrackAudioStart { id: _ } => {
+            Message::TrackAudioStart {
+                id,
+                maybe_playlist_id,
+            } => {
                 println!("track audio start");
+                if let Some(pid) = maybe_playlist_id {
+                    if let Some(curr_playlist) = &self.current_owned_playlist {
+                        if let Some(track) = curr_playlist.tracks.iter().find(|t| *t.id() == id) {
+                            self.playlist_playling_tracks.insert(pid, track.clone());
+                        }
+                    }
+                }
                 Task::none()
             }
             Message::TrackAudioEnd {
@@ -530,8 +585,17 @@ impl App {
             } => {
                 println!("track audio end");
                 // remove the loop policy from the playlist this was in if it exists
-                if let Some(playlist_id) = maybe_playlist_id {
-                    self.playlist_loop_policies.remove(&playlist_id);
+                if let Some(playlist_id) = &maybe_playlist_id {
+                    self.playlist_loop_policies.remove(playlist_id);
+                }
+                // keeping track of the current playing track in the current playlist
+                if let Some(pid) = maybe_playlist_id {
+                    if let Some(curr_playlist) = &self.current_owned_playlist {
+                        if *curr_playlist.metadata.id() == pid && curr_playlist.contains_track(&pid)
+                        {
+                            self.playlist_playling_tracks.remove(&pid);
+                        }
+                    }
                 }
                 Task::none()
             }
@@ -593,6 +657,23 @@ impl App {
                 }
                 Task::none()
             }
+            Message::TrackSearchTextEdit(txt) => {
+                self.track_search_text = txt;
+                Task::none()
+            }
+            Message::TracklistScrolled {
+                playlist_id,
+                scrollable_viewport,
+            } => {
+                // for playlist tracklist scrollable
+                self.playlist_scrolloffsets
+                    .insert(playlist_id, scrollable_viewport.absolute_offset().y);
+                Task::none()
+            }
+            Message::ThemeUpdated { theme } => {
+                self.theme = theme;
+                Task::none()
+            }
             Message::SetGlobalVolumeResult => Task::none(),
             Message::SetPlaylistLoopPolicyResult { playlist_id: _ } => Task::none(),
             Message::None => Task::none(),
@@ -617,6 +698,9 @@ impl App {
         );
 
         Subscription::batch(vec![bus, tasks])
+    }
+    fn theme(&self) -> Theme {
+        self.theme.clone()
     }
 }
 
@@ -651,6 +735,7 @@ impl GuiService {
         let application =
             iced::application(move || App::new(flags.clone()), App::update, App::view)
                 .subscription(App::subscription)
+                .theme(App::theme)
                 .title("peanut")
                 .exit_on_close_request(true);
 

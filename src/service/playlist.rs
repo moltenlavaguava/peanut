@@ -122,10 +122,16 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
 
         // cache (downloaded) albums
         let albums = file::util::get_albums().await;
-        match albums {
-            Ok(albums) => self.albums = albums,
-            Err(_) => self.albums = HashMap::new(),
-        }
+        let album_set = match albums {
+            Ok(albums) => albums,
+            Err(_) => HashMap::new(),
+        };
+        self.albums = album_set.clone();
+
+        let _ = self
+            .event_sender
+            .send(EventMessage::DownloadedAlbumsReceived(album_set))
+            .await;
 
         // get the music brains client
         let (tx, rx) = oneshot::channel();
@@ -746,7 +752,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 // add the album to the album record if it isn't already there
                 if !self.albums.contains_key(album.id()) {
                     println!("Album download successful");
-                    self.albums.insert(album.id().clone(), album);
+                    self.albums.insert(album.id().clone(), album.clone());
                     // save all the album data
                     let albums_vec: Vec<&Album> = self.albums.values().collect();
                     let file_text = serde_json::to_string(&albums_vec).unwrap();
@@ -755,6 +761,11 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         // write to the file
                         let _ = fs::write(album_data_path, file_text).await;
                     });
+                    // tell the gui event manager
+                    let _ = self
+                        .event_sender
+                        .send(EventMessage::AlbumDataDownloaded { album: album })
+                        .await;
                 } else {
                     println!("Album not added to list after downloading; this shouldn't happen");
                 }
