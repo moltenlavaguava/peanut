@@ -254,6 +254,26 @@ pub fn format_duration(duration: &Duration) -> String {
     let secs = total_seconds - mins * 60;
     format!("{}:{:02}", mins, secs)
 }
+pub fn format_long_duration(duration: &Duration) -> String {
+    const SECONDS_TEXT: &str = "s";
+    const MINUTES_TEXT: &str = "m";
+    const HOURS_TEXT: &str = "h";
+    // dictates how much time is okay for 'overflow' before the next
+    // time unit is used
+    const MAX_TIME_UNIT: u64 = 4;
+
+    let secs = duration.as_secs();
+    if secs > 3_600 * MAX_TIME_UNIT {
+        // format as hours
+        (secs / 3_600).to_string() + HOURS_TEXT
+    } else if secs > 60 * MAX_TIME_UNIT {
+        // format as minutes
+        (secs / 60).to_string() + MINUTES_TEXT
+    } else {
+        // format as seconds
+        secs.to_string() + SECONDS_TEXT
+    }
+}
 pub fn get_u64_digit_count(mut num: u64) -> u64 {
     if num == 0 {
         return 0;

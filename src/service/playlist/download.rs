@@ -28,7 +28,7 @@ use crate::service::{
         },
         structs::{
             OwnedPlaylist, PlaylistMetadata, PlaylistTrackJson, Track, TrackDownloadData,
-            TrackDownloadJson,
+            TrackDownloadJson, TrackVec,
         },
     },
     process::{
@@ -133,8 +133,15 @@ pub async fn initialize_playlist(
     }
 
     // make the id for the playlist. unwrap here should be fine due to error checking above
+    let tracks = TrackVec(tracks);
     let id = Id::new(Platform::Youtube, MediaType::Playlist, playlist_id.unwrap());
-    let playlist_metadata = PlaylistMetadata::new(playlist_name.unwrap(), id.clone(), id);
+    let playlist_metadata = PlaylistMetadata::new(
+        playlist_name.unwrap(),
+        tracks.track_count() as u64,
+        tracks.total_time(),
+        id.clone(),
+        id,
+    );
 
     Ok(OwnedPlaylist::new(playlist_metadata, tracks))
 }

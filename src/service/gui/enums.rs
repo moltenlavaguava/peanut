@@ -115,6 +115,12 @@ pub enum Message {
         playlist_id: Id,
         scrollable_viewport: Viewport,
     },
+    HomeTracksScrolled {
+        scrollable_viewport: Viewport,
+    },
+    HomeAlbumsScrolled {
+        scrollable_viewport: Viewport,
+    },
     ThemeUpdated {
         theme: Theme,
     },
@@ -158,9 +164,20 @@ pub enum EventMessage {
     DownloadedAlbumsReceived(HashMap<Id, Album>),
     // A single track has downloaded. Given: the id of the track.
     // This is an EventMessage because it is generally independent of a playlist.
-    TrackDownloadFinished { id: Id, success: bool },
-    AlbumDataDownloaded { album: Album },
-    TrackUpdated { track: Track },
+    TrackDownloadFinished {
+        id: Id,
+        success: bool,
+    },
+    AlbumDataDownloaded {
+        album: Album,
+    },
+    TrackUpdated {
+        track: Track,
+    },
+    TrackCacheUpdated {
+        tracks_added: Option<HashMap<Id, Track>>,
+        tracks_removed: Option<HashSet<Id>>,
+    },
 }
 
 pub type EventSender = mpsc::Sender<EventMessage>;

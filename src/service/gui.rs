@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Duration;
 
+use iced::Task;
+use iced::widget::Container;
 use iced::{Subscription, Theme};
-use iced::{Task, widget::Column};
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use url::Url;
@@ -21,10 +22,10 @@ use enums::{EventMessage, Message, Page};
 
 mod builders;
 pub mod enums;
+mod icons;
 mod structs;
 mod styling;
 mod util;
-mod widgetbuilder;
 mod widgets;
 
 const RECENT_PLAYLIST_SIZE: usize = 3;
@@ -47,10 +48,14 @@ struct App {
     loaded_playlist_metadata: Vec<PlaylistMetadata>,
     // caches
     downloaded_tracks: HashSet<Id>,
+    track_cache: HashMap<Id, Track>,
     downloaded_albums: Vec<Album>,
     downloading_tracks: HashSet<Id>,
     recent_playlists: VecDeque<PlaylistMetadata>,
+
     playlist_scrolloffsets: HashMap<Id, f32>,
+    home_tracklist_scrolloffset: f32,
+    home_album_scrolloffset: f32,
 
     current_owned_playlist: Option<OwnedPlaylist>,
     current_playlist_tracklist: Option<TrackList>,
@@ -60,7 +65,7 @@ struct App {
     playing_playlists: HashSet<Id>,
     paused_playlists: HashSet<Id>,
     playlist_loop_policies: HashMap<Id, LoopPolicy>,
-    playlist_playling_tracks: HashMap<Id, Track>,
+    playlist_playing_tracks: HashMap<Id, Track>,
 
     track_progress: AudioProgress,
     track_seeking: bool,
@@ -104,11 +109,14 @@ impl App {
                 downloaded_albums: Vec::new(),
                 track_seeking: false,
                 volume: 1.0,
-                playlist_playling_tracks: HashMap::new(),
+                playlist_playing_tracks: HashMap::new(),
                 recent_playlists: VecDeque::with_capacity(RECENT_PLAYLIST_SIZE),
                 track_search_text: String::new(),
                 playlist_scrolloffsets: HashMap::new(),
-                theme: Theme::KanagawaDragon,
+                theme: Theme::Dark,
+                track_cache: HashMap::new(),
+                home_album_scrolloffset: 0.0,
+                home_tracklist_scrolloffset: 0.0,
             },
             Task::perform(
                 util::request_downloaded_tracks(playlist_sender_clone),
@@ -165,11 +173,11 @@ impl App {
                         // A track's data just updated. If its in the current playlist, update it for rendering.
                         if let Some(curr_play) = &mut self.current_owned_playlist {
                             if let Some(pos) =
-                                curr_play.tracks.iter().position(|t| t.id() == track.id())
+                                curr_play.tracks.0.iter().position(|t| t.id() == track.id())
                             {
                                 // replace the current track with the new one
                                 println!("updating playlist @ gui");
-                                curr_play.tracks[pos] = track;
+                                curr_play.tracks.0[pos] = track;
                                 // update tracklist
                                 if let Some(tracklist) = &mut self.current_playlist_tracklist {
                                     tracklist.replace_tracks(curr_play.tracks.clone());
@@ -188,6 +196,19 @@ impl App {
                         if !self.downloaded_albums.contains(&album) {
                             self.downloaded_albums.push(album);
                             util::sort_albums(&mut self.downloaded_albums);
+                        }
+                    }
+                    EventMessage::TrackCacheUpdated {
+                        tracks_added,
+                        tracks_removed,
+                    } => {
+                        if let Some(added_tracks) = tracks_added {
+                            self.track_cache.extend(added_tracks);
+                        }
+                        if let Some(removed_tracks) = tracks_removed {
+                            for t in removed_tracks {
+                                self.track_cache.remove(&t);
+                            }
                         }
                     }
                 };
@@ -572,8 +593,8 @@ impl App {
                 println!("track audio start");
                 if let Some(pid) = maybe_playlist_id {
                     if let Some(curr_playlist) = &self.current_owned_playlist {
-                        if let Some(track) = curr_playlist.tracks.iter().find(|t| *t.id() == id) {
-                            self.playlist_playling_tracks.insert(pid, track.clone());
+                        if let Some(track) = curr_playlist.tracks.0.iter().find(|t| *t.id() == id) {
+                            self.playlist_playing_tracks.insert(pid, track.clone());
                         }
                     }
                 }
@@ -593,7 +614,7 @@ impl App {
                     if let Some(curr_playlist) = &self.current_owned_playlist {
                         if *curr_playlist.metadata.id() == pid && curr_playlist.contains_track(&pid)
                         {
-                            self.playlist_playling_tracks.remove(&pid);
+                            self.playlist_playing_tracks.remove(&pid);
                         }
                     }
                 }
@@ -624,6 +645,8 @@ impl App {
             Message::PlayPlaylistEnded { playlist_id } => {
                 self.playing_playlists.remove(&playlist_id);
                 self.paused_playlists.remove(&playlist_id);
+                // just in case remove the current playing track
+                self.playlist_playing_tracks.remove(&playlist_id);
                 Task::none()
             }
             Message::TrackLooped {
@@ -674,13 +697,25 @@ impl App {
                 self.theme = theme;
                 Task::none()
             }
+            Message::HomeAlbumsScrolled {
+                scrollable_viewport,
+            } => {
+                self.home_album_scrolloffset = scrollable_viewport.absolute_offset().y;
+                Task::none()
+            }
+            Message::HomeTracksScrolled {
+                scrollable_viewport,
+            } => {
+                self.home_tracklist_scrolloffset = scrollable_viewport.absolute_offset().y;
+                Task::none()
+            }
             Message::SetGlobalVolumeResult => Task::none(),
             Message::SetPlaylistLoopPolicyResult { playlist_id: _ } => Task::none(),
             Message::None => Task::none(),
         }
     }
 
-    fn view(&self) -> Column<'_, Message> {
+    fn view(&self) -> Container<'_, Message> {
         match self.page {
             Page::Home => home(&self),
             Page::Player => player(&self),
@@ -732,11 +767,17 @@ impl GuiService {
             id_counter,
         };
 
+        let icon_font_data = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/fonts/peanuticons.ttf"
+        ));
+
         let application =
             iced::application(move || App::new(flags.clone()), App::update, App::view)
                 .subscription(App::subscription)
                 .theme(App::theme)
                 .title("peanut")
+                .font(icon_font_data)
                 .exit_on_close_request(true);
 
         application.run()

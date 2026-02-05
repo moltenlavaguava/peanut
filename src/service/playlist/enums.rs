@@ -177,7 +177,7 @@ pub enum PlaylistInitStatus {
     Duplicate(PlaylistMetadata),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum Artist {
     Community(String),
     Official(Vec<String>),

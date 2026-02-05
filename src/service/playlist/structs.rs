@@ -39,20 +39,56 @@ use crate::service::{
 
 // --- PLAYLIST STRUCTS --- //
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TrackVec(pub Vec<Track>);
+impl TrackVec {
+    pub fn to_id_vec(&self) -> TrackIdVec {
+        TrackIdVec(self.0.iter().map(|t| t.id().clone()).collect())
+    }
+    pub fn track_count(&self) -> usize {
+        self.0.len()
+    }
+    pub fn total_time(&self) -> Duration {
+        let mut total = Duration::from_secs(0);
+        for t in &self.0 {
+            total += t.length
+        }
+        total
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TrackIdVec(pub Vec<Id>);
+impl TrackIdVec {
+    pub fn track_length(&self) -> usize {
+        self.0.len()
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PlaylistMetadata {
     pub title: String,
+    pub track_count: u64,
+    pub length: Duration,
     // for both playlists and tracks: source_id is the id for where this originated,
     // and dyn_id is the id for this 'true' playlist or track, and can change. generally, dyn_id is preferred.
     source_id: Id,
     dyn_id: Id,
 }
 impl PlaylistMetadata {
-    pub fn new(title: String, source_id: Id, dyn_id: Id) -> Self {
+    pub fn new(
+        title: String,
+        track_count: u64,
+        length: Duration,
+        source_id: Id,
+        dyn_id: Id,
+    ) -> Self {
         Self {
             title,
             source_id,
             dyn_id,
+            length,
+            track_count,
         }
     }
     pub fn id(&self) -> &Id {
@@ -64,21 +100,18 @@ impl PlaylistMetadata {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Playlist {
     pub metadata: PlaylistMetadata,
-    pub track_ids: Vec<Id>,
+    pub tracks: TrackIdVec,
 }
 
 impl Playlist {
-    pub fn new(metadata: PlaylistMetadata, track_ids: Vec<Id>) -> Self {
-        Self {
-            metadata,
-            track_ids,
-        }
+    pub fn new(metadata: PlaylistMetadata, tracks: TrackIdVec) -> Self {
+        Self { metadata, tracks }
     }
     pub fn id(&self) -> &Id {
         self.metadata.id()
     }
     pub fn length(&self) -> usize {
-        self.track_ids.len()
+        self.tracks.track_length()
     }
 }
 
@@ -87,37 +120,41 @@ impl Playlist {
 #[derive(Debug, Clone)]
 pub struct OwnedPlaylist {
     pub metadata: PlaylistMetadata,
-    pub tracks: Vec<Track>,
+    pub tracks: TrackVec,
 }
 impl OwnedPlaylist {
-    pub fn new(metadata: PlaylistMetadata, tracks: Vec<Track>) -> OwnedPlaylist {
+    pub fn new(metadata: PlaylistMetadata, tracks: TrackVec) -> OwnedPlaylist {
         Self { metadata, tracks }
     }
     pub fn with_cache(
         metadata: PlaylistMetadata,
-        track_ids: Vec<Id>,
+        track_ids: TrackIdVec,
         track_cache: &HashMap<Id, Track>,
     ) -> Self {
         let tracks = util::clone_tracks_from_cache(track_ids, &track_cache);
         Self { metadata, tracks }
     }
-    pub fn unpack_to_playlist(self) -> (Playlist, Vec<Track>) {
-        let track_ids = self.tracks.iter().map(|t| t.id().clone()).collect();
-        let playlist = Playlist::new(self.metadata, track_ids);
+    pub fn unpack_to_playlist(self) -> (Playlist, TrackVec) {
+        let track_ids = self.tracks.0.iter().map(|t| t.id().clone()).collect();
+        let playlist = Playlist::new(self.metadata, TrackIdVec(track_ids));
         (playlist, self.tracks)
     }
-    pub fn length(&self) -> usize {
-        self.tracks.len()
+    pub fn track_count(&self) -> usize {
+        self.tracks.track_count()
+    }
+    pub fn total_time(&self) -> Duration {
+        self.tracks.total_time()
     }
     pub fn contains_track(&self, track_id: &Id) -> bool {
         self.tracks
+            .0
             .iter()
             .find(|track| track.id() == track_id)
             .is_some()
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub struct Track {
     pub title: String,
     pub length: Duration,
@@ -146,7 +183,7 @@ impl Track {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub struct Album {
     pub name: String,
     pub source_id: Id,
@@ -201,7 +238,7 @@ pub struct TrackOrder {
 }
 impl TrackOrder {
     pub fn from_owned_playlist(playlist: &OwnedPlaylist) -> Self {
-        Self::from_length(playlist.length() as u64)
+        Self::from_length(playlist.track_count() as u64)
     }
     pub fn from_length(length: u64) -> Self {
         TrackOrder {
@@ -229,12 +266,12 @@ impl TrackOrder {
 #[derive(Debug, Clone)]
 pub struct TrackList {
     order: TrackOrder,
-    tracks: Arc<Vec<Track>>,
+    tracks: Arc<TrackVec>,
 }
 impl TrackList {
-    pub fn new(order: TrackOrder, tracks: Vec<Track>) -> anyhow::Result<Self> {
+    pub fn new(order: TrackOrder, tracks: TrackVec) -> anyhow::Result<Self> {
         // verify the length is the same between the track order and the tracks provided
-        if order.length() != tracks.len() {
+        if order.length() != tracks.track_count() {
             return Err(anyhow!("Length of TrackOrder and tracks vec are not equal"));
         }
         Ok(Self {
@@ -249,17 +286,17 @@ impl TrackList {
         )
         .expect("Track order from playlist should have same length as playlist itself")
     }
-    pub fn from_tracks_vec(tracks: Vec<Track>) -> Self {
-        Self::new(TrackOrder::from_length(tracks.len() as u64), tracks)
+    pub fn from_tracks_vec(tracks: TrackVec) -> Self {
+        Self::new(TrackOrder::from_length(tracks.track_count() as u64), tracks)
             .expect("Track order from playlist should have same length as playlist itself")
     }
     pub fn iter(&self) -> impl Iterator<Item = &Track> {
         self.order
             .order()
             .iter()
-            .map(|index| &self.tracks[*index as usize])
+            .map(|index| &self.tracks.0[*index as usize])
     }
-    pub fn replace_tracks(&mut self, new_tracks: Vec<Track>) {
+    pub fn replace_tracks(&mut self, new_tracks: TrackVec) {
         self.tracks = Arc::new(new_tracks);
     }
     pub fn randomize_order(&mut self) {
@@ -272,7 +309,7 @@ impl TrackList {
         if index >= self.order.length() {
             None
         } else {
-            Some(&self.tracks[index])
+            Some(&self.tracks.0[index])
         }
     }
 }
@@ -696,7 +733,7 @@ impl PlaylistAudioManager {
                     current_pos_arc.store(current_pos as u64, Ordering::Relaxed);
                     // get the current track
                     let playlist_loc = tracklist.order.index_order[current_pos as usize];
-                    let track = &tracklist.tracks[playlist_loc as usize];
+                    let track = &tracklist.tracks.0[playlist_loc as usize];
 
                     println!("[Track] On track {}", track.title);
 
@@ -1044,6 +1081,7 @@ impl PlaylistAudioManager {
             if let Some(tracklist) = guard.as_ref() {
                 return tracklist
                     .tracks
+                    .0
                     .get(tracklist.order.index_order[current_pos as usize] as usize)
                     .cloned();
             }

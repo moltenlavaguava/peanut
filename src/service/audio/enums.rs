@@ -95,7 +95,7 @@ pub enum ExtractorConfidence {
     Low,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum AlbumKind {
     Album(Album),
     Single,

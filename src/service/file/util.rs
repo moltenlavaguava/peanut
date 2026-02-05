@@ -80,7 +80,6 @@ pub fn data_dir_path() -> anyhow::Result<PathBuf> {
 pub fn album_dir_path() -> anyhow::Result<PathBuf> {
     Ok(output_dir_path()?.join(ALBUM_DIR))
 }
-
 pub fn track_file_path_from_id(id: &Id) -> anyhow::Result<PathBuf> {
     let MediaType::Track = id.media_type else {
         return Err(anyhow!("Id provided was not a track id"));

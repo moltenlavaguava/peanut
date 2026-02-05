@@ -118,6 +118,13 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
             Ok(tracks) => tracks,
             Err(_) => HashMap::new(),
         };
+        let _ = self
+            .event_sender
+            .send(EventMessage::TrackCacheUpdated {
+                tracks_added: Some(track_cache.clone()),
+                tracks_removed: None,
+            })
+            .await;
         self.tracks = track_cache;
 
         // cache (downloaded) albums
@@ -215,10 +222,12 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 } else {
                     // Adding tracks to cache
                     let (playlist, track_vec) = owned_playlist.unpack_to_playlist();
-                    for track in track_vec {
+                    let mut new_tracks = HashMap::new();
+                    for track in track_vec.0 {
                         // if its not already in the cache, add it
                         let mut changed = false;
                         if !self.tracks.contains_key(&track.id()) {
+                            new_tracks.insert(track.id().clone(), track.clone());
                             self.tracks.insert(track.id().clone(), track);
                             changed = true;
                         }
@@ -230,6 +239,17 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             let path = file::util::get_saved_tracks_file_path().await.unwrap();
                             fs::write(path, json).await.expect("Failed to save to file");
                         }
+                    }
+
+                    // if any tracks changed, notify the gui
+                    if new_tracks.len() > 0 {
+                        let _ = self
+                            .event_sender
+                            .send(EventMessage::TrackCacheUpdated {
+                                tracks_added: Some(new_tracks),
+                                tracks_removed: None,
+                            })
+                            .await;
                     }
 
                     // Playlist saving
@@ -251,7 +271,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 if let Some(playlist) = self.playlists.get(&id) {
                     let oplaylist = OwnedPlaylist::with_cache(
                         playlist.metadata.clone(),
-                        playlist.track_ids.clone(),
+                        playlist.tracks.clone(),
                         &self.tracks,
                     );
                     result_sender.send(Some(oplaylist)).unwrap();
@@ -365,7 +385,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let mut tracklist = match tracklist {
                     Some(tracklist) => tracklist,
                     None => TrackList::from_tracks_vec(util::clone_tracks_from_cache(
-                        playlist.track_ids.clone(),
+                        playlist.tracks.clone(),
                         &self.tracks,
                     )),
                 };
@@ -405,7 +425,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 let mut tracklist = match tracklist {
                     Some(tracklist) => tracklist,
                     None => TrackList::from_tracks_vec(util::clone_tracks_from_cache(
-                        playlist.track_ids.clone(),
+                        playlist.tracks.clone(),
                         &self.tracks,
                     )),
                 };
@@ -444,7 +464,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         None => {
                             if let Some(playlist) = self.playlists.get(&id) {
                                 TrackList::from_tracks_vec(util::clone_tracks_from_cache(
-                                    playlist.track_ids.clone(),
+                                    playlist.tracks.clone(),
                                     &self.tracks,
                                 ))
                             } else {
@@ -699,6 +719,18 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     None => {
                         // replace the track
                         self.tracks.insert(track.id().clone(), track.clone());
+
+                        // notify the gui
+                        let mut hm = HashMap::new();
+                        hm.insert(track.id().clone(), track.clone());
+                        let _ = self
+                            .event_sender
+                            .send(EventMessage::TrackCacheUpdated {
+                                tracks_added: Some(hm),
+                                tracks_removed: None,
+                            })
+                            .await;
+
                         // save file
                         let tracks_vec: Vec<Track> = self.tracks.clone().into_values().collect();
                         let json = serde_json::to_string(&tracks_vec).unwrap();
