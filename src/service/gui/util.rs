@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashSet, VecDeque};
 use std::time::Duration;
 
@@ -5,10 +6,12 @@ use tokio::sync::{mpsc, oneshot};
 
 use crate::service::audio::enums::{AlbumKind, LoopPolicy};
 use crate::service::gui::App;
+use crate::service::gui::enums::Page;
+use crate::service::gui::structs::{PlaylistRenderData, TaskId};
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{Artist, PlaylistMessage};
-use crate::service::playlist::structs::{Album, OwnedPlaylist, PlaylistMetadata, Track, TrackList};
+use crate::service::playlist::structs::{Album, OwnedPlaylist, PlaylistMetadata, Track, Tracklist};
 use crate::util::sync::ReceiverHandle;
 
 use super::enums::Message;
@@ -43,8 +46,8 @@ pub async fn request_downloaded_tracks(
 pub async fn download_playlist(
     id: Id,
     playlist_sender: PlaylistSender,
-    task_id: u64,
-    tracklist: TrackList,
+    task_id: TaskId,
+    tracklist: Tracklist,
 ) -> anyhow::Result<Message> {
     let (tx, rx) = oneshot::channel();
     playlist_sender
@@ -77,8 +80,8 @@ pub async fn stop_playlist_download(id: Id, playlist_sender: PlaylistSender) -> 
 pub async fn shuffle_playlist(
     id: Id,
     playlist_sender: PlaylistSender,
-    tracklist: Option<TrackList>,
-) -> anyhow::Result<TrackList> {
+    tracklist: Option<Tracklist>,
+) -> anyhow::Result<Tracklist> {
     let (tx, rx) = oneshot::channel();
     playlist_sender
         .send(PlaylistMessage::ShufflePlaylist {
@@ -95,8 +98,8 @@ pub async fn shuffle_playlist(
 pub async fn organize_playlist(
     id: Id,
     playlist_sender: PlaylistSender,
-    tracklist: Option<TrackList>,
-) -> anyhow::Result<TrackList> {
+    tracklist: Option<Tracklist>,
+) -> anyhow::Result<Tracklist> {
     let (tx, rx) = oneshot::channel();
     playlist_sender
         .send(PlaylistMessage::OrganizePlaylist {
@@ -112,9 +115,9 @@ pub async fn organize_playlist(
 
 pub async fn play_playlist(
     playlist_id: Id,
-    task_id: u64,
+    task_id: TaskId,
     playlist_sender: PlaylistSender,
-    tracklist: Option<TrackList>,
+    tracklist: Option<Tracklist>,
 ) -> anyhow::Result<ReceiverHandle<Message>> {
     // create a receiver handle for progress updates
     let (tx, rx) = mpsc::channel(100);
@@ -302,11 +305,12 @@ pub fn update_recent_playlists(
     }
 }
 pub fn generate_playlist_list(app: &App) -> impl Iterator<Item = &PlaylistMetadata> {
-    app.recent_playlists.iter().chain(
-        app.loaded_playlist_metadata
+    app.general_cache.recent_playlists.iter().chain(
+        app.general_cache
+            .all_playlist_metadata
             .iter()
-            .take(super::RECENT_PLAYLIST_SIZE - app.recent_playlists.len())
-            .filter(|m| !app.recent_playlists.contains(m)),
+            .take(super::RECENT_PLAYLIST_SIZE - app.general_cache.recent_playlists.len())
+            .filter(|m| !app.general_cache.recent_playlists.contains(m)),
     )
 }
 pub fn sort_albums(albums: &mut Vec<Album>) {
@@ -346,4 +350,39 @@ pub fn track_contains_search_term(track: &Track, term: &str) -> bool {
         return true;
     }
     false
+}
+pub fn std_alphabet_sort(a: &str, b: &str) -> Ordering {
+    let iter_a = a
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .flat_map(|c| c.to_lowercase());
+
+    let iter_b = b
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .flat_map(|c| c.to_lowercase());
+
+    iter_a.cmp(iter_b)
+}
+pub fn sort_track_cache(app: &mut App) {
+    app.general_cache
+        .all_tracks
+        .sort_by(|a, b| std_alphabet_sort(&a.title, &b.title));
+}
+pub fn handle_playlist_load(
+    app: &mut App,
+    render_data: Option<PlaylistRenderData>,
+    new_metadata: PlaylistMetadata,
+) {
+    if let Some(render_data) = render_data {
+        app.playlist_render_data
+            .insert(new_metadata.id().clone(), render_data);
+    }
+
+    app.management.current_page = Page::Player {
+        playlist_id: new_metadata.id().clone(),
+    };
+
+    // update the recent playlists
+    update_recent_playlists(&mut app.general_cache.recent_playlists, new_metadata);
 }

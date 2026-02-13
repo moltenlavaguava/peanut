@@ -18,7 +18,7 @@ use crate::service::{
         enums::SizeUnit,
         structs::{BinApps, DataSize},
     },
-    gui::enums::Message,
+    gui::{enums::Message, structs::PlaylistInitId},
     id::{enums::Platform, structs::Id},
     playlist::{
         PlaylistSender,
@@ -39,6 +39,7 @@ use crate::service::{
 
 pub async fn initialize_playlist(
     url: Url,
+    playlist_init_id: PlaylistInitId,
     bin_apps: BinApps,
     process_sender: ProcessSender,
     status_sender: &mpsc::Sender<Message>,
@@ -97,10 +98,10 @@ pub async fn initialize_playlist(
             ExtractorLineOut::InitProgress { current, total } => {
                 let _ = status_sender
                     // wrap in task response for gui
-                    .send(Message::PlaylistInitStatus(PlaylistInitStatus::Progress {
-                        current,
-                        total,
-                    }))
+                    .send(Message::PlaylistInitStatus {
+                        status: PlaylistInitStatus::Progress { current, total },
+                        id: playlist_init_id,
+                    })
                     .await;
             }
             ExtractorLineOut::InitTrackData(json_track_data) => {

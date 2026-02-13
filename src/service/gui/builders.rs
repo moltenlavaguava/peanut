@@ -2,16 +2,17 @@ use super::App;
 use crate::service::audio::enums::AlbumKind;
 use crate::service::file;
 use crate::service::file::enums::TrackDownloadState;
-use crate::service::gui::enums::{Action, Message};
+use crate::service::gui::enums::{Action, DownloadState, Message, Page, PlayingState};
 use crate::service::gui::icons::{self};
 use crate::service::gui::styling::AppTheme;
 use crate::service::gui::util::{self, format_duration};
 use crate::service::gui::widgets;
-use crate::service::gui::widgets::rule::default_horizontal_rule;
+use crate::service::gui::widgets::button::invisible_button_padded;
+use crate::service::gui::widgets::rule::{default_horizontal_rule, in_between_rule};
 use crate::service::gui::widgets::scrollable::virtualized_vertical_scrollable;
 use crate::service::gui::widgets::text::icon;
 use crate::service::playlist::enums::Artist;
-use crate::service::playlist::structs::{Album, Track};
+use crate::service::playlist::structs::{Album, PlaylistMetadata, Track};
 use iced::widget::{Column, Container, Image, Row, column, container, row, space, text};
 use iced::{Alignment, Length, Padding, Theme};
 use widgets::button::{
@@ -22,7 +23,6 @@ use widgets::container::{
     home_menu_widget_container, main_content as main_content_container,
     menu_content as menu_content_container,
 };
-use widgets::scrollable::main_content as main_content_scrollable;
 use widgets::slider::default_slider;
 use widgets::text::{
     default as default_text, left_menu_bold as left_menu_bold_text,
@@ -38,18 +38,15 @@ pub fn home(app: &App) -> Container<'_, Message> {
     const WIDGET_SPACING: f32 = 10.0;
 
     let load_playlist = default_text_button("Load", theme).on_press(Message::PlaylistURLSubmit);
-    let playlist_url = default_text_input("Youtube playlist URL", &app.playlist_url, theme)
-        .width(Length::Fill)
-        .on_input(Message::PlaylistTextEdit)
-        .on_paste(Message::PlaylistTextEdit)
-        .on_submit(Message::PlaylistURLSubmit);
-    let playlists_header = row![
-        default_text("Name", theme, true, true).width(Length::FillPortion(5)),
-        default_text("Track Count", theme, true, true).width(Length::FillPortion(2)),
-        default_text("Length", theme, true, true).width(Length::FillPortion(1)),
-        space().width(Length::FillPortion(2)),
-    ]
-    .spacing(4.0);
+    let playlist_url = default_text_input(
+        "Youtube playlist URL",
+        &app.home_playlists_widget_data.search_text,
+        theme,
+    )
+    .width(Length::Fill)
+    .on_input(Message::PlaylistTextEdit)
+    .on_paste(Message::PlaylistTextEdit)
+    .on_submit(Message::PlaylistURLSubmit);
 
     let upper_menu_content = menu_content_container(
         column![title_txt, default_horizontal_rule(2, theme)].spacing(4),
@@ -61,39 +58,66 @@ pub fn home(app: &App) -> Container<'_, Message> {
             .bottom(0.0),
     );
 
-    let playlists = container(main_content_scrollable(
-        column(app.loaded_playlist_metadata.iter().map(|metadata| {
-            default_button(
-                row![
-                    default_text(&metadata.title, theme, true, true).width(Length::FillPortion(5)),
-                    default_text(&metadata.track_count, theme, true, true)
-                        .width(Length::FillPortion(2)),
-                    default_text(
-                        util::format_long_duration(&metadata.length),
-                        theme,
-                        true,
-                        true
-                    )
-                    .width(Length::FillPortion(1)),
-                    space().width(Length::FillPortion(2)),
-                ]
-                .width(Length::Fill)
-                .spacing(4.0),
-                theme,
-            )
-            .on_press(Message::PlaylistSelect(metadata.clone()))
-            .into()
-        }))
-        .width(Length::Fill),
-        theme,
-    ))
-    .width(Length::Fill)
-    .height(Length::Fill);
+    let playlist_count = app.general_cache.all_playlist_metadata.len();
+    let playlists = if playlist_count > 0 {
+        let playlists_info = row![
+            default_text("Name", theme, true, true).width(Length::FillPortion(5)),
+            default_text("Track Count", theme, true, true).width(Length::FillPortion(2)),
+            default_text("Length", theme, true, true).width(Length::FillPortion(1)),
+            space().width(Length::FillPortion(2)),
+        ]
+        .spacing(4.0);
 
-    let playlist_show_data = if app.loaded_playlist_metadata.len() > 0 {
+        let playlist_data_closure = move |i: usize, metadata: &PlaylistMetadata, theme: &Theme| {
+            in_between_rule(
+                track_button(
+                    row![
+                        default_text(metadata.title.clone(), theme, true, true)
+                            .width(Length::FillPortion(5)),
+                        default_text(&metadata.track_count, theme, true, true)
+                            .width(Length::FillPortion(2)),
+                        default_text(
+                            util::format_long_duration(&metadata.length),
+                            theme,
+                            true,
+                            true
+                        )
+                        .width(Length::FillPortion(1)),
+                        space().width(Length::FillPortion(2)),
+                    ]
+                    .width(Length::Fill)
+                    .spacing(4.0),
+                    theme,
+                )
+                .on_press(Message::PlaylistSelect(metadata.clone())),
+                2.0,
+                theme.stylesheet().secondary_rule(2.0),
+                10.0,
+                i,
+                playlist_count,
+            )
+            .into()
+        };
+
+        // construct scrollable
+        let scroll = virtualized_vertical_scrollable(
+            &app.general_cache.all_playlist_metadata,
+            20.0,
+            app.home_playlists_widget_data.scrolling_offset,
+            theme,
+            playlist_data_closure,
+            theme.stylesheet().default_scrollable(),
+            theme.stylesheet().sub_content(),
+            |v| Message::HomePlaylistsScrolled {
+                scrollable_viewport: v,
+            },
+            0.0,
+            |s| s,
+        );
+
         container(column![
-            container(playlists_header).padding(Padding::new(4.0)),
-            playlists
+            container(playlists_info).padding(Padding::new(4.0)),
+            scroll
         ])
     } else {
         container(
@@ -107,44 +131,55 @@ pub fn home(app: &App) -> Container<'_, Message> {
     let playlists_title = title_text("Playlists", theme, true, true);
     let playlist_loading = row![playlist_url, load_playlist];
 
-    let tracks = if app.track_cache.len() > 0 {
+    let track_count = app.general_cache.all_tracks.len();
+    let tracks = if track_count > 0 {
         let tracks_info = row![
-            default_text("Name", theme, true, true).width(Length::FillPortion(5)),
-            default_text("Artists", theme, true, true).width(Length::FillPortion(2)),
-            default_text("Album", theme, true, true).width(Length::FillPortion(2)),
+            default_text("Name", theme, true, true).width(Length::FillPortion(6)),
+            default_text("Artists", theme, true, true).width(Length::FillPortion(3)),
             space().width(Length::FillPortion(1)),
-        ];
-        let track_data_closure = |_i: usize, t: &&Track, theme: &Theme| {
-            let album_name = match &t.album_kind {
-                AlbumKind::Album(a) => a.name.clone(),
-                AlbumKind::Single => String::from("None"),
-                AlbumKind::Unknown => String::from("Unknown"),
-            };
-            row![
-                default_text(t.title.clone(), theme, true, true).width(Length::FillPortion(5)),
-                default_text(t.artist.clone().artist(), theme, true, true)
-                    .width(Length::FillPortion(2)),
-                default_text(album_name, theme, true, true).width(Length::FillPortion(2)),
-                space().width(Length::FillPortion(1)),
-            ]
+        ]
+        .padding(Padding::ZERO.vertical(4.0));
+
+        let track_data_closure = move |i: usize, t: &Track, theme: &Theme| {
+            in_between_rule(
+                invisible_button_padded(
+                    row![
+                        default_text(t.title.clone(), theme, true, true)
+                            .width(Length::FillPortion(6)),
+                        default_text(t.artist.clone().artist(), theme, true, true)
+                            .width(Length::FillPortion(3)),
+                        space().width(Length::FillPortion(1)),
+                    ],
+                    theme,
+                ),
+                2.0,
+                theme.stylesheet().secondary_rule(2.0),
+                25.0,
+                i,
+                track_count,
+            )
             .into()
         };
 
         // construct scrollable
         let scroll = virtualized_vertical_scrollable(
-            app.track_cache.values().collect::<Vec<_>>(),
+            &app.general_cache.all_tracks,
             20.0,
-            app.home_tracklist_scrolloffset,
+            app.home_tracks_widget_data.scrolling_offset,
             theme,
             track_data_closure,
             theme.stylesheet().default_scrollable(),
-            theme.stylesheet().main_content(),
+            theme.stylesheet().sub_content(),
             |v| Message::HomeTracksScrolled {
                 scrollable_viewport: v,
             },
+            0.0,
+            |s| s,
         );
 
-        container(column![tracks_info, scroll]).into()
+        container(column![tracks_info, scroll])
+            .width(Length::Fill)
+            .into()
     } else {
         main_content_container(
             secondary_text("No tracks found :(", theme, true, true)
@@ -154,39 +189,60 @@ pub fn home(app: &App) -> Container<'_, Message> {
             theme,
         )
     };
-    let tracks_title = title_text("Tracks", theme, true, true);
+    let tracks_title = title_text(
+        format!("Tracks ({})", app.general_cache.all_tracks.len()),
+        theme,
+        true,
+        true,
+    );
 
-    let albums = if app.downloaded_albums.len() > 0 {
-        let tracks_info = row![
+    let album_count = app.general_cache.all_albums.len();
+    let albums = if album_count > 0 {
+        let albums_info = row![
             default_text("Name", theme, true, true).width(Length::FillPortion(5)),
             default_text("Artists", theme, true, true).width(Length::FillPortion(3)),
             space().width(Length::FillPortion(2)),
         ];
-        let album_data_closure = |_i: usize, a: &Album, theme: &Theme| {
+
+        let album_data_closure = move |i: usize, a: &Album, theme: &Theme| {
             let album_artist_string = a.artists.join(", ");
-            row![
-                default_text(a.name.clone(), theme, true, true).width(Length::FillPortion(5)),
-                default_text(album_artist_string, theme, true, true).width(Length::FillPortion(3)),
-                space().width(Length::FillPortion(2)),
-            ]
+            in_between_rule(
+                invisible_button(
+                    row![
+                        default_text(a.name.clone(), theme, true, true)
+                            .width(Length::FillPortion(5)),
+                        default_text(album_artist_string, theme, true, true)
+                            .width(Length::FillPortion(3)),
+                        space().width(Length::FillPortion(2)),
+                    ],
+                    theme,
+                ),
+                2.0,
+                theme.stylesheet().secondary_rule(2.0),
+                25.0,
+                i,
+                album_count,
+            )
             .into()
         };
 
         // construct scrollable
         let scroll = virtualized_vertical_scrollable(
-            &app.downloaded_albums,
+            &app.general_cache.all_albums,
             20.0,
-            app.home_album_scrolloffset,
+            app.home_albums_widget_data.scrolling_offset,
             theme,
             album_data_closure,
             theme.stylesheet().default_scrollable(),
-            theme.stylesheet().main_content(),
+            theme.stylesheet().sub_content(),
             |v| Message::HomeAlbumsScrolled {
                 scrollable_viewport: v,
             },
+            0.0,
+            |s| s,
         );
 
-        container(column![tracks_info, scroll]).into()
+        container(column![albums_info, scroll]).into()
     } else {
         main_content_container(
             secondary_text("No albums?? what the heck man", theme, true, true)
@@ -196,13 +252,16 @@ pub fn home(app: &App) -> Container<'_, Message> {
             theme,
         )
     };
-    let albums_title = title_text("Albums", theme, true, true);
-
-    let playlist_content = home_menu_widget_container(
-        column![playlists_title, playlist_loading, playlist_show_data],
+    let albums_title = title_text(
+        format!("Albums ({})", app.general_cache.all_albums.len()),
         theme,
-    )
-    .width(Length::Fill);
+        true,
+        true,
+    );
+
+    let playlist_content =
+        home_menu_widget_container(column![playlists_title, playlist_loading, playlists], theme)
+            .width(Length::Fill);
 
     let tracks_content =
         home_menu_widget_container(column![tracks_title, tracks], theme).width(Length::Fill);
@@ -232,22 +291,18 @@ pub fn player(app: &App) -> Container<'_, Message> {
     // DATA COLLECTION //
 
     let theme = &app.theme;
-    let current_owned_playlist = match &app.current_owned_playlist {
-        None => {
-            return container(text(
-                "somehow there's no playlist to load on this screen lol",
-            ));
+    let current_render_data = {
+        if let Page::Player { playlist_id } = &app.management.current_page
+            && let Some(d) = app.playlist_render_data.get(&playlist_id)
+        {
+            d
+        } else {
+            return container("Somehow there's no playlist to render here??");
         }
-        Some(p) => p,
     };
-    let current_tracklist = match &app.current_playlist_tracklist {
-        None => return container(text("Somehow there's no tracklist for this page :p")),
-        Some(t) => t,
-    };
-    let current_playlist_id = current_owned_playlist.metadata.id().clone();
-    let current_playlist_playing = app.paused_playlists.contains(&current_playlist_id);
+    let current_playlist_id = current_render_data.owned_playlist.metadata.id().clone();
     let track_count_digits =
-        util::get_u64_digit_count(current_owned_playlist.track_count() as u64) as usize;
+        util::get_u64_digit_count(current_render_data.owned_playlist.track_count() as u64) as usize;
 
     // PAGE BUILDING //
 
@@ -272,7 +327,8 @@ pub fn player(app: &App) -> Container<'_, Message> {
                 .map(|metadata| left_menu_sub_text(&metadata.title, theme, true, true).into()),
         );
     let albums_col = column![left_menu_bold_text("Albums", theme, false, true)].extend(
-        app.downloaded_albums
+        app.general_cache
+            .all_albums
             .iter()
             .take(super::ALBUM_DISPLAY_SIZE)
             .map(|album| left_menu_sub_text(&album.name, theme, true, true).into()),
@@ -293,11 +349,29 @@ pub fn player(app: &App) -> Container<'_, Message> {
     // PLAYLIST INFO (and search bar)
 
     let title = container(
-        title_text(&current_owned_playlist.metadata.title, theme, false, true).height(Length::Fill),
+        title_text(
+            &current_render_data.owned_playlist.metadata.title,
+            theme,
+            false,
+            true,
+        )
+        .height(Length::Fill),
     );
-    let search_bar = default_text_input("Search..", &app.track_search_text, theme)
-        .on_input(Message::TrackSearchTextEdit)
-        .on_paste(Message::TrackSearchTextEdit);
+    let search_bar = default_text_input("Search..", &current_render_data.track_search_text, theme)
+        .on_input({
+            let pid = current_playlist_id.clone();
+            move |t| Message::TrackSearchTextEdit {
+                playlist_id: pid.clone(),
+                search_text: t,
+            }
+        })
+        .on_paste({
+            let pid = current_playlist_id.clone();
+            move |t| Message::TrackSearchTextEdit {
+                playlist_id: pid.clone(),
+                search_text: t,
+            }
+        });
 
     let playlist_info_search = row![
         title.width(Length::Fill),
@@ -323,19 +397,15 @@ pub fn player(app: &App) -> Container<'_, Message> {
     // TRACK DATA
 
     // data retrieval
-    let scroll_offset = {
-        if let Some(scroll) = app.playlist_scrolloffsets.get(&current_playlist_id) {
-            *scroll
-        } else {
-            0.0
-        }
-    };
     let playlist_id_clone = current_playlist_id.clone();
 
-    let filtered_tracklist: Vec<(usize, &Track)> = current_tracklist
+    let filtered_tracklist: Vec<(usize, &Track)> = current_render_data
+        .current_tracklist
         .iter()
         .enumerate()
-        .filter(|(_, track)| util::track_contains_search_term(track, &app.track_search_text))
+        .filter(|(_, track)| {
+            util::track_contains_search_term(track, &current_render_data.track_search_text)
+        })
         .collect();
 
     let track_closure =
@@ -346,8 +416,8 @@ pub fn player(app: &App) -> Container<'_, Message> {
                 Artist::Official(names) => names.join(", "),
             };
             let track_length = util::format_duration(&track.length);
-            let track_downloaded = app.downloaded_tracks.contains(&track.id());
-            let track_downloading = app.downloading_tracks.contains(&track.id());
+            let track_downloaded = app.general_cache.downloaded_tracks.contains(&track.id());
+            let track_downloading = app.general_cache.downloading_tracks.contains(&track.id());
             let track_download_state = if track_downloading {
                 TrackDownloadState::Downloading
             } else if track_downloaded {
@@ -410,7 +480,7 @@ pub fn player(app: &App) -> Container<'_, Message> {
     let tracklist = virtualized_vertical_scrollable(
         filtered_tracklist,
         track_entry_height,
-        scroll_offset,
+        current_render_data.scroll_offset,
         theme,
         track_closure,
         theme.stylesheet().default_scrollable(),
@@ -419,17 +489,19 @@ pub fn player(app: &App) -> Container<'_, Message> {
             playlist_id: playlist_id_clone.clone(),
             scrollable_viewport: v,
         },
+        0.0,
+        |s| s,
     );
 
     // LOWER CONTROLS
     const LOWER_CONTROLS_HEIGHT: f32 = 75.0;
     let default_text_style = theme.stylesheet().default_text(true, true);
 
-    let volume_icon = if app.volume > 0.66 {
+    let volume_icon = if app.settings.volume > 0.66 {
         icons::VOLUME_HIGH
-    } else if app.volume > 0.33 {
+    } else if app.settings.volume > 0.33 {
         icons::VOLUME_MEDIUM
-    } else if app.volume > 0.0 {
+    } else if app.settings.volume > 0.0 {
         icons::VOLUME_LOW
     } else {
         icons::VOLUME_MUTE
@@ -437,7 +509,7 @@ pub fn player(app: &App) -> Container<'_, Message> {
     let volume_text = icon(volume_icon, default_text_style);
     let volume_bar = default_slider(
         0.0..=100.0,
-        app.volume * 100.0,
+        app.settings.volume * 100.0,
         |volume| {
             Message::Action(Action::SetVolume {
                 volume: volume / 100.0,
@@ -451,16 +523,13 @@ pub fn player(app: &App) -> Container<'_, Message> {
 
     // buttons
 
-    let download_button = if app.downloading_playlists.contains(&current_playlist_id) {
+    let download_button = if let DownloadState::Downloding = current_render_data.download_state {
         default_button(icon(icons::STOP_DOWNLOAD, default_text_style), theme).on_press(
             Message::Action(Action::StopPlaylistDownload {
                 playlist_id: current_playlist_id.clone(),
             }),
         )
-    } else if app
-        .download_stopping_playlists
-        .contains(&current_playlist_id)
-    {
+    } else if let DownloadState::StopPending = current_render_data.download_state {
         default_button(icon(icons::PENDING, default_text_style), theme)
     } else {
         default_button(icon(icons::START_DOWNLOAD, default_text_style), theme).on_press(
@@ -493,13 +562,15 @@ pub fn player(app: &App) -> Container<'_, Message> {
             playlist_id: current_playlist_id.clone(),
         }),
     );
-    let play_button = if app.playing_playlists.contains(&current_playlist_id) {
+    let play_button = if let PlayingState::Playing = current_render_data.playing_state {
         default_button(icon(icons::PAUSE, default_text_style), theme).on_press(Message::Action(
             Action::PauseTrack {
                 playlist_id: current_playlist_id.clone(),
             },
         ))
-    } else if current_playlist_playing {
+    } else if matches!(current_render_data.playing_state, PlayingState::Paused)
+        || matches!(current_render_data.playing_state, PlayingState::Seeking)
+    {
         default_button(icon(icons::PLAY, default_text_style), theme).on_press(Message::Action(
             Action::ResumeTrack {
                 playlist_id: current_playlist_id.clone(),
@@ -510,8 +581,8 @@ pub fn player(app: &App) -> Container<'_, Message> {
     };
 
     // progress bar
-    let current_time = app.track_progress.current();
-    let total_time = app.track_progress.total();
+    let current_time = current_render_data.playing_track_progress.current();
+    let total_time = current_render_data.playing_track_progress.total();
 
     let current_txt = text(format_duration(current_time));
     let total_txt = text(format_duration(total_time));
@@ -519,7 +590,7 @@ pub fn player(app: &App) -> Container<'_, Message> {
     let current_playlist_id_clone = current_playlist_id.clone();
     let progress_bar_slider = default_slider(
         0.0..=100.0,
-        app.track_progress.progress() * 100.0,
+        current_render_data.playing_track_progress.progress() * 100.0,
         move |progress| {
             Message::Action(Action::SeekAudio {
                 playlist_id: current_playlist_id_clone.clone(),
@@ -551,8 +622,7 @@ pub fn player(app: &App) -> Container<'_, Message> {
     // Left and right share remaining space equally
     // left: album cover, track title, and artist
     let mut left_controls = Row::new().width(Length::FillPortion(1));
-    let current_track_id = app.playlist_playing_tracks.get(&current_playlist_id);
-    if let Some(track) = current_track_id {
+    if let Some(track) = &current_render_data.current_track {
         // album cover first
         match &track.album_kind {
             AlbumKind::Album(album) => {

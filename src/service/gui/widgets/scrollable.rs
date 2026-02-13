@@ -5,7 +5,7 @@ use iced::{
     widget::{Column, Scrollable, column, responsive, scrollable, space},
 };
 
-use crate::service::gui::styling::{AppTheme, ContainerStyle, ScrollableStyle};
+use crate::service::gui::styling::{ContainerStyle, ScrollableStyle};
 
 // Custom virtualized scrollable struct
 pub struct VirtualScrollable<'a, Message, Item, F, L>
@@ -19,6 +19,7 @@ where
     scroll_offset: f32,
     theme: &'a Theme,
     render_item: F,
+    spacing: f32,
     _phantom: PhantomData<Item>,
 }
 
@@ -34,6 +35,7 @@ where
         scroll_offset: f32,
         theme: &'a Theme,
         render_item: F,
+        spacing: f32,
     ) -> Self {
         Self {
             items,
@@ -43,6 +45,7 @@ where
             theme,
             render_item,
             _phantom: PhantomData,
+            spacing,
         }
     }
 
@@ -51,7 +54,7 @@ where
         let total_items = items_slice.len();
 
         let items_per_screen = (self.viewport_height / self.item_height).ceil() as usize;
-        let visible_count = items_per_screen + 2;
+        let visible_count = items_per_screen;
         let raw_start_index = (self.scroll_offset / self.item_height).floor() as usize;
         let max_start_index = total_items.saturating_sub(visible_count);
         let start_index = raw_start_index.min(max_start_index);
@@ -65,32 +68,36 @@ where
                 let i = start_index + ri;
                 (self.render_item)(i, item, self.theme)
             },
-        ));
+        ))
+        .width(Length::Fill);
 
         column![
             space().height(top_spacer),
-            visible_items,
+            visible_items.spacing(self.spacing),
             space().height(bottom_spacer),
         ]
+        .width(Length::Fill)
     }
 }
 
-fn build_scrollable<'a, Message>(
-    content: impl Into<Element<'a, Message>>,
-    style: ScrollableStyle,
-    container_style: ContainerStyle,
-) -> Scrollable<'a, Message> {
-    Scrollable::new(content).style(style.style(container_style))
-}
-pub fn main_content<'a, Message>(
-    content: impl Into<Element<'a, Message>>,
-    theme: &Theme,
-) -> Scrollable<'a, Message> {
-    let ss = theme.stylesheet();
-    let style = ss.default_scrollable();
-    let container_style = ss.main_content();
-    build_scrollable(content, style, container_style)
-}
+// fn build_scrollable<'a, Message>(
+//     content: impl Into<Element<'a, Message>>,
+//     style: ScrollableStyle,
+//     container_style: ContainerStyle,
+// ) -> Scrollable<'a, Message> {
+//     Scrollable::new(content)
+//         .style(style.style(container_style))
+//         .spacing(0)
+// }
+// pub fn main_content<'a, Message>(
+//     content: impl Into<Element<'a, Message>>,
+//     theme: &Theme,
+// ) -> Scrollable<'a, Message> {
+//     let ss = theme.stylesheet();
+//     let style = ss.default_scrollable();
+//     let container_style = ss.main_content();
+//     build_scrollable(content, style, container_style)
+// }
 pub fn virtualized_vertical_scrollable<'a, Message, Item, F, L, S>(
     items: L,
     item_height: f32,
@@ -100,6 +107,8 @@ pub fn virtualized_vertical_scrollable<'a, Message, Item, F, L, S>(
     style: ScrollableStyle,
     container_style: ContainerStyle,
     on_scroll: S,
+    spacing: f32,
+    modify_scrollable: impl Fn(Scrollable<'a, Message>) -> Scrollable<'a, Message> + 'a,
 ) -> Element<'a, Message>
 where
     Message: 'a,
@@ -115,14 +124,19 @@ where
             scroll_offset,
             theme,
             &render_item,
+            spacing,
         )
         .build();
 
-        scrollable(content)
-            .height(Length::Fill)
-            .on_scroll(on_scroll.clone())
-            .style(style.style(container_style))
-            .into()
+        modify_scrollable(
+            scrollable(content)
+                .height(Length::Fill)
+                .on_scroll(on_scroll.clone())
+                .width(Length::Fill)
+                .style(style.style(container_style))
+                .spacing(0),
+        )
+        .into()
     })
     .into()
 }

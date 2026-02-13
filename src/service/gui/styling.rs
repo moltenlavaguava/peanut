@@ -172,8 +172,10 @@ pub struct Stylesheet {
     pub main_text_color: Color,
     pub default_font: Font,
     pub secondary_text_color: Color,
+    pub secondary_rule_color: Color,
     pub main_content_bg: Background,
     pub secondary_content_bg: Background,
+    pub sub_content_bg: Background,
     pub accent_color_bg: Background,
     pub text_input_border_color: Color,
     pub home_menu_widget_border_color: Color,
@@ -264,6 +266,12 @@ impl Stylesheet {
             border: NO_BORDER,
         }
     }
+    pub fn sub_content(&self) -> ContainerStyle {
+        ContainerStyle {
+            bg_color: Some(self.sub_content_bg),
+            border: NO_BORDER,
+        }
+    }
     pub fn home_widget_container(&self) -> ContainerStyle {
         ContainerStyle {
             bg_color: Some(self.main_content_bg),
@@ -307,7 +315,7 @@ impl Stylesheet {
     }
     pub fn secondary_rule(&self, radius: impl Into<Pixels>) -> RuleStyle {
         RuleStyle {
-            color: self.secondary_text_color,
+            color: self.secondary_rule_color,
             radius: Radius::new(radius),
         }
     }
@@ -319,9 +327,14 @@ const DARK_STYLESHEET: Stylesheet = Stylesheet {
     main_text_color: color!(255, 255, 255),
     default_font: Font::DEFAULT,
     secondary_text_color: color!(200, 200, 200),
+
     main_content_bg: Background::Color(color!(40, 40, 40)),
     secondary_content_bg: Background::Color(color!(20, 20, 20)),
+    sub_content_bg: Background::Color(color![30, 30, 30]),
+
     accent_color_bg: Background::Color(color!(45, 45, 45)),
+
+    secondary_rule_color: color!(0, 94, 245, 0.5),
 
     text_input_border_color: color!(55, 55, 55),
     home_menu_widget_border_color: color!(30, 30, 30),
@@ -335,7 +348,12 @@ const DARK_STYLESHEET: Stylesheet = Stylesheet {
         pressed: Some(Background::Color(color!(10, 86, 209))),
         disabled: Some(Background::Color(color!(1, 39, 99))),
     },
-
+    // default_button_status_bgs: ButtonStatusBackgrounds {
+    //     active: None,
+    //     hovered: None,
+    //     pressed: None,
+    //     disabled: None,
+    // },
     tracklist_button_status_bgs: ButtonStatusBackgrounds {
         active: None,
         hovered: Some(Background::Color(color!(64, 64, 64))),

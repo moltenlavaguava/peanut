@@ -10,7 +10,7 @@ use crate::{
             download::initialize_playlist,
             structs::{
                 Album, OwnedPlaylist, PlaylistAudioManager, PlaylistDownloadManager, Track,
-                TrackList,
+                Tracklist,
             },
         },
         process::ProcessSender,
@@ -155,7 +155,11 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
     async fn handle_message(&mut self, msg: enums::PlaylistMessage) {
         // message handling
         match msg {
-            PlaylistMessage::InitializePlaylist { url, reply_stream } => {
+            PlaylistMessage::InitializePlaylist {
+                url,
+                playlist_init_id,
+                reply_stream,
+            } => {
                 let bin_files_copy = self.bin_files.as_ref().unwrap().clone();
                 let process_sender_copy = self.process_sender.clone();
                 let playlist_sender_copy = self.playlist_sender.clone();
@@ -166,6 +170,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
 
                     if let Ok(playlist) = initialize_playlist(
                         url,
+                        playlist_init_id,
                         bin_files_copy,
                         process_sender_copy,
                         &t_init_status,
@@ -186,23 +191,28 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             .unwrap();
                         if let Err(_) = rx.await.unwrap() {
                             t_init_status
-                                .send(Message::PlaylistInitStatus(
-                                    enums::PlaylistInitStatus::Duplicate(metadata),
-                                ))
+                                .send(Message::PlaylistInitStatus {
+                                    status: enums::PlaylistInitStatus::Duplicate(metadata),
+                                    id: playlist_init_id,
+                                })
                                 .await
                                 .unwrap();
                         } else {
                             t_init_status
-                                .send(Message::PlaylistInitStatus(
-                                    enums::PlaylistInitStatus::Complete(metadata),
-                                ))
+                                .send(Message::PlaylistInitStatus {
+                                    status: enums::PlaylistInitStatus::Complete(metadata),
+                                    id: playlist_init_id,
+                                })
                                 .await
                                 .unwrap();
                         }
                     } else {
                         println!("playlist init failed");
                         t_init_status
-                            .send(Message::PlaylistInitStatus(enums::PlaylistInitStatus::Fail))
+                            .send(Message::PlaylistInitStatus {
+                                status: enums::PlaylistInitStatus::Fail,
+                                id: playlist_init_id,
+                            })
                             .await
                             .unwrap();
                     }
@@ -384,7 +394,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 };
                 let mut tracklist = match tracklist {
                     Some(tracklist) => tracklist,
-                    None => TrackList::from_tracks_vec(util::clone_tracks_from_cache(
+                    None => Tracklist::from_tracks_vec(util::clone_tracks_from_cache(
                         playlist.tracks.clone(),
                         &self.tracks,
                     )),
@@ -424,7 +434,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 };
                 let mut tracklist = match tracklist {
                     Some(tracklist) => tracklist,
-                    None => TrackList::from_tracks_vec(util::clone_tracks_from_cache(
+                    None => Tracklist::from_tracks_vec(util::clone_tracks_from_cache(
                         playlist.tracks.clone(),
                         &self.tracks,
                     )),
@@ -463,7 +473,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                         Some(tracklist) => tracklist,
                         None => {
                             if let Some(playlist) = self.playlists.get(&id) {
-                                TrackList::from_tracks_vec(util::clone_tracks_from_cache(
+                                Tracklist::from_tracks_vec(util::clone_tracks_from_cache(
                                     playlist.tracks.clone(),
                                     &self.tracks,
                                 ))

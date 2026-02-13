@@ -6,11 +6,12 @@ use tokio::sync::mpsc;
 use crate::{
     service::{
         audio::structs::AudioProgress,
+        gui::structs::{PlaylistInitId, TaskId},
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
             structs::{
-                Album, OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackList,
+                Album, OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, Tracklist,
             },
         },
     },
@@ -28,16 +29,19 @@ pub enum Message {
     // Event bus closed.
     EventBusClosed,
     // Task finished. Provides id.
-    TaskFinished(u64),
-    TrackSearchTextEdit(String),
+    TaskFinished(TaskId),
+    TrackSearchTextEdit {
+        playlist_id: Id,
+        search_text: String,
+    },
     // A playlist init task started. Provides the id and the receiver handle relevant to the task.
-    PlaylistInitTaskStarted(u64, ReceiverHandle<Message>),
+    PlaylistInitTaskStarted(TaskId, PlaylistInitId, ReceiverHandle<Message>),
     // A playlist was selected to be loaded. Provides the selected playlist's metadata.
     PlaylistSelect(PlaylistMetadata),
     // A playlist that was selected received `OwnedPlaylist` data to render.
     PlaylistSelectAccepted(OwnedPlaylist),
     // The list of tracks that was downloaded before the program started. Given: the list of track ids
-    DownloadedTrackListReceived(HashSet<Id>),
+    DownloadedTracklistReceived(HashSet<Id>),
     // A playlist download request succeeded and caused a playlist to start downloading. Provided: the playlist Id and its ReceiverHandle for information.
     DownloadPlaylistStarted {
         id: Id,
@@ -48,7 +52,10 @@ pub enum Message {
         id: Id,
     },
     // fired when new track info is received for a playlist init
-    PlaylistInitStatus(PlaylistInitStatus),
+    PlaylistInitStatus {
+        status: PlaylistInitStatus,
+        id: PlaylistInitId,
+    },
     // A single track download started. Given: the id of the track.
     TrackDownloadStarted {
         id: Id,
@@ -65,17 +72,19 @@ pub enum Message {
     // A playlist tracklist updated. Provided: the playlist id and the list.
     PlaylistOrderUpdated {
         id: Id,
-        tracklist: TrackList,
+        tracklist: Tracklist,
     },
     // A track's audio progressed. Provided: the track id and the progress.
     TrackAudioProgress {
         id: Id,
+        maybe_playlist_id: Option<Id>,
         progress: AudioProgress,
     },
     // A track started playing its audio.
     TrackAudioStart {
         id: Id,
         maybe_playlist_id: Option<Id>,
+        start_paused: bool,
     },
     // A track finished playing its audio.
     TrackAudioEnd {
@@ -121,6 +130,9 @@ pub enum Message {
     HomeAlbumsScrolled {
         scrollable_viewport: Viewport,
     },
+    HomePlaylistsScrolled {
+        scrollable_viewport: Viewport,
+    },
     ThemeUpdated {
         theme: Theme,
     },
@@ -154,7 +166,24 @@ pub enum Action {
 #[derive(Debug, Clone)]
 pub enum Page {
     Home,
-    Player,
+    Player { playlist_id: Id },
+}
+
+// represents possible downloading states
+#[derive(Debug, Clone)]
+pub enum DownloadState {
+    Idle,
+    Downloding,
+    StopPending,
+}
+
+#[derive(Debug, Clone)]
+pub enum PlayingState {
+    Playing,
+    Paused,
+    Seeking,
+    Unloaded,
+    None,
 }
 
 // for app-wide messages (usually more important)
@@ -176,7 +205,7 @@ pub enum EventMessage {
     },
     TrackCacheUpdated {
         tracks_added: Option<HashMap<Id, Track>>,
-        tracks_removed: Option<HashSet<Id>>,
+        tracks_removed: Option<Vec<Id>>,
     },
 }
 

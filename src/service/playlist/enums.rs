@@ -7,11 +7,11 @@ use url::Url;
 
 use crate::service::{
     audio::enums::LoopPolicy,
-    gui::enums::Message,
+    gui::{enums::Message, structs::PlaylistInitId},
     id::structs::Id,
     playlist::structs::{
         Album, OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, TrackDownloadJson,
-        TrackList,
+        Tracklist,
     },
 };
 
@@ -20,6 +20,7 @@ use super::structs::PlaylistTrackJson;
 pub enum PlaylistMessage {
     InitializePlaylist {
         url: Url,
+        playlist_init_id: PlaylistInitId,
         reply_stream: oneshot::Sender<mpsc::Receiver<Message>>,
     },
     PlaylistInitDone {
@@ -33,7 +34,7 @@ pub enum PlaylistMessage {
     },
     DownloadPlaylist {
         id: Id,
-        tracklist: TrackList,
+        tracklist: Tracklist,
         reply_stream: oneshot::Sender<mpsc::Receiver<Message>>,
     },
     CancelDownloadPlaylist {
@@ -57,20 +58,20 @@ pub enum PlaylistMessage {
     },
     ShufflePlaylist {
         playlist_id: Id,
-        tracklist: Option<TrackList>,
-        result_sender: oneshot::Sender<TrackList>,
+        tracklist: Option<Tracklist>,
+        result_sender: oneshot::Sender<Tracklist>,
     },
     OrganizePlaylist {
         playlist_id: Id,
-        tracklist: Option<TrackList>,
-        result_sender: oneshot::Sender<TrackList>,
+        tracklist: Option<Tracklist>,
+        result_sender: oneshot::Sender<Tracklist>,
     },
     PlaylistAudioManagementDone {
         id: Id,
     },
     PlayPlaylist {
         id: Id,
-        tracklist: Option<TrackList>,
+        tracklist: Option<Tracklist>,
         // Sends individual track progress updates and when the playlist finishes.
         data_sender: mpsc::Sender<Message>,
     },

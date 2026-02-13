@@ -264,11 +264,11 @@ impl TrackOrder {
 }
 
 #[derive(Debug, Clone)]
-pub struct TrackList {
+pub struct Tracklist {
     order: TrackOrder,
     tracks: Arc<TrackVec>,
 }
-impl TrackList {
+impl Tracklist {
     pub fn new(order: TrackOrder, tracks: TrackVec) -> anyhow::Result<Self> {
         // verify the length is the same between the track order and the tracks provided
         if order.length() != tracks.track_count() {
@@ -315,18 +315,18 @@ impl TrackList {
 }
 
 pub struct PlaylistDownloadManager {
-    tracklist: TrackList,
+    tracklist: Tracklist,
     playlist_id: Id,
     cancel_token: CancellationToken,
     stop_flag: Arc<AtomicBool>,
     start_pos_flag: Arc<AtomicU64>,
     restart_flag: Arc<AtomicBool>,
-    internal_t: Option<watch::Sender<Option<TrackList>>>,
+    internal_t: Option<watch::Sender<Option<Tracklist>>>,
     dead: bool,
     running: bool,
 }
 impl PlaylistDownloadManager {
-    pub fn new(tracklist: TrackList, playlist_id: Id) -> Self {
+    pub fn new(tracklist: Tracklist, playlist_id: Id) -> Self {
         Self {
             tracklist,
             playlist_id,
@@ -562,7 +562,7 @@ impl PlaylistDownloadManager {
         // stop the current track download to prepare for the next
         self.stop_flag.store(true, Ordering::Relaxed);
     }
-    pub fn restart_with_tracklist(&mut self, tracklist: TrackList) {
+    pub fn restart_with_tracklist(&mut self, tracklist: Tracklist) {
         if self.dead() {
             return;
         }
@@ -593,11 +593,11 @@ impl PlaylistDownloadManager {
 }
 
 pub struct PlaylistAudioManager {
-    tracklist: Option<watch::Receiver<Option<TrackList>>>,
+    tracklist: Option<watch::Receiver<Option<Tracklist>>>,
     playlist_id: Id,
     cancel_token: CancellationToken,
     restart_flag: Arc<AtomicBool>,
-    internal_t: Option<watch::Sender<Option<TrackList>>>,
+    internal_t: Option<watch::Sender<Option<Tracklist>>>,
     current_track_id: Arc<Mutex<Option<Id>>>,
     current_pos: Arc<AtomicU64>,
     dead: bool,
@@ -635,7 +635,7 @@ impl PlaylistAudioManager {
     }
     pub fn run(
         &mut self,
-        tracklist: TrackList,
+        tracklist: Tracklist,
         // gui reply stream: directly audio progress updates, audio starts, and audio ends
         gui_progress_sender: mpsc::Sender<Message>,
         // playlist sender: directly gets playlist playing finish
@@ -661,12 +661,20 @@ impl PlaylistAudioManager {
 
         // create mini task to map extractor lines to gui messages
         let (map_t, mut map_r) = mpsc::channel(100);
+        let playlist_id = self.playlist_id.clone();
         let gui_progress_sender_clone = gui_progress_sender.clone();
-        tokio::spawn(async move {
-            while let Some((id, progress)) = map_r.recv().await {
-                let _ = gui_progress_sender_clone
-                    .send(Message::TrackAudioProgress { id, progress })
-                    .await;
+        tokio::spawn({
+            let playlist_id = playlist_id.clone();
+            async move {
+                while let Some((id, progress)) = map_r.recv().await {
+                    let _ = gui_progress_sender_clone
+                        .send(Message::TrackAudioProgress {
+                            id,
+                            progress,
+                            maybe_playlist_id: Some(playlist_id.clone()),
+                        })
+                        .await;
+                }
             }
         });
 
@@ -678,7 +686,6 @@ impl PlaylistAudioManager {
         self.tracklist = Some(internal_r.clone());
 
         // all the cloning
-        let playlist_id = self.playlist_id.clone();
         let playlist_sender_clone = playlist_sender.clone();
         let gui_reply_stream_clone = gui_progress_sender.clone();
         let cancel_token = self.cancel_token.clone();
@@ -850,14 +857,6 @@ impl PlaylistAudioManager {
                         }
                     }
 
-                    // Track Audio Start message
-                    let _ = gui_reply_stream_clone
-                        .send(Message::TrackAudioStart {
-                            id: track.id().clone(),
-                            maybe_playlist_id: Some(playlist_id.clone()),
-                        })
-                        .await;
-
                     println!("Playing track {}..", track.title);
                     // audio playing logic
                     let start_paused = first_pass && !autoplay_first_track;
@@ -866,6 +865,15 @@ impl PlaylistAudioManager {
                     let audio_config =
                         AudioConfig::new(start_paused, volume_arc.load(Ordering::Relaxed));
                     let (end_t, end_r) = oneshot::channel();
+
+                    // Track Audio Start message
+                    let _ = gui_reply_stream_clone
+                        .send(Message::TrackAudioStart {
+                            id: track.id().clone(),
+                            maybe_playlist_id: Some(playlist_id.clone()),
+                            start_paused,
+                        })
+                        .await;
 
                     let audio_message = AudioMessage::PlayAudio {
                         id: track.id().clone(),
@@ -965,7 +973,7 @@ impl PlaylistAudioManager {
             }
         }
     }
-    pub fn restart_with_tracklist(&mut self, tracklist: TrackList) {
+    pub fn restart_with_tracklist(&mut self, tracklist: Tracklist) {
         if self.dead() {
             return;
         }

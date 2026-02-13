@@ -38,3 +38,9 @@ pub fn invisible<'a, Message>(
     let style = theme.stylesheet().invisible_button();
     style_button(button(content), style)
 }
+pub fn invisible_button_padded<'a, Message>(
+    content: impl Into<Element<'a, Message>>,
+    theme: &Theme,
+) -> Button<'a, Message> {
+    invisible(content, &theme).padding(theme.stylesheet().default_button().padding)
+}

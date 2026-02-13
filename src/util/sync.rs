@@ -5,20 +5,22 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
 
+use crate::service::gui::structs::TaskId;
+
 // Gui recevier witchcraft
 // todo: add docs for all of this
 
 #[derive(Debug)]
 pub struct ReceiverHandle<T> {
-    id: u64,
+    id: TaskId,
     rx: Arc<Mutex<Option<mpsc::Receiver<T>>>>,
 }
 
 struct WatchContext<T, M> {
-    id: u64,
+    id: TaskId,
     rx: Arc<Mutex<Option<mpsc::Receiver<T>>>>,
-    on_data: Arc<dyn Fn(u64, T) -> M + Send + Sync>,
-    on_finish: Arc<dyn Fn(u64) -> M + Send + Sync + 'static>,
+    on_data: Arc<dyn Fn(TaskId, T) -> M + Send + Sync>,
+    on_finish: Arc<dyn Fn(TaskId) -> M + Send + Sync + 'static>,
 }
 
 impl<T, M> Hash for WatchContext<T, M> {
@@ -46,7 +48,7 @@ impl<T> ReceiverHandle<T>
 where
     T: Send + 'static,
 {
-    pub fn new(id: u64, rx: mpsc::Receiver<T>) -> Self {
+    pub fn new(id: TaskId, rx: mpsc::Receiver<T>) -> Self {
         Self {
             id,
             rx: Arc::new(Mutex::new(Some(rx))),
@@ -55,8 +57,8 @@ where
 
     pub fn watch<M>(
         &self,
-        on_data: impl Fn(u64, T) -> M + Send + Sync + 'static,
-        on_finish: impl Fn(u64) -> M + Send + Sync + 'static,
+        on_data: impl Fn(TaskId, T) -> M + Send + Sync + 'static,
+        on_finish: impl Fn(TaskId) -> M + Send + Sync + 'static,
     ) -> Subscription<M>
     where
         M: 'static + Send,
@@ -69,7 +71,7 @@ where
         };
         Subscription::run_with(context, stream_builder::<T, M>)
     }
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> TaskId {
         self.id
     }
 }

@@ -71,7 +71,7 @@ impl CoreService {
             );
 
         // start the (blocking) gui loop
-        let _ = gui_service.start_loop(cancel_token.clone(), t_playlist, r_bus);
+        let _ = gui_service.start_loop(t_playlist, r_bus);
 
         // send signal to shutdown program
         cancel_token.cancel();

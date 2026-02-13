@@ -57,7 +57,7 @@ pub enum AudioMessage {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoopPolicy {
     NoLooping,
     Once,
