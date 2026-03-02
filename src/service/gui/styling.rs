@@ -168,6 +168,22 @@ impl RuleStyle {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct ProgressBarStyle {
+    fill_bg: Background,
+    bg: Background,
+    border: Border,
+}
+impl ProgressBarStyle {
+    pub fn style(self) -> impl Fn(&Theme) -> widget::progress_bar::Style {
+        move |_t| widget::progress_bar::Style {
+            background: self.bg,
+            bar: self.fill_bg,
+            border: self.border,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Stylesheet {
     pub main_text_color: Color,
     pub default_font: Font,
@@ -193,6 +209,11 @@ impl Stylesheet {
             center_y,
             font: self.default_font,
         }
+    }
+    pub fn same_size_secondary_text(&self, wrap_text: bool, center_y: bool) -> TextStyle {
+        let mut s = self.secondary_text(wrap_text, center_y);
+        s.text_size = self.default_text(wrap_text, center_y).text_size;
+        s
     }
     pub fn secondary_text(&self, wrap_text: bool, center_y: bool) -> TextStyle {
         TextStyle {
@@ -317,6 +338,13 @@ impl Stylesheet {
         RuleStyle {
             color: self.secondary_rule_color,
             radius: Radius::new(radius),
+        }
+    }
+    pub fn default_progress_bar(&self) -> ProgressBarStyle {
+        ProgressBarStyle {
+            fill_bg: Background::Color(self.interactable_color),
+            bg: self.accent_color_bg,
+            border: NO_BORDER,
         }
     }
 }

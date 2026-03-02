@@ -7,35 +7,40 @@ use crate::service::gui::icons::{self};
 use crate::service::gui::styling::AppTheme;
 use crate::service::gui::util::{self, format_duration};
 use crate::service::gui::widgets;
-use crate::service::gui::widgets::button::invisible_button_padded;
+use crate::service::gui::widgets::button::{
+    default_button, default_text_button, invisible_button, invisible_button_padded, track_button,
+};
+use crate::service::gui::widgets::notification::NotificationRenderData;
+use crate::service::gui::widgets::notification::init::initialization_notification_list;
+use crate::service::gui::widgets::notification::playing::playing_notification_list;
+use crate::service::gui::widgets::page::build_page;
 use crate::service::gui::widgets::rule::{default_horizontal_rule, in_between_rule};
 use crate::service::gui::widgets::scrollable::virtualized_vertical_scrollable;
-use crate::service::gui::widgets::text::icon;
+use crate::service::gui::widgets::text::{
+    default_text, icon_text, left_menu_bold_text, left_menu_sub_text, secondary_text, title_text,
+};
 use crate::service::playlist::enums::Artist;
 use crate::service::playlist::structs::{Album, PlaylistMetadata, Track};
-use iced::widget::{Column, Container, Image, Row, column, container, row, space, text};
-use iced::{Alignment, Length, Padding, Theme};
-use widgets::button::{
-    default as default_button, default_text as default_text_button, invisible as invisible_button,
-    track_button,
-};
+use iced::widget::{Column, Image, Row, column, container, row, space, text};
+use iced::{Alignment, Element, Length, Padding, Theme};
 use widgets::container::{
     home_menu_widget_container, main_content as main_content_container,
     menu_content as menu_content_container,
 };
 use widgets::slider::default_slider;
-use widgets::text::{
-    default as default_text, left_menu_bold as left_menu_bold_text,
-    left_menu_sub as left_menu_sub_text, secondary as secondary_text, title as title_text,
-};
 use widgets::text_input::default_text_input;
 
 // page factory functions
+const HOME_WIDGET_SPACING: f32 = 10.0;
 
-pub fn home(app: &App) -> Container<'_, Message> {
+const NOTIFICATION_RENDER_DATA: NotificationRenderData = NotificationRenderData {
+    side_padding: Padding::new(HOME_WIDGET_SPACING),
+    spacing: 4.0,
+};
+
+pub fn home(app: &App) -> Element<'_, Message> {
     let theme = &app.theme;
     let title_txt = title_text("Home", theme, true, true);
-    const WIDGET_SPACING: f32 = 10.0;
 
     let load_playlist = default_text_button("Load", theme).on_press(Message::PlaylistURLSubmit);
     let playlist_url = default_text_input(
@@ -54,7 +59,7 @@ pub fn home(app: &App) -> Container<'_, Message> {
     )
     .padding(
         Padding::new(4.0)
-            .horizontal(4.0 + WIDGET_SPACING)
+            .horizontal(4.0 + HOME_WIDGET_SPACING)
             .bottom(0.0),
     );
 
@@ -207,7 +212,7 @@ pub fn home(app: &App) -> Container<'_, Message> {
         let album_data_closure = move |i: usize, a: &Album, theme: &Theme| {
             let album_artist_string = a.artists.join(", ");
             in_between_rule(
-                invisible_button(
+                invisible_button_padded(
                     row![
                         default_text(a.name.clone(), theme, true, true)
                             .width(Length::FillPortion(5)),
@@ -268,7 +273,7 @@ pub fn home(app: &App) -> Container<'_, Message> {
     let albums_content =
         home_menu_widget_container(column![albums_title, albums], theme).width(Length::Fill);
 
-    menu_content_container(
+    let main_content = menu_content_container(
         column![
             upper_menu_content,
             row![
@@ -277,27 +282,43 @@ pub fn home(app: &App) -> Container<'_, Message> {
                     tracks_content.height(Length::FillPortion(1)),
                     albums_content.height(Length::FillPortion(1))
                 ]
-                .spacing(WIDGET_SPACING)
+                .spacing(HOME_WIDGET_SPACING)
                 .width(Length::FillPortion(1))
             ]
-            .padding(Padding::new(WIDGET_SPACING))
-            .spacing(WIDGET_SPACING)
+            .padding(Padding::new(HOME_WIDGET_SPACING))
+            .spacing(HOME_WIDGET_SPACING)
         ],
         theme,
-    )
+    );
+
+    // build notifications from all active render data
+    let mut notifs = Vec::new();
+
+    notifs.append(&mut initialization_notification_list(
+        &app.playlist_init_data,
+        theme,
+    ));
+    notifs.append(&mut playing_notification_list(
+        &app.playlist_render_data,
+        theme,
+    ));
+
+    // Note: notifications added *last* appear at the bottom
+    let notifs = if notifs.len() > 0 { Some(notifs) } else { None };
+    build_page(main_content, notifs, NOTIFICATION_RENDER_DATA, None, theme)
 }
 
-pub fn player(app: &App) -> Container<'_, Message> {
+pub fn player(app: &App) -> Element<'_, Message> {
     // DATA COLLECTION //
 
     let theme = &app.theme;
     let current_render_data = {
         if let Page::Player { playlist_id } = &app.management.current_page
-            && let Some(d) = app.playlist_render_data.get(&playlist_id)
+            && let Some(d) = app.playlist_render_data.get(playlist_id)
         {
             d
         } else {
-            return container("Somehow there's no playlist to render here??");
+            return container("Somehow there's no playlist to render here??").into();
         }
     };
     let current_playlist_id = current_render_data.owned_playlist.metadata.id().clone();
@@ -310,7 +331,7 @@ pub fn player(app: &App) -> Container<'_, Message> {
 
     let home_button = invisible_button(
         row![
-            icon(
+            icon_text(
                 icons::LEFT_ARROW,
                 theme.stylesheet().left_menu_bold_text(true, true)
             ),
@@ -417,7 +438,10 @@ pub fn player(app: &App) -> Container<'_, Message> {
             };
             let track_length = util::format_duration(&track.length);
             let track_downloaded = app.general_cache.downloaded_tracks.contains(&track.id());
-            let track_downloading = app.general_cache.downloading_tracks.contains(&track.id());
+            let track_downloading = app
+                .general_cache
+                .downloading_track_data
+                .contains_key(track.id());
             let track_download_state = if track_downloading {
                 TrackDownloadState::Downloading
             } else if track_downloaded {
@@ -506,7 +530,7 @@ pub fn player(app: &App) -> Container<'_, Message> {
     } else {
         icons::VOLUME_MUTE
     };
-    let volume_text = icon(volume_icon, default_text_style);
+    let volume_text = icon_text(volume_icon, default_text_style);
     let volume_bar = default_slider(
         0.0..=100.0,
         app.settings.volume * 100.0,
@@ -524,60 +548,59 @@ pub fn player(app: &App) -> Container<'_, Message> {
     // buttons
 
     let download_button = if let DownloadState::Downloding = current_render_data.download_state {
-        default_button(icon(icons::STOP_DOWNLOAD, default_text_style), theme).on_press(
+        default_button(icon_text(icons::STOP_DOWNLOAD, default_text_style), theme).on_press(
             Message::Action(Action::StopPlaylistDownload {
                 playlist_id: current_playlist_id.clone(),
             }),
         )
     } else if let DownloadState::StopPending = current_render_data.download_state {
-        default_button(icon(icons::PENDING, default_text_style), theme)
+        default_button(icon_text(icons::PENDING, default_text_style), theme)
     } else {
-        default_button(icon(icons::START_DOWNLOAD, default_text_style), theme).on_press(
+        default_button(icon_text(icons::START_DOWNLOAD, default_text_style), theme).on_press(
             Message::Action(Action::DownloadPlaylist {
                 playlist_id: current_playlist_id.clone(),
             }),
         )
     };
 
-    let loop_button = default_button(icon(icons::LOOP, default_text_style), theme).on_press(
+    let loop_button = default_button(icon_text(icons::LOOP, default_text_style), theme).on_press(
         Message::Action(Action::LoopTrack {
             playlist_id: current_playlist_id.clone(),
         }),
     );
-    let shuffle_button = default_button(icon(icons::SHUFFLE, default_text_style), theme).on_press(
-        Message::Action(Action::ShufflePlaylist {
+    let shuffle_button = default_button(icon_text(icons::SHUFFLE, default_text_style), theme)
+        .on_press(Message::Action(Action::ShufflePlaylist {
             playlist_id: current_playlist_id.clone(),
-        }),
-    );
-    let organize_button = default_button(icon(icons::ORGANIZE, default_text_style), theme)
+        }));
+    let organize_button = default_button(icon_text(icons::ORGANIZE, default_text_style), theme)
         .on_press(Message::Action(Action::OrganizePlaylist {
             playlist_id: current_playlist_id.clone(),
         }));
-    let previous_button = default_button(icon(icons::PREVIOUS, default_text_style), theme)
+    let previous_button = default_button(icon_text(icons::PREVIOUS, default_text_style), theme)
         .on_press(Message::Action(Action::PreviousTrack {
             playlist_id: current_playlist_id.clone(),
         }));
-    let next_button = default_button(icon(icons::SKIP, default_text_style), theme).on_press(
+    let next_button = default_button(icon_text(icons::SKIP, default_text_style), theme).on_press(
         Message::Action(Action::NextTrack {
             playlist_id: current_playlist_id.clone(),
         }),
     );
     let play_button = if let PlayingState::Playing = current_render_data.playing_state {
-        default_button(icon(icons::PAUSE, default_text_style), theme).on_press(Message::Action(
-            Action::PauseTrack {
+        default_button(icon_text(icons::PAUSE, default_text_style), theme).on_press(
+            Message::Action(Action::PauseTrack {
                 playlist_id: current_playlist_id.clone(),
-            },
-        ))
+            }),
+        )
     } else if matches!(current_render_data.playing_state, PlayingState::Paused)
         || matches!(current_render_data.playing_state, PlayingState::Seeking)
     {
-        default_button(icon(icons::PLAY, default_text_style), theme).on_press(Message::Action(
+        default_button(icon_text(icons::PLAY, default_text_style), theme).on_press(Message::Action(
             Action::ResumeTrack {
                 playlist_id: current_playlist_id.clone(),
             },
         ))
     } else {
-        default_button(icon(icons::PLAY, default_text_style), theme)
+        default_button(icon_text(icons::PLAY, default_text_style), theme)
     };
 
     // progress bar
@@ -680,5 +703,5 @@ pub fn player(app: &App) -> Container<'_, Message> {
     let upper_portion = row![left_menu, playlist_and_track_data];
     let page = container(column![upper_portion, lower_controls]);
 
-    page
+    build_page(page, None, NOTIFICATION_RENDER_DATA, None, theme)
 }

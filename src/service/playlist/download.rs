@@ -90,7 +90,7 @@ pub async fn initialize_playlist(
 
     // receive messages from process
     while let Some(msg) = rx.recv().await {
-        let download_msg = parse_output(msg, ExtractorContext::Initialize);
+        let download_msg = parse_output(msg, ExtractorContext::Initialize, None);
         println!("recieved message: {download_msg:?}");
 
         // if this is a progress message, then notify the gui
@@ -205,7 +205,7 @@ pub async fn download_track(
 
     while let Some(msg) = rx.recv().await {
         println!("Received msg from download: {msg:?}");
-        let line = parse_output(msg, ExtractorContext::Download);
+        let line = parse_output(msg, ExtractorContext::Download, Some(track));
         let mut err = None;
         if let ExtractorLineOut::Error(e) = &line {
             // check to see if this was actually an error
@@ -252,7 +252,11 @@ pub async fn download_track(
     // Err(anyhow!("unimplemented"))
 }
 
-fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOut {
+fn parse_output(
+    msg: ChildMessage,
+    context: ExtractorContext,
+    track: Option<&Track>,
+) -> ExtractorLineOut {
     // regex setup just for parsing init logic
     static RE_PROGRESS: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^\[download\] Downloading item (\d+) of (\d+)").unwrap());
@@ -323,6 +327,9 @@ fn parse_output(msg: ChildMessage, context: ExtractorContext) -> ExtractorLineOu
                             let eta_seconds = captures[6].parse().unwrap_or(1000) * 60
                                 + captures[7].parse().unwrap_or(1000);
                             return ExtractorLineOut::DownloadProgress(TrackDownloadData {
+                                track: track
+                                    .expect("Track data should be present when downloading it")
+                                    .clone(),
                                 progress: captures[1].parse().unwrap_or(0.0),
                                 download_size: download_size,
                                 download_speed: download_speed,

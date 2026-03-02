@@ -226,6 +226,7 @@ pub struct TrackDisplayMetadata {
 
 #[derive(Debug, Clone)]
 pub struct TrackDownloadData {
+    pub track: Track,
     pub progress: f32,
     pub download_size: DataSize,
     pub download_speed: DataSize,

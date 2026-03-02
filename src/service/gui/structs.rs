@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use indexmap::IndexMap;
+
 use crate::{
     service::{
         audio::{enums::LoopPolicy, structs::AudioProgress},
@@ -7,7 +9,9 @@ use crate::{
         id::structs::Id,
         playlist::{
             PlaylistSender,
-            structs::{Album, OwnedPlaylist, PlaylistMetadata, Track, Tracklist},
+            structs::{
+                Album, OwnedPlaylist, PlaylistMetadata, Track, TrackDownloadData, Tracklist,
+            },
         },
     },
     util::sync::ReceiverHandle,
@@ -94,7 +98,7 @@ pub struct HomeAlbumsWidgetData {
 pub struct GeneralCache {
     // Track caching
     pub downloaded_tracks: HashSet<Id>,
-    pub downloading_tracks: HashSet<Id>,
+    pub downloading_track_data: IndexMap<Id, Option<TrackDownloadData>>,
     pub all_tracks: Vec<Track>,
 
     // Album caching

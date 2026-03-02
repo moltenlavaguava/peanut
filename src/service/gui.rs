@@ -1,9 +1,8 @@
+use iced::{Element, Task};
+use iced::{Subscription, Theme};
+use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Duration;
-
-use iced::Task;
-use iced::widget::Container;
-use iced::{Subscription, Theme};
 use tokio::sync::{mpsc, oneshot};
 use url::Url;
 
@@ -15,6 +14,7 @@ use crate::service::gui::structs::{
     HomePlaylistsWidgetData, HomeTracksWidgetData, IdCounter, PlaylistInitData, PlaylistInitId,
     PlaylistInitIdCounter, PlaylistRenderData, TaskId,
 };
+use crate::service::gui::util::delay_task;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
@@ -42,47 +42,8 @@ struct App {
     home_tracks_widget_data: HomeTracksWidgetData,
     home_albums_widget_data: HomeAlbumsWidgetData,
     general_cache: GeneralCache,
-    playlist_render_data: HashMap<Id, PlaylistRenderData>,
-    playlist_init_data: HashMap<PlaylistInitId, PlaylistInitData>,
-    // // Communication
-    // playlist_sender: PlaylistSender,
-    // tasks: HashMap<u64, ReceiverHandle<Message>>,
-    // event_bus: ReceiverHandle<EventMessage>,
-
-    // // Internal state
-    // playlist_url: String,
-    // id_counter: IdCounter,
-    // current_track_index: u32,
-    // total_tracks: u32,
-    // page: Page,
-    // track_search_text: String,
-    // loaded_playlist_metadata: Vec<PlaylistMetadata>,
-    // // caches
-    // downloaded_tracks: HashSet<Id>,
-    // track_cache: Vec<Track>,
-    // downloaded_albums: Vec<Album>,
-    // downloading_tracks: HashSet<Id>,
-    // recent_playlists: VecDeque<PlaylistMetadata>,
-
-    // playlist_scrolloffsets: HashMap<Id, f32>,
-
-    // home_tracklist_scrolloffset: f32,
-    // home_album_scrolloffset: f32,
-    // home_playlists_scrolloffset: f32,
-
-    // current_owned_playlist: Option<OwnedPlaylist>,
-    // current_playlist_tracklist: Option<Tracklist>,
-    // download_stopping_playlists: HashSet<Id>,
-    // downloading_playlists: HashSet<Id>,
-
-    // playing_playlists: HashSet<Id>,
-    // paused_playlists: HashSet<Id>,
-    // playlist_loop_policies: HashMap<Id, LoopPolicy>,
-    // playlist_playing_tracks: HashMap<Id, Track>,
-
-    // track_progress: AudioProgress,
-    // track_seeking: bool,
-    // volume: f64,
+    playlist_render_data: IndexMap<Id, PlaylistRenderData>,
+    playlist_init_data: IndexMap<PlaylistInitId, PlaylistInitData>,
     theme: Theme,
 }
 
@@ -112,13 +73,13 @@ impl App {
             all_albums: Vec::new(),
             all_tracks: Vec::new(),
             downloaded_tracks: HashSet::new(),
-            downloading_tracks: HashSet::new(),
+            downloading_track_data: IndexMap::new(),
             all_playlist_metadata: Vec::new(),
             recent_playlists: VecDeque::with_capacity(RECENT_PLAYLIST_SIZE),
         };
         let settings = GuiSettings { volume: 1.0 };
-        let playlist_render_data = HashMap::new();
-        let playlist_init_data = HashMap::new();
+        let playlist_render_data = IndexMap::new();
+        let playlist_init_data = IndexMap::new();
         let theme = Theme::Dark;
         (
             Self {
@@ -182,7 +143,7 @@ impl App {
                         // a given track finished downloading.
                         println!("Track download finished");
                         // add downloaded track to list and remove it from the downloading tracks list
-                        self.general_cache.downloading_tracks.remove(&id);
+                        self.general_cache.downloading_track_data.swap_remove(&id);
                         if success {
                             self.general_cache.downloaded_tracks.insert(id);
                         }
@@ -193,7 +154,7 @@ impl App {
                         if let Page::Player { playlist_id } = &self.management.current_page {
                             // a page is currently loaded; ensure there's actually playlist data for this page
                             if let Some(render_data) =
-                                self.playlist_render_data.get_mut(&playlist_id)
+                                self.playlist_render_data.get_mut(playlist_id)
                             {
                                 // a playlist is here; update it
                                 if let Some(pos) = render_data
@@ -279,6 +240,15 @@ impl App {
                     Some(d) => d,
                     None => return Task::none(),
                 };
+                let mut end_task = Task::none();
+                if !matches!(status, PlaylistInitStatus::Progress { .. }) {
+                    // Playlist init finished somehow; schedule a removal
+                    end_task = delay_task(
+                        Duration::from_secs(1),
+                        Message::RemovePlaylistInitData { init_id: id },
+                    )
+                }
+                // handle every type
                 match status {
                     PlaylistInitStatus::Progress { current, total } => {
                         init_data.current_init_track_count = Some(current);
@@ -299,7 +269,7 @@ impl App {
                         );
                     }
                 }
-                Task::none()
+                end_task
             }
             Message::PlaylistSelect(playlist_metadata) => {
                 println!("selected metadata: {playlist_metadata:?}");
@@ -364,6 +334,10 @@ impl App {
                     Action::Home => {
                         // reset everything player-wise
                         self.management.current_page = Page::Home;
+                        // clear any playlist data that is unloaded to save memory
+                        self.playlist_render_data.retain(|_, rdata| {
+                            !matches!(rdata.playing_state, PlayingState::Unloaded)
+                        });
                         Task::none()
                     }
                     Action::DownloadPlaylist { playlist_id } => {
@@ -378,7 +352,7 @@ impl App {
                                     return Task::none();
                                 }
                                 Page::Player { playlist_id } => {
-                                    if let Some(rdata) = self.playlist_render_data.get(&playlist_id)
+                                    if let Some(rdata) = self.playlist_render_data.get(playlist_id)
                                     {
                                         rdata.current_tracklist.clone()
                                     } else {
@@ -642,11 +616,14 @@ impl App {
             Message::TrackDownloadStarted { id } => {
                 // a given track started downloading.
                 println!("track download started");
-                self.general_cache.downloading_tracks.insert(id);
+                self.general_cache.downloading_track_data.insert(id, None);
                 Task::none()
             }
-            Message::TrackDownloadStatus { id: _, data: _ } => {
+            Message::TrackDownloadStatus { id, data } => {
                 // A given track's download status updated.
+                self.general_cache
+                    .downloading_track_data
+                    .insert(id, Some(data));
                 Task::none()
             }
             Message::PlaylistOrderUpdated { id, tracklist } => {
@@ -710,7 +687,7 @@ impl App {
                 println!("track audio end");
                 // remove the loop policy from the playlist this was in if it exists
                 if let Some(pid) = &maybe_playlist_id {
-                    if let Some(render_data) = self.playlist_render_data.get_mut(&pid) {
+                    if let Some(render_data) = self.playlist_render_data.get_mut(pid) {
                         render_data.playing_state = PlayingState::None;
                         render_data.playing_track_loop_policy = LoopPolicy::NoLooping;
                         render_data.current_track = None;
@@ -809,11 +786,15 @@ impl App {
             }
             Message::SetGlobalVolumeResult => Task::none(),
             Message::SetPlaylistLoopPolicyResult { playlist_id: _ } => Task::none(),
+            Message::RemovePlaylistInitData { init_id } => {
+                self.playlist_init_data.swap_remove(&init_id);
+                Task::none()
+            }
             Message::None => Task::none(),
         }
     }
 
-    fn view(&self) -> Container<'_, Message> {
+    fn view(&self) -> Element<'_, Message> {
         match self.management.current_page {
             Page::Home => home(&self),
             Page::Player { playlist_id: _ } => player(&self),

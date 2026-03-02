@@ -141,6 +141,9 @@ pub enum Message {
     Action(Action),
     // A special message for when nothing should happen
     None,
+    RemovePlaylistInitData {
+        init_id: PlaylistInitId,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -32,3 +32,9 @@ pub fn home_menu_widget_container<'a, Message>(
     let ss = theme.stylesheet().home_widget_container();
     build_container(content, ss).padding(Padding::new(8.0))
 }
+pub fn notification_container<'a, Message>(
+    content: impl Into<Element<'a, Message>>,
+    theme: &Theme,
+) -> Container<'a, Message> {
+    home_menu_widget_container(content, theme)
+}

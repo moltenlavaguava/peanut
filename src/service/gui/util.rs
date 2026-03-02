@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{HashSet, VecDeque};
 use std::time::Duration;
 
+use iced::Task;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::service::audio::enums::{AlbumKind, LoopPolicy};
@@ -385,4 +386,7 @@ pub fn handle_playlist_load(
 
     // update the recent playlists
     update_recent_playlists(&mut app.general_cache.recent_playlists, new_metadata);
+}
+pub fn delay_task(delay: Duration, on_done: Message) -> Task<Message> {
+    Task::perform(tokio::time::sleep(delay), |()| on_done)
 }

@@ -23,7 +23,7 @@ fn build_text<'a>(txt: impl text::IntoFragment<'a>, style: TextStyle) -> Text<'a
     t.style(style.style())
 }
 
-pub fn default<'a>(
+pub fn default_text<'a>(
     txt: impl text::IntoFragment<'a>,
     theme: &Theme,
     wrap: bool,
@@ -32,7 +32,7 @@ pub fn default<'a>(
     let style = theme.stylesheet().default_text(wrap, center_y);
     build_text(txt, style)
 }
-pub fn secondary<'a>(
+pub fn secondary_text<'a>(
     txt: impl text::IntoFragment<'a>,
     theme: &Theme,
     wrap: bool,
@@ -41,7 +41,18 @@ pub fn secondary<'a>(
     let style = theme.stylesheet().secondary_text(wrap, center_y);
     build_text(txt, style)
 }
-pub fn title<'a>(
+// TODO: remove / use this when needed
+#[allow(unused)]
+pub fn same_size_secondary_text<'a>(
+    txt: impl text::IntoFragment<'a>,
+    theme: &Theme,
+    wrap: bool,
+    center_y: bool,
+) -> Text<'a> {
+    let style = theme.stylesheet().same_size_secondary_text(wrap, center_y);
+    build_text(txt, style)
+}
+pub fn title_text<'a>(
     txt: impl text::IntoFragment<'a>,
     theme: &Theme,
     wrap: bool,
@@ -50,7 +61,7 @@ pub fn title<'a>(
     let style = theme.stylesheet().title_text(wrap, center_y);
     build_text(txt, style)
 }
-pub fn left_menu_bold<'a>(
+pub fn left_menu_bold_text<'a>(
     txt: impl text::IntoFragment<'a>,
     theme: &Theme,
     wrap: bool,
@@ -59,7 +70,7 @@ pub fn left_menu_bold<'a>(
     let style = theme.stylesheet().left_menu_bold_text(wrap, center_y);
     build_text(txt, style)
 }
-pub fn left_menu_sub<'a>(
+pub fn left_menu_sub_text<'a>(
     txt: impl text::IntoFragment<'a>,
     theme: &Theme,
     wrap: bool,
@@ -68,7 +79,7 @@ pub fn left_menu_sub<'a>(
     let style = theme.stylesheet().left_menu_sub_text(wrap, center_y);
     build_text(txt, style)
 }
-pub fn icon<'a>(icon: IconChar, mut style: TextStyle) -> Text<'a> {
+pub fn icon_text<'a>(icon: IconChar, mut style: TextStyle) -> Text<'a> {
     style.font = ICON_FONT;
     build_text(icon.0, style)
 }
