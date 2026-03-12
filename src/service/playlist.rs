@@ -466,6 +466,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                 id,
                 tracklist,
                 data_sender,
+                volume,
             } => {
                 // create a playlist audio manager and immediately start playing it.
                 if !self.audio_managers.contains_key(&id) {
@@ -485,7 +486,7 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                             }
                         }
                     };
-                    let mut mgr = PlaylistAudioManager::new(id.clone());
+                    let mut mgr = PlaylistAudioManager::new(id.clone(), volume);
 
                     mgr.run(
                         tracklist,

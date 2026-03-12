@@ -300,6 +300,7 @@ impl App {
                         self.management.id_counter.next(),
                         self.communication.playlist_sender.clone(),
                         None,
+                        self.settings.volume,
                     ),
                     |handle| Message::TaskStarted {
                         handle: handle.unwrap(),

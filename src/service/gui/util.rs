@@ -119,6 +119,7 @@ pub async fn play_playlist(
     task_id: TaskId,
     playlist_sender: PlaylistSender,
     tracklist: Option<Tracklist>,
+    volume: f64,
 ) -> anyhow::Result<ReceiverHandle<Message>> {
     // create a receiver handle for progress updates
     let (tx, rx) = mpsc::channel(100);
@@ -129,6 +130,7 @@ pub async fn play_playlist(
             id: playlist_id,
             tracklist,
             data_sender: tx,
+            volume,
         })
         .await?;
     Ok(handle)

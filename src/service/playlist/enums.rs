@@ -74,6 +74,7 @@ pub enum PlaylistMessage {
         tracklist: Option<Tracklist>,
         // Sends individual track progress updates and when the playlist finishes.
         data_sender: mpsc::Sender<Message>,
+        volume: f64,
     },
     PauseCurrentTrack {
         playlist_id: Id,

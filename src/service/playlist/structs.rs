@@ -625,7 +625,7 @@ pub struct PlaylistAudioManager {
     volume: Arc<AtomicF64>,
 }
 impl PlaylistAudioManager {
-    pub fn new(playlist_id: Id) -> Self {
+    pub fn new(playlist_id: Id, volume: f64) -> Self {
         Self {
             tracklist: None,
             playlist_id,
@@ -643,7 +643,7 @@ impl PlaylistAudioManager {
             stop_waiting_on_track_notify: Arc::new(Notify::new()),
             playing_flag: Arc::new(AtomicBool::new(false)),
             start_audio_looped: Arc::new(AtomicBool::new(false)),
-            volume: Arc::new(AtomicF64::new(1.0)),
+            volume: Arc::new(AtomicF64::new(volume)),
         }
     }
     pub fn run(
