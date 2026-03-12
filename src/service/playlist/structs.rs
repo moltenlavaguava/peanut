@@ -227,10 +227,21 @@ pub struct TrackDisplayMetadata {
 #[derive(Debug, Clone)]
 pub struct TrackDownloadData {
     pub track: Track,
-    pub progress: f32,
-    pub download_size: DataSize,
-    pub download_speed: DataSize,
-    pub eta: Duration,
+    pub progress: Option<f32>,
+    pub download_size: Option<DataSize>,
+    pub download_speed: Option<DataSize>,
+    pub eta: Option<Duration>,
+}
+impl TrackDownloadData {
+    pub fn only_track(track: Track) -> Self {
+        Self {
+            track,
+            progress: None,
+            download_size: None,
+            download_speed: None,
+            eta: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -450,6 +461,7 @@ impl PlaylistDownloadManager {
                     gui_reply_stream_clone
                         .send(Message::TrackDownloadStarted {
                             id: track.id().clone(),
+                            data: TrackDownloadData::only_track(track.clone()),
                         })
                         .await
                         .unwrap();

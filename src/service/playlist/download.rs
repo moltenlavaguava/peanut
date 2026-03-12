@@ -330,10 +330,10 @@ fn parse_output(
                                 track: track
                                     .expect("Track data should be present when downloading it")
                                     .clone(),
-                                progress: captures[1].parse().unwrap_or(0.0),
-                                download_size: download_size,
-                                download_speed: download_speed,
-                                eta: Duration::from_secs(eta_seconds),
+                                progress: Some(captures[1].parse().unwrap_or(0.0)),
+                                download_size: Some(download_size),
+                                download_speed: Some(download_speed),
+                                eta: Some(Duration::from_secs(eta_seconds)),
                             });
                         }
                     }

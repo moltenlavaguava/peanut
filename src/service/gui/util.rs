@@ -390,3 +390,15 @@ pub fn handle_playlist_load(
 pub fn delay_task(delay: Duration, on_done: Message) -> Task<Message> {
     Task::perform(tokio::time::sleep(delay), |()| on_done)
 }
+pub fn truncate_with_ellipsis(txt: &str, max_chars: usize) -> String {
+    let mut shortened_track_title: String = txt
+        .chars()
+        .take(max_chars)
+        .collect::<String>()
+        .trim()
+        .to_string();
+    if txt.len() > max_chars {
+        shortened_track_title.push_str("…");
+    }
+    shortened_track_title
+}

@@ -98,7 +98,7 @@ pub struct HomeAlbumsWidgetData {
 pub struct GeneralCache {
     // Track caching
     pub downloaded_tracks: HashSet<Id>,
-    pub downloading_track_data: IndexMap<Id, Option<TrackDownloadData>>,
+    pub downloading_track_data: IndexMap<Id, TrackDownloadData>,
     pub all_tracks: Vec<Track>,
 
     // Album caching

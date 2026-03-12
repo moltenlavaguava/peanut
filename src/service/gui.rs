@@ -613,17 +613,15 @@ impl App {
                 println!("Cancel started");
                 Task::none()
             }
-            Message::TrackDownloadStarted { id } => {
+            Message::TrackDownloadStarted { id, data } => {
                 // a given track started downloading.
                 println!("track download started");
-                self.general_cache.downloading_track_data.insert(id, None);
+                self.general_cache.downloading_track_data.insert(id, data);
                 Task::none()
             }
             Message::TrackDownloadStatus { id, data } => {
                 // A given track's download status updated.
-                self.general_cache
-                    .downloading_track_data
-                    .insert(id, Some(data));
+                self.general_cache.downloading_track_data.insert(id, data);
                 Task::none()
             }
             Message::PlaylistOrderUpdated { id, tracklist } => {

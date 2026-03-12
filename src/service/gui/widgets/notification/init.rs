@@ -10,20 +10,14 @@ pub fn initialization_notification<'a>(
     playlist_init_data: &PlaylistInitData,
     theme: &Theme,
 ) -> Notification<'a> {
-    let ct = match playlist_init_data.current_init_track_count {
-        Some(v) => v.to_string(),
-        None => String::from("??"),
+    let title_text = if let Some(ct) = playlist_init_data.current_init_track_count
+        && let Some(tt) = playlist_init_data.total_track_count
+    {
+        format!("Loading Playlist... ({}/{})", ct, tt)
+    } else {
+        format!("Loading Playlist... (Collecting data)")
     };
-    let tt = match playlist_init_data.total_track_count {
-        Some(v) => v.to_string(),
-        None => String::from("??"),
-    };
-    let title = default_text(
-        format!("Loading Playlist... ({}/{})", ct, tt),
-        theme,
-        true,
-        true,
-    );
+    let title = default_text(title_text, theme, true, true);
     let bar_progress = {
         let ct = match playlist_init_data.current_init_track_count {
             Some(v) => v,

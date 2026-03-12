@@ -11,6 +11,7 @@ use crate::service::gui::widgets::button::{
     default_button, default_text_button, invisible_button, invisible_button_padded, track_button,
 };
 use crate::service::gui::widgets::notification::NotificationRenderData;
+use crate::service::gui::widgets::notification::download::download_notification_list;
 use crate::service::gui::widgets::notification::init::initialization_notification_list;
 use crate::service::gui::widgets::notification::playing::playing_notification_list;
 use crate::service::gui::widgets::page::build_page;
@@ -294,6 +295,10 @@ pub fn home(app: &App) -> Element<'_, Message> {
     // build notifications from all active render data
     let mut notifs = Vec::new();
 
+    notifs.append(&mut download_notification_list(
+        &app.general_cache.downloading_track_data,
+        theme,
+    ));
     notifs.append(&mut initialization_notification_list(
         &app.playlist_init_data,
         theme,

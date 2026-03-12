@@ -59,6 +59,7 @@ pub enum Message {
     // A single track download started. Given: the id of the track.
     TrackDownloadStarted {
         id: Id,
+        data: TrackDownloadData,
     },
     // The status for a single track download updated. Provided: the id of the track and the download data.
     TrackDownloadStatus {
