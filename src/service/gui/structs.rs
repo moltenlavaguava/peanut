@@ -109,6 +109,7 @@ pub struct GeneralCache {
     pub all_playlist_metadata: Vec<PlaylistMetadata>,
 }
 pub struct PlaylistRenderData {
+    pub playlist_id: Id,
     pub current_track: Option<Track>,
     pub playing_track_progress: AudioProgress,
     pub playing_track_loop_policy: LoopPolicy,

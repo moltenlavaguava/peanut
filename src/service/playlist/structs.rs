@@ -944,11 +944,12 @@ impl PlaylistAudioManager {
         if self.dead() {
             return;
         }
-        self.dead = true;
-
         println!("Cancelling manager..");
         self.stop_waiting_on_track_notify.notify_one();
         self.cancel_token.cancel();
+        // stop current track
+        self.stop_current_track();
+        self.dead = true;
     }
     pub fn get_playlist_id(&self) -> &Id {
         &self.playlist_id

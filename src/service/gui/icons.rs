@@ -20,3 +20,4 @@ pub const VOLUME_MEDIUM: IconChar = IconChar("\u{ea27}");
 pub const VOLUME_LOW: IconChar = IconChar("\u{ea28}");
 pub const VOLUME_MUTE: IconChar = IconChar("\u{ea2a}");
 pub const LOOP: IconChar = IconChar("\u{ea2e}");
+pub const CROSS: IconChar = IconChar("\u{ea0f}");

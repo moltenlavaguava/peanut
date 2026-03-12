@@ -404,3 +404,14 @@ pub fn truncate_with_ellipsis(txt: &str, max_chars: usize) -> String {
     }
     shortened_track_title
 }
+pub async fn stop_playlist(playlist_id: Id, playlist_sender: PlaylistSender) -> anyhow::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    playlist_sender
+        .send(PlaylistMessage::EndPlaylist {
+            id: playlist_id,
+            result_sender: tx,
+        })
+        .await?;
+    let _ = rx.await??;
+    Ok(())
+}

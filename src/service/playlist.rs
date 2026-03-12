@@ -813,6 +813,22 @@ impl ServiceLogic<enums::PlaylistMessage> for PlaylistService {
                     println!("Album not added to list after downloading; this shouldn't happen");
                 }
             }
+            PlaylistMessage::EndPlaylist { id, result_sender } => {
+                let mut exist = true;
+                if let Some((mut mgr, _)) = self.download_managers.remove(&id) {
+                    mgr.stop();
+                }
+                if let Some((mut mgr, _)) = self.audio_managers.remove(&id) {
+                    mgr.cancel();
+                } else {
+                    exist = false;
+                }
+                if exist {
+                    let _ = result_sender.send(Ok(()));
+                } else {
+                    let _ = result_sender.send(Err(anyhow!("Playing manager did not exist")));
+                }
+            }
         }
     }
 }

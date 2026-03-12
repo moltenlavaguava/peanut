@@ -310,6 +310,7 @@ impl App {
                 let current_tracklist = Tracklist::from_owned_playlist_ref(&owned_playlist);
                 let new_metadata = owned_playlist.metadata.clone();
                 let render_data = PlaylistRenderData {
+                    playlist_id: owned_playlist.metadata.id().clone(),
                     current_track: None,
                     owned_playlist: owned_playlist,
                     playing_track_loop_policy: LoopPolicy::NoLooping,
@@ -787,6 +788,29 @@ impl App {
             Message::SetPlaylistLoopPolicyResult { playlist_id: _ } => Task::none(),
             Message::RemovePlaylistInitData { init_id } => {
                 self.playlist_init_data.swap_remove(&init_id);
+                Task::none()
+            }
+            Message::StopPlaylist { playlist_id } => {
+                let playlist_sender = self.communication.playlist_sender.clone();
+                Task::perform(
+                    util::stop_playlist(playlist_id.clone(), playlist_sender),
+                    |r| {
+                        if let Err(e) = r {
+                            println!("An error occured while stopping the playlist: {e}")
+                        }
+                        Message::ManualPlaylistEnded { playlist_id }
+                    },
+                )
+            }
+            Message::ManualPlaylistEnded { playlist_id } => {
+                // this playlist was stopped by the user. remove any relevant data
+                if let Page::Home = self.management.current_page {
+                    self.playlist_render_data.swap_remove(&playlist_id);
+                } else {
+                    if let Some(d) = self.playlist_render_data.get_mut(&playlist_id) {
+                        d.playing_state = PlayingState::Unloaded
+                    }
+                }
                 Task::none()
             }
             Message::None => Task::none(),

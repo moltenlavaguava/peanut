@@ -9,7 +9,7 @@ use crate::service::{
     gui::{structs::PlaylistRenderData, widgets::notification::Notification},
     id::structs::Id,
 };
-use iced::widget::{column, container, row};
+use iced::widget::{column, container, hover, row};
 use iced::{Alignment, Length, Theme};
 use indexmap::IndexMap;
 
@@ -21,15 +21,18 @@ pub fn playing_notification<'a>(
         Some(t) => &t.title,
         None => "",
     }; // build content for notification
-    let title = default_text(
+    let title_text = if let PlayingState::Unloaded = playlist_render_data.playing_state {
+        format!(
+            "{} (unloaded, press X)",
+            &playlist_render_data.owned_playlist.metadata.title
+        )
+    } else {
         format!(
             "{} ({})",
             current_track_text, &playlist_render_data.owned_playlist.metadata.title
-        ),
-        theme,
-        true,
-        true,
-    );
+        )
+    };
+    let title = default_text(title_text, theme, true, true);
     let progress = default_progress_bar(
         0.0..=100.0,
         playlist_render_data.playing_track_progress.progress() * 100.0,
@@ -38,19 +41,20 @@ pub fn playing_notification<'a>(
     .girth(NOTIFICATION_PROGRESS_BAR_HEIGHT);
 
     let default_text_style = theme.stylesheet().default_text(true, true);
-    let previous_button = invisible_button(
+    let mut previous_button = invisible_button(
         icon_text(icons::PREVIOUS, default_text_style).size(20.0),
         theme,
-    )
-    .on_press(Message::Action(Action::PreviousTrack {
-        playlist_id: playlist_render_data.owned_playlist.metadata.id().clone(),
-    }));
-    let next_button =
-        invisible_button(icon_text(icons::SKIP, default_text_style).size(20.0), theme).on_press(
-            Message::Action(Action::NextTrack {
-                playlist_id: playlist_render_data.owned_playlist.metadata.id().clone(),
-            }),
-        );
+    );
+    let mut next_button =
+        invisible_button(icon_text(icons::SKIP, default_text_style).size(20.0), theme);
+    if !matches!(playlist_render_data.playing_state, PlayingState::Unloaded) {
+        previous_button = previous_button.on_press(Message::Action(Action::PreviousTrack {
+            playlist_id: playlist_render_data.owned_playlist.metadata.id().clone(),
+        }));
+        next_button = next_button.on_press(Message::Action(Action::NextTrack {
+            playlist_id: playlist_render_data.owned_playlist.metadata.id().clone(),
+        }));
+    }
     let play_button = if let PlayingState::Playing = playlist_render_data.playing_state {
         invisible_button(
             icon_text(icons::PAUSE, default_text_style).size(20.0),
@@ -73,7 +77,23 @@ pub fn playing_notification<'a>(
     let actions = container(row![previous_button, play_button, next_button])
         .width(Length::Fill)
         .align_x(Alignment::Center);
-    let content = column![title, progress, actions].into();
+    let main_content = column![title, progress, actions];
+    // add on hover functionality for stopping
+    let content = hover(
+        main_content,
+        container(
+            invisible_button(icon_text(icons::CROSS, default_text_style), theme).on_press(
+                Message::StopPlaylist {
+                    playlist_id: playlist_render_data.playlist_id.clone(),
+                },
+            ),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(Alignment::End)
+        .align_y(Alignment::Start),
+    )
+    .into();
     Notification { content }
 }
 

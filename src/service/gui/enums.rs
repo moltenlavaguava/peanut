@@ -145,6 +145,12 @@ pub enum Message {
     RemovePlaylistInitData {
         init_id: PlaylistInitId,
     },
+    StopPlaylist {
+        playlist_id: Id,
+    },
+    ManualPlaylistEnded {
+        playlist_id: Id,
+    },
 }
 
 #[derive(Debug, Clone)]

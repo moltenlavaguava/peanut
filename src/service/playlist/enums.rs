@@ -145,6 +145,10 @@ pub enum PlaylistMessage {
     AlbumDownloaded {
         album: Album,
     },
+    EndPlaylist {
+        id: Id,
+        result_sender: oneshot::Sender<anyhow::Result<()>>,
+    },
 }
 
 #[derive(Debug, EnumString, Display, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
