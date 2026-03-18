@@ -33,7 +33,7 @@ pub fn build_page<'a>(
     }
     if let Some(modal) = modal {
         // add the modal on top of everything else
-        let content = modal.view(theme).map(Message::ModalMessage);
+        let content = modal.view(theme);
         stack = stack.push(content);
     }
     stack.into()

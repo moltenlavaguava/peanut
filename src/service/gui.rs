@@ -820,14 +820,7 @@ impl App {
             }
             Message::ModalMessage(mmsg) => {
                 if let Some(modal) = &mut self.general_cache.active_modal {
-                    // Special: if the message is close modal, then handle it
-                    match mmsg {
-                        ModalMessage::HideModal => {
-                            util::hide_modal(self);
-                            Task::none()
-                        }
-                        _ => modal.update(mmsg).map(Message::ModalMessage),
-                    }
+                    modal.update(mmsg).map(Message::ModalMessage)
                 } else {
                     Task::none()
                 }
