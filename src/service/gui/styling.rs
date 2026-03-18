@@ -199,6 +199,7 @@ pub struct Stylesheet {
     pub interactable_color: Color,
     pub default_button_status_bgs: ButtonStatusBackgrounds,
     pub tracklist_button_status_bgs: ButtonStatusBackgrounds,
+    pub default_modal_background_alpha: f32,
 }
 impl Stylesheet {
     pub fn default_text(&self, wrap_text: bool, center_y: bool) -> TextStyle {
@@ -347,6 +348,20 @@ impl Stylesheet {
             border: NO_BORDER,
         }
     }
+    pub fn default_modal(&self) -> ContainerStyle {
+        self.home_widget_container()
+    }
+    pub fn default_modal_background(&self) -> ContainerStyle {
+        ContainerStyle {
+            bg_color: Some(Background::Color(Color::from_rgba(
+                0.0,
+                0.0,
+                0.0,
+                self.default_modal_background_alpha,
+            ))),
+            border: NO_BORDER,
+        }
+    }
 }
 
 // Color palettes
@@ -388,6 +403,7 @@ const DARK_STYLESHEET: Stylesheet = Stylesheet {
         pressed: Some(Background::Color(color!(50, 50, 50))),
         disabled: None,
     },
+    default_modal_background_alpha: 0.6,
 };
 
 // Tack on app stylesheet data to any theme

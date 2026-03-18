@@ -43,16 +43,16 @@ pub fn home(app: &App) -> Element<'_, Message> {
     let theme = &app.theme;
     let title_txt = title_text("Home", theme, true, true);
 
-    let load_playlist = default_text_button("Load", theme).on_press(Message::PlaylistURLSubmit);
-    let playlist_url = default_text_input(
-        "Youtube playlist URL",
-        &app.home_playlists_widget_data.search_text,
-        theme,
-    )
-    .width(Length::Fill)
-    .on_input(Message::PlaylistTextEdit)
-    .on_paste(Message::PlaylistTextEdit)
-    .on_submit(Message::PlaylistURLSubmit);
+    let new_playlist = default_text_button("New", theme).on_press(Message::NewPlaylist);
+    // let playlist_url = default_text_input(
+    //     "Youtube playlist URL",
+    //     &app.home_playlists_widget_data.search_text,
+    //     theme,
+    // )
+    // .width(Length::Fill)
+    // .on_input(Message::PlaylistTextEdit)
+    // .on_paste(Message::PlaylistTextEdit)
+    // .on_submit(Message::PlaylistURLSubmit);
 
     let upper_menu_content = menu_content_container(
         column![title_txt, default_horizontal_rule(2, theme)].spacing(4),
@@ -134,8 +134,11 @@ pub fn home(app: &App) -> Element<'_, Message> {
         )
     };
 
-    let playlists_title = title_text("Playlists", theme, true, true);
-    let playlist_loading = row![playlist_url, load_playlist];
+    let playlists_header = row![
+        title_text("Playlists", theme, true, true),
+        space().width(Length::Fill),
+        new_playlist
+    ];
 
     let track_count = app.general_cache.all_tracks.len();
     let tracks = if track_count > 0 {
@@ -266,8 +269,7 @@ pub fn home(app: &App) -> Element<'_, Message> {
     );
 
     let playlist_content =
-        home_menu_widget_container(column![playlists_title, playlist_loading, playlists], theme)
-            .width(Length::Fill);
+        home_menu_widget_container(column![playlists_header, playlists], theme).width(Length::Fill);
 
     let tracks_content =
         home_menu_widget_container(column![tracks_title, tracks], theme).width(Length::Fill);
@@ -310,7 +312,13 @@ pub fn home(app: &App) -> Element<'_, Message> {
 
     // Note: notifications added *last* appear at the bottom
     let notifs = if notifs.len() > 0 { Some(notifs) } else { None };
-    build_page(main_content, notifs, NOTIFICATION_RENDER_DATA, None, theme)
+    build_page(
+        main_content,
+        notifs,
+        NOTIFICATION_RENDER_DATA,
+        app.general_cache.active_modal.as_ref(),
+        theme,
+    )
 }
 
 pub fn player(app: &App) -> Element<'_, Message> {
@@ -708,5 +716,11 @@ pub fn player(app: &App) -> Element<'_, Message> {
     let upper_portion = row![left_menu, playlist_and_track_data];
     let page = container(column![upper_portion, lower_controls]);
 
-    build_page(page, None, NOTIFICATION_RENDER_DATA, None, theme)
+    build_page(
+        page,
+        None,
+        NOTIFICATION_RENDER_DATA,
+        app.general_cache.active_modal.as_ref(),
+        theme,
+    )
 }

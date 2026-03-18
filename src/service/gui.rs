@@ -1,4 +1,6 @@
-use iced::{Element, Task};
+use iced::event::Status;
+use iced::keyboard::key;
+use iced::{Element, Event, Task, event, keyboard};
 use iced::{Subscription, Theme};
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -15,6 +17,8 @@ use crate::service::gui::structs::{
     PlaylistInitIdCounter, PlaylistRenderData, TaskId,
 };
 use crate::service::gui::util::delay_task;
+use crate::service::gui::widgets::modal::ModalMessage;
+use crate::service::gui::widgets::modal::new_playlist::NewPlaylistModal;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
 use crate::service::playlist::enums::{PlaylistInitStatus, PlaylistMessage};
@@ -76,6 +80,7 @@ impl App {
             downloading_track_data: IndexMap::new(),
             all_playlist_metadata: Vec::new(),
             recent_playlists: VecDeque::with_capacity(RECENT_PLAYLIST_SIZE),
+            active_modal: None,
         };
         let settings = GuiSettings { volume: 1.0 };
         let playlist_render_data = IndexMap::new();
@@ -813,6 +818,45 @@ impl App {
                 }
                 Task::none()
             }
+            Message::ModalMessage(mmsg) => {
+                if let Some(modal) = &mut self.general_cache.active_modal {
+                    // Special: if the message is close modal, then handle it
+                    match mmsg {
+                        ModalMessage::HideModal => {
+                            util::hide_modal(self);
+                            Task::none()
+                        }
+                        _ => modal.update(mmsg).map(Message::ModalMessage),
+                    }
+                } else {
+                    Task::none()
+                }
+            }
+            Message::NewPlaylist => {
+                // set the current modal to the new playlist modal,
+                // regardless of what was previously there
+                self.general_cache.active_modal = Some(NewPlaylistModal::new().into());
+                Task::none()
+            }
+            Message::HideModal => {
+                // Note: this clears all the modal data
+                util::hide_modal(self);
+                Task::none()
+            }
+            Message::SystemEvent(e) => {
+                // println!("got event: {e:?}");
+                match e {
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key: keyboard::Key::Named(key::Named::Escape),
+                        ..
+                    }) => {
+                        // Hide modal
+                        util::hide_modal(self);
+                        Task::none()
+                    }
+                    _ => Task::none(),
+                }
+            }
             Message::None => Task::none(),
         }
     }
@@ -834,8 +878,14 @@ impl App {
                 .values()
                 .map(|handle| handle.watch(|_id, msg| msg, |id| Message::TaskFinished(id))),
         );
-
-        Subscription::batch(vec![bus, tasks])
+        let event = event::listen_with(|event, status, _id| {
+            if let Status::Ignored = status {
+                Some(Message::SystemEvent(event))
+            } else {
+                None
+            }
+        });
+        Subscription::batch(vec![bus, tasks, event])
     }
     fn theme(&self) -> Theme {
         self.theme.clone()

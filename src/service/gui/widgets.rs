@@ -1,6 +1,5 @@
 pub mod button;
 pub mod container;
-pub mod custom;
 pub mod modal;
 pub mod notification;
 pub mod page;

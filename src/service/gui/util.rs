@@ -415,3 +415,6 @@ pub async fn stop_playlist(playlist_id: Id, playlist_sender: PlaylistSender) -> 
     let _ = rx.await??;
     Ok(())
 }
+pub fn hide_modal(app: &mut App) {
+    app.general_cache.active_modal = None
+}

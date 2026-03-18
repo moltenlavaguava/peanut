@@ -1,6 +1,6 @@
 use iced::{
     Alignment, Element, Length, Theme,
-    widget::{Stack, column, container, opaque, space},
+    widget::{Stack, column, container},
 };
 
 use crate::service::gui::{
@@ -15,7 +15,7 @@ pub fn build_page<'a>(
     content: impl Into<Element<'a, Message>>,
     notifications: Option<Vec<Notification<'a>>>,
     notification_render_data: NotificationRenderData,
-    modal: Option<Modal>,
+    modal: Option<&'a Modal>,
     theme: &Theme,
 ) -> Element<'a, Message> {
     let mut stack = Stack::new().push(content);
@@ -33,9 +33,8 @@ pub fn build_page<'a>(
     }
     if let Some(modal) = modal {
         // add the modal on top of everything else
-        let bg = opaque(space());
-        let content = modal.build();
-        stack = stack.push(bg).push(content);
+        let content = modal.view(theme).map(Message::ModalMessage);
+        stack = stack.push(content);
     }
     stack.into()
 }

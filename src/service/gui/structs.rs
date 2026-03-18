@@ -5,7 +5,10 @@ use indexmap::IndexMap;
 use crate::{
     service::{
         audio::{enums::LoopPolicy, structs::AudioProgress},
-        gui::enums::{DownloadState, EventMessage, Message, Page, PlayingState},
+        gui::{
+            enums::{DownloadState, EventMessage, Message, Page, PlayingState},
+            widgets::modal::Modal,
+        },
         id::structs::Id,
         playlist::{
             PlaylistSender,
@@ -103,6 +106,9 @@ pub struct GeneralCache {
 
     // Album caching
     pub all_albums: Vec<Album>,
+
+    // modals
+    pub active_modal: Option<Modal>,
 
     // Playlist caching
     pub recent_playlists: VecDeque<PlaylistMetadata>,

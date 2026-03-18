@@ -38,3 +38,17 @@ pub fn notification_container<'a, Message>(
 ) -> Container<'a, Message> {
     home_menu_widget_container(content, theme)
 }
+pub fn default_modal_container<'a, Message>(
+    content: impl Into<Element<'a, Message>>,
+    theme: &Theme,
+) -> Container<'a, Message> {
+    let ss = theme.stylesheet().default_modal();
+    build_container(content, ss)
+}
+pub fn default_modal_background_container<'a, Message>(
+    content: impl Into<Element<'a, Message>>,
+    theme: &Theme,
+) -> Container<'a, Message> {
+    let ss = theme.stylesheet().default_modal_background();
+    build_container(content, ss)
+}

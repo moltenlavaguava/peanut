@@ -1,12 +1,15 @@
 use std::collections::{HashMap, HashSet};
 
-use iced::{Theme, widget::scrollable::Viewport};
+use iced::{Event, Theme, widget::scrollable::Viewport};
 use tokio::sync::mpsc;
 
 use crate::{
     service::{
         audio::structs::AudioProgress,
-        gui::structs::{PlaylistInitId, TaskId},
+        gui::{
+            structs::{PlaylistInitId, TaskId},
+            widgets::modal::ModalMessage,
+        },
         id::structs::Id,
         playlist::{
             enums::PlaylistInitStatus,
@@ -20,10 +23,13 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    // Events piped from iced's generic event receiver. handles stuff like keyboard actions.
+    SystemEvent(Event),
     // Playlist url text box edited. Provides text of box.
     PlaylistTextEdit(String),
-    // Playlist url button submitted.
+    // Playlist url button submitted (in modal).
     PlaylistURLSubmit,
+    NewPlaylist,
     // General event received. Provides message.
     EventRecieved(EventMessage),
     // Event bus closed.
@@ -151,6 +157,8 @@ pub enum Message {
     ManualPlaylistEnded {
         playlist_id: Id,
     },
+    ModalMessage(ModalMessage),
+    HideModal,
 }
 
 #[derive(Debug, Clone)]
