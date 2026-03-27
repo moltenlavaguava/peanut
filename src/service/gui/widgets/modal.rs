@@ -25,7 +25,10 @@ trait AbstractModal<Global: 'static>: Into<Modal> {
     type ModalMsg;
     // Only creates interior content. Does not make or handle modal mangement / container.
     fn view(&self, theme: &Theme) -> Element<'_, AbstractModalMessage<Self::ModalMsg, Global>>;
-    fn update(&mut self, message: Self::ModalMsg) -> Task<Self::ModalMsg>;
+    fn update(
+        &mut self,
+        message: Self::ModalMsg,
+    ) -> Task<AbstractModalMessage<Self::ModalMsg, Message>>;
     // Wrapper to create the modal container body (centered)
     fn build(&self, theme: &Theme) -> Element<'_, AbstractModalMessage<Self::ModalMsg, Global>> {
         // make main container opaque to make mouse clicks on modal itself not kill it
@@ -92,10 +95,15 @@ impl Modal {
         };
         opaque(mouse_area(main_modal_content).on_press(Message::HideModal))
     }
-    pub fn update(&mut self, msg: ModalMessage) -> Task<ModalMessage> {
+    pub fn update(&mut self, msg: ModalMessage) -> Task<Message> {
         match (self, msg) {
             (Modal::NewPlaylist(w), ModalMessage::NewPlaylist(m)) => {
-                w.update(m).map(ModalMessage::NewPlaylist)
+                w.update(m).map(|bm| match bm {
+                    AbstractModalMessage::Local(l) => {
+                        Message::ModalMessage(ModalMessage::NewPlaylist(l))
+                    }
+                    AbstractModalMessage::Global(g) => g,
+                })
             }
             _ => Task::none(),
         }

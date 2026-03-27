@@ -25,10 +25,8 @@ use crate::{
 pub enum Message {
     // Events piped from iced's generic event receiver. handles stuff like keyboard actions.
     SystemEvent(Event),
-    // Playlist url text box edited. Provides text of box.
-    PlaylistTextEdit(String),
     // Playlist url button submitted (in modal).
-    PlaylistURLSubmit,
+    PlaylistURLSubmit(String),
     NewPlaylist,
     // General event received. Provides message.
     EventRecieved(EventMessage),

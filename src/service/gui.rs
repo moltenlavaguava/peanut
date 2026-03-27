@@ -17,7 +17,6 @@ use crate::service::gui::structs::{
     PlaylistInitIdCounter, PlaylistRenderData, TaskId,
 };
 use crate::service::gui::util::delay_task;
-use crate::service::gui::widgets::modal::ModalMessage;
 use crate::service::gui::widgets::modal::new_playlist::NewPlaylistModal;
 use crate::service::id::structs::Id;
 use crate::service::playlist::PlaylistSender;
@@ -113,17 +112,10 @@ impl App {
     }
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::PlaylistTextEdit(txt) => {
-                self.home_playlists_widget_data.search_text = txt;
-                Task::none()
-            }
-            Message::PlaylistURLSubmit => {
-                println!(
-                    "playlist url: {}",
-                    self.home_playlists_widget_data.search_text
-                );
+            Message::PlaylistURLSubmit(s) => {
+                println!("playlist url: {}", s);
                 // try to create a url
-                if let Ok(url) = Url::parse(&self.home_playlists_widget_data.search_text) {
+                if let Ok(url) = Url::parse(&s) {
                     Task::perform(
                         submit_playlist_url(
                             self.management.id_counter.next(),
@@ -820,7 +812,7 @@ impl App {
             }
             Message::ModalMessage(mmsg) => {
                 if let Some(modal) = &mut self.general_cache.active_modal {
-                    modal.update(mmsg).map(Message::ModalMessage)
+                    modal.update(mmsg)
                 } else {
                     Task::none()
                 }

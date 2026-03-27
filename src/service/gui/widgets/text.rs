@@ -41,6 +41,15 @@ pub fn secondary_text<'a>(
     let style = theme.stylesheet().secondary_text(wrap, center_y);
     build_text(txt, style)
 }
+pub fn error_text<'a>(
+    txt: impl text::IntoFragment<'a>,
+    theme: &Theme,
+    wrap: bool,
+    center_y: bool,
+) -> Text<'a> {
+    let style = theme.stylesheet().error_text(wrap, center_y);
+    build_text(txt, style)
+}
 // TODO: remove / use this when needed
 #[allow(unused)]
 pub fn same_size_secondary_text<'a>(

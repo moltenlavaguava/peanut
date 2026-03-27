@@ -17,6 +17,21 @@ pub fn default_button<'a, Message>(
     let ss = theme.stylesheet().default_button();
     style_button(button(content), ss)
 }
+pub fn secondary_button<'a, Message>(
+    content: impl Into<Element<'a, Message>>,
+    theme: &Theme,
+) -> Button<'a, Message> {
+    let ss = theme.stylesheet().secondary_button();
+    style_button(button(content), ss)
+}
+pub fn secondary_text_button<'a, Message>(
+    txt: impl text::IntoFragment<'a>,
+    theme: &Theme,
+) -> Button<'a, Message> {
+    let tw = super::text::default_text(txt, theme, false, true);
+    secondary_button(tw, theme)
+}
+
 pub fn default_text_button<'a, Message>(
     txt: impl text::IntoFragment<'a>,
     theme: &Theme,

@@ -186,6 +186,7 @@ impl ProgressBarStyle {
 #[derive(Debug, Clone, Copy)]
 pub struct Stylesheet {
     pub main_text_color: Color,
+    pub error_text_color: Color,
     pub default_font: Font,
     pub secondary_text_color: Color,
     pub secondary_rule_color: Color,
@@ -199,6 +200,7 @@ pub struct Stylesheet {
     pub interactable_color: Color,
     pub default_button_status_bgs: ButtonStatusBackgrounds,
     pub tracklist_button_status_bgs: ButtonStatusBackgrounds,
+    pub secondary_button_status_bgs: ButtonStatusBackgrounds,
     pub default_modal_background_alpha: f32,
 }
 impl Stylesheet {
@@ -237,6 +239,11 @@ impl Stylesheet {
             },
         }
     }
+    pub fn error_text(&self, wrap_text: bool, center_y: bool) -> TextStyle {
+        let mut s = self.default_text(wrap_text, center_y);
+        s.color = self.error_text_color;
+        s
+    }
     pub fn left_menu_bold_text(&self, wrap_text: bool, center_y: bool) -> TextStyle {
         TextStyle {
             color: self.secondary_text_color,
@@ -256,6 +263,12 @@ impl Stylesheet {
     pub fn default_button(&self) -> ButtonStyle {
         ButtonStyle {
             status_bgs: self.default_button_status_bgs,
+            padding: padding::all(8),
+        }
+    }
+    pub fn secondary_button(&self) -> ButtonStyle {
+        ButtonStyle {
+            status_bgs: self.secondary_button_status_bgs,
             padding: padding::all(8),
         }
     }
@@ -368,6 +381,7 @@ impl Stylesheet {
 
 const DARK_STYLESHEET: Stylesheet = Stylesheet {
     main_text_color: color!(255, 255, 255),
+    error_text_color: color!(0xDC143C),
     default_font: Font::DEFAULT,
     secondary_text_color: color!(200, 200, 200),
 
@@ -390,6 +404,12 @@ const DARK_STYLESHEET: Stylesheet = Stylesheet {
         hovered: Some(Background::Color(color!(32, 113, 245))),
         pressed: Some(Background::Color(color!(10, 86, 209))),
         disabled: Some(Background::Color(color!(1, 39, 99))),
+    },
+    secondary_button_status_bgs: ButtonStatusBackgrounds {
+        active: Some(Background::Color(color!(143, 143, 143))),
+        hovered: Some(Background::Color(color!(153, 153, 153))),
+        pressed: Some(Background::Color(color!(133, 133, 133))),
+        disabled: Some(Background::Color(color!(123, 123, 123))),
     },
     // default_button_status_bgs: ButtonStatusBackgrounds {
     //     active: None,
